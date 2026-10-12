@@ -25,6 +25,9 @@ export type WeaponDef = {
 	Accent: Color3, -- guard / gem / string
 	Material: Enum.Material,
 	Model: string?, -- custom model builder in CombatService (otherwise built from Type)
+	Combo: string, -- WeaponMoves.Combos style
+	Design: { [string]: any },
+	Skill: { [string]: any }, -- R ability (see WeaponSkills on the server)
 }
 
 -- Armor comes in sets of 4 pieces. Each piece is its own item; wearing all 4 pieces of
@@ -79,69 +82,183 @@ local WEAPON_TYPES = {
 local rgb = Color3.fromRGB
 local M = Enum.Material
 
--- { Id, DisplayName, Type, Tier, Color, Accent, Material, Effect?, Model? }
+-- Every weapon has:
+--   Combo  - its combo style (WeaponMoves.Combos)
+--   Design - how CombatService's weapon builder shapes it (blade/head/limbs, guard, effects)
+--   Skill  - its own ability on R (mechanic run by WeaponSkills on the server)
+-- Effects: Burn (damage over time), Frost (slow), Lifesteal.
+
+local burn = function(amount: number): Effect
+	return { Type = "Burn", Amount = amount, Duration = 3 }
+end
+local frost = function(amount: number): Effect
+	return { Type = "Frost", Amount = amount, Duration = 2 }
+end
+local lifesteal = function(amount: number): Effect
+	return { Type = "Lifesteal", Amount = amount }
+end
+
 local WEAPON_LIST = {
-	-- Swords (Warrior)
-	{ "WoodenSword", "Wooden Sword", "Sword", 1, rgb(150, 105, 60), rgb(90, 60, 35), M.Wood },
-	{ "IronSword", "Iron Sword", "Sword", 2, rgb(165, 165, 175), rgb(90, 70, 40), M.Metal },
-	{ "SteelBlade", "Steel Blade", "Sword", 3, rgb(210, 215, 225), rgb(60, 60, 70), M.Metal },
-	{ "KnightsLongsword", "Knight's Longsword", "Sword", 4, rgb(235, 235, 245), rgb(200, 170, 60), M.Metal },
-	{ "BoneCleaver", "Bone Cleaver", "Sword", 5, rgb(230, 225, 205), rgb(140, 40, 40), M.Marble, { Type = "Lifesteal", Amount = 0.06 } },
-	{ "SandReaver", "Sand Reaver", "Sword", 6, rgb(235, 195, 90), rgb(40, 60, 140), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
-	{ "Frostbrand", "Frostbrand", "Sword", 7, rgb(150, 220, 255), rgb(230, 245, 255), M.Ice, { Type = "Frost", Amount = 0.4, Duration = 2 } },
-	{ "Dragonfang", "Dragonfang", "Sword", 8, rgb(255, 110, 40), rgb(60, 20, 20), M.Neon, { Type = "Burn", Amount = 0.25, Duration = 3 } },
-	-- Daggers (Assassin)
-	{ "RustyShiv", "Rusty Shiv", "Dagger", 1, rgb(140, 110, 90), rgb(70, 50, 40), M.CorrodedMetal },
-	{ "IronDirk", "Iron Dirk", "Dagger", 2, rgb(165, 165, 175), rgb(60, 45, 35), M.Metal },
-	{ "SteelStiletto", "Steel Stiletto", "Dagger", 3, rgb(210, 215, 225), rgb(40, 40, 45), M.Metal },
-	{ "VenomFang", "Venom Fang", "Dagger", 4, rgb(90, 200, 90), rgb(30, 60, 30), M.Glass, { Type = "Burn", Amount = 0.15, Duration = 3 } },
-	{ "NightshadeKris", "Nightshade Kris", "Dagger", 5, rgb(120, 60, 160), rgb(30, 15, 40), M.Metal, { Type = "Lifesteal", Amount = 0.06 } },
-	{ "Shadowfang", "Shadowfang", "Dagger", 6, rgb(40, 40, 55), rgb(150, 110, 255), M.Slate, { Type = "Frost", Amount = 0.35, Duration = 2 } },
-	{ "EclipseEdge", "Eclipse Edge", "Dagger", 7, rgb(255, 170, 60), rgb(40, 20, 60), M.Neon, { Type = "Burn", Amount = 0.22, Duration = 3 } },
-	{ "PhantomReaper", "Phantom Reaper", "Dagger", 8, rgb(170, 240, 255), rgb(20, 30, 50), M.Glass, { Type = "Lifesteal", Amount = 0.1 } },
+	-- Swords (Warrior) ---------------------------------------------------------------
+	{ Id = "WoodenSword", Name = "Wooden Sword", Type = "Sword", Tier = 1, Color = rgb(150, 105, 60), Accent = rgb(90, 60, 35), Material = M.Wood, Combo = "Blademaster",
+		Design = { Blade = "Straight", Guard = "Cross", Pommel = "Ball", Trail = rgb(220, 190, 140) },
+		Skill = { Name = "Splinter Spin", Mechanic = "Cyclone", Damage = 0.6, Radius = 8, Ticks = 4, Cooldown = 10, Color = rgb(200, 160, 100), Style = "Wood", Description = "Spin, hitting everything around you 4 times" } },
+	{ Id = "IronSword", Name = "Iron Sword", Type = "Sword", Tier = 2, Color = rgb(165, 165, 175), Accent = rgb(90, 70, 40), Material = M.Metal, Combo = "Duelist",
+		Design = { Blade = "Straight", Guard = "Cross", Pommel = "Ball", Fuller = true, Trail = rgb(220, 225, 235) },
+		Skill = { Name = "Iron Will", Mechanic = "Empower", Buff = { Damage = 0.25, Defense = 0.1 }, Duration = 6, Cooldown = 15, Color = rgb(200, 200, 215), Style = "Steel", Description = "+25% damage and +10% defense for 6s" } },
+	{ Id = "SteelBlade", Name = "Steel Blade", Type = "Sword", Tier = 3, Color = rgb(210, 215, 225), Accent = rgb(60, 60, 70), Material = M.Metal, Combo = "Blademaster",
+		Design = { Blade = "Broad", Guard = "Wings", Pommel = "Gem", Fuller = true, Trail = rgb(230, 235, 255) },
+		Skill = { Name = "Steel Shockwave", Mechanic = "Shockwave", Damage = 2.2, Range = 22, Cooldown = 9, Color = rgb(210, 220, 240), Style = "Steel", Description = "A blade wave that cuts through enemies in front" } },
+	{ Id = "KnightsLongsword", Name = "Knight's Longsword", Type = "Sword", Tier = 4, Color = rgb(235, 235, 245), Accent = rgb(200, 170, 60), Material = M.Metal, Combo = "Duelist",
+		Design = { Blade = "Long", Guard = "Crescent", Pommel = "Gem", Fuller = true, Runes = rgb(255, 215, 90), Trail = rgb(255, 230, 150) },
+		Skill = { Name = "Valor's Charge", Mechanic = "Blink", Damage = 2.5, Range = 18, Cooldown = 10, Color = rgb(255, 215, 90), Style = "Holy", Description = "Charge forward, striking everything you pass" } },
+	{ Id = "BoneCleaver", Name = "Bone Cleaver", Type = "Sword", Tier = 5, Color = rgb(230, 225, 205), Accent = rgb(140, 40, 40), Material = M.Marble, Effect = lifesteal(0.06), Combo = "Executioner",
+		Design = { Blade = "Cleaver", Guard = "Skull", Pommel = "Spike", Serrated = true, Aura = { Kind = "Smoke", Color = rgb(120, 30, 30) }, Trail = rgb(200, 40, 40) },
+		Skill = { Name = "Bone Eruption", Mechanic = "Spikes", Damage = 2.4, Range = 24, Cooldown = 11, Color = rgb(235, 230, 210), Style = "Bone", Description = "Jagged bones burst from the ground in a line" } },
+	{ Id = "SandReaver", Name = "Sand Reaver", Type = "Sword", Tier = 6, Color = rgb(235, 195, 90), Accent = rgb(40, 60, 140), Material = M.Metal, Effect = burn(0.15), Combo = "Blademaster",
+		Design = { Blade = "Curved", Guard = "Disc", Pommel = "Gem", Runes = rgb(80, 200, 255), Aura = { Kind = "Dust", Color = rgb(230, 200, 130) }, Trail = rgb(255, 210, 120) },
+		Skill = { Name = "Sandstorm", Mechanic = "Vortex", Damage = 0.5, Radius = 14, Ticks = 6, Duration = 3, Cooldown = 14, Color = rgb(230, 200, 130), Style = "Sand", Description = "A swirling storm drags enemies in and grinds them" } },
+	{ Id = "Frostbrand", Name = "Frostbrand", Type = "Sword", Tier = 7, Color = rgb(150, 220, 255), Accent = rgb(230, 245, 255), Material = M.Ice, Effect = frost(0.4), Combo = "Duelist",
+		Design = { Blade = "Crystal", Guard = "Wings", Pommel = "Gem", Aura = { Kind = "Snow", Color = rgb(220, 240, 255) }, Trail = rgb(170, 230, 255), Glow = rgb(140, 210, 255) },
+		Skill = { Name = "Blizzard", Mechanic = "Rain", Damage = 0.8, Radius = 12, Count = 14, Duration = 2.5, Cooldown = 13, Color = rgb(170, 230, 255), Style = "Ice", Description = "Ice shards rain down where you aim" } },
+	{ Id = "Dragonfang", Name = "Dragonfang", Type = "Sword", Tier = 8, Color = rgb(255, 110, 40), Accent = rgb(60, 20, 20), Material = M.Neon, Effect = burn(0.25), Combo = "Executioner",
+		Design = { Blade = "Flame", Guard = "Claws", Pommel = "Spike", Aura = { Kind = "Embers", Color = rgb(255, 120, 40) }, Trail = rgb(255, 140, 50), Glow = rgb(255, 120, 40) },
+		Skill = { Name = "Dragon's Breath", Mechanic = "Breath", Damage = 0.7, Range = 22, Ticks = 6, Duration = 1.8, Cooldown = 14, Color = rgb(255, 120, 40), Style = "Fire", Description = "Breathe a cone of dragonfire" } },
 
-	-- Tomes (Healer)
-	{ "PrayerBook", "Prayer Book", "Tome", 1, rgb(120, 80, 50), rgb(255, 240, 200), M.Leather },
-	{ "HymnalOfDawn", "Hymnal of Dawn", "Tome", 2, rgb(170, 70, 50), rgb(255, 220, 150), M.Leather },
-	{ "CodexOfLight", "Codex of Light", "Tome", 3, rgb(230, 225, 210), rgb(255, 230, 120), M.Leather },
-	{ "TomeOfMending", "Tome of Mending", "Tome", 4, rgb(60, 140, 90), rgb(150, 255, 170), M.Leather, { Type = "Lifesteal", Amount = 0.06 } },
-	{ "RadiantScripture", "Radiant Scripture", "Tome", 5, rgb(240, 200, 90), rgb(255, 255, 220), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
-	{ "SeraphsGospel", "Seraph's Gospel", "Tome", 6, rgb(245, 245, 255), rgb(140, 200, 255), M.Fabric, { Type = "Frost", Amount = 0.3, Duration = 2 } },
-	{ "CelestialCanticle", "Celestial Canticle", "Tome", 7, rgb(60, 70, 160), rgb(255, 240, 150), M.Fabric, { Type = "Burn", Amount = 0.2, Duration = 3 } },
-	{ "BookOfGenesis", "Book of Genesis", "Tome", 8, rgb(255, 250, 235), rgb(255, 200, 60), M.Neon, { Type = "Lifesteal", Amount = 0.1 } },
+	-- Staffs (Mage) ------------------------------------------------------------------
+	{ Id = "ApprenticeStaff", Name = "Apprentice Staff", Type = "Staff", Tier = 1, Color = rgb(120, 85, 50), Accent = rgb(120, 180, 255), Material = M.Wood, Combo = "Arcanist",
+		Design = { Head = "Orb", Shaft = "Straight", Trail = rgb(140, 190, 255) },
+		Skill = { Name = "Arcane Barrage", Mechanic = "Missiles", Damage = 0.9, Count = 5, Range = 45, Cooldown = 9, Color = rgb(140, 190, 255), Style = "Arcane", Description = "Fire 5 seeking arcane missiles" } },
+	{ Id = "WillowStaff", Name = "Willow Staff", Type = "Staff", Tier = 2, Color = rgb(140, 120, 80), Accent = rgb(120, 255, 140), Material = M.Wood, Combo = "Stormcaller",
+		Design = { Head = "Leaf", Shaft = "Twisted", Aura = { Kind = "Leaves", Color = rgb(140, 230, 120) }, Trail = rgb(140, 255, 160) },
+		Skill = { Name = "Thorn Snare", Mechanic = "Root", Damage = 0.4, Radius = 10, Ticks = 6, Duration = 3, Cooldown = 12, Color = rgb(110, 200, 90), Style = "Nature", Description = "Thorny roots hold enemies in place and squeeze" } },
+	{ Id = "CrystalStaff", Name = "Crystal Staff", Type = "Staff", Tier = 3, Color = rgb(200, 200, 220), Accent = rgb(200, 120, 255), Material = M.Metal, Combo = "Arcanist",
+		Design = { Head = "Crystals", Shaft = "Straight", Aura = { Kind = "Sparkles", Color = rgb(220, 160, 255) }, Trail = rgb(210, 150, 255), Glow = rgb(200, 120, 255) },
+		Skill = { Name = "Prism Beam", Mechanic = "Beam", Damage = 0.7, Range = 40, Ticks = 6, Duration = 1.8, Cooldown = 12, Color = rgb(210, 150, 255), Style = "Arcane", Description = "Channel a piercing beam of light" } },
+	{ Id = "NecroStaff", Name = "Necro Staff", Type = "Staff", Tier = 4, Color = rgb(50, 45, 55), Accent = rgb(120, 255, 120), Material = M.Slate, Effect = lifesteal(0.05), Combo = "Stormcaller",
+		Design = { Head = "Skull", Shaft = "Twisted", Aura = { Kind = "Smoke", Color = rgb(80, 200, 100) }, Trail = rgb(120, 255, 140), Glow = rgb(120, 255, 120) },
+		Skill = { Name = "Soul Siphon", Mechanic = "Chain", Damage = 1.2, Count = 5, Range = 35, Heal = 0.3, Cooldown = 11, Color = rgb(120, 255, 140), Style = "Shadow", Description = "Drain life chaining through 5 enemies" } },
+	{ Id = "StaffOfCinders", Name = "Staff of Cinders", Type = "Staff", Tier = 5, Color = rgb(70, 40, 30), Accent = rgb(255, 120, 40), Material = M.Wood, Effect = burn(0.15), Combo = "Arcanist",
+		Design = { Head = "Brazier", Shaft = "Twisted", Aura = { Kind = "Embers", Color = rgb(255, 130, 50) }, Trail = rgb(255, 140, 60), Glow = rgb(255, 120, 40) },
+		Skill = { Name = "Meteor", Mechanic = "Meteor", Damage = 4.5, Radius = 12, Range = 50, Cooldown = 12, Color = rgb(255, 120, 40), Style = "Fire", Description = "Call a meteor down on your target" } },
+	{ Id = "SunspireScepter", Name = "Sunspire Scepter", Type = "Staff", Tier = 6, Color = rgb(230, 190, 70), Accent = rgb(255, 240, 150), Material = M.Metal, Effect = burn(0.2), Combo = "Stormcaller",
+		Design = { Head = "Sun", Shaft = "Straight", Aura = { Kind = "Holy", Color = rgb(255, 230, 140) }, Trail = rgb(255, 230, 140), Glow = rgb(255, 230, 120) },
+		Skill = { Name = "Solar Flare", Mechanic = "Nova", Damage = 3.2, Radius = 18, Cooldown = 13, Color = rgb(255, 220, 110), Style = "Holy", Description = "Explode with the light of the sun around you" } },
+	{ Id = "RimefrostStaff", Name = "Rimefrost Staff", Type = "Staff", Tier = 7, Color = rgb(170, 210, 240), Accent = rgb(120, 220, 255), Material = M.Ice, Effect = frost(0.4), Combo = "Stormcaller",
+		Design = { Head = "Crescent", Shaft = "Straight", Aura = { Kind = "Snow", Color = rgb(220, 240, 255) }, Trail = rgb(150, 220, 255), Glow = rgb(120, 220, 255) },
+		Skill = { Name = "Frozen Orb", Mechanic = "Orb", Damage = 0.8, Radius = 8, Range = 40, Ticks = 8, Duration = 2.5, Cooldown = 12, Color = rgb(150, 220, 255), Style = "Ice", Description = "Launch a slow orb that shreds everything it passes" } },
+	{ Id = "ArchmagesInferno", Name = "Archmage's Inferno", Type = "Staff", Tier = 8, Color = rgb(40, 20, 30), Accent = rgb(255, 80, 20), Material = M.Basalt, Effect = burn(0.3), Combo = "Arcanist",
+		Design = { Head = "Eye", Shaft = "Twisted", Aura = { Kind = "Embers", Color = rgb(255, 90, 30) }, Trail = rgb(255, 90, 30), Glow = rgb(255, 80, 20) },
+		Skill = { Name = "Armageddon", Mechanic = "Rain", Projectile = "Meteor", Damage = 2.6, Radius = 18, Count = 6, Duration = 2.5, Cooldown = 18, Color = rgb(255, 90, 30), Style = "Fire", Description = "A storm of meteors around your target" } },
 
-	-- Maces (Treasurer)
-	{ "WoodenCudgel", "Wooden Cudgel", "Mace", 1, rgb(140, 100, 60), rgb(90, 60, 35), M.Wood },
-	{ "CopperMace", "Copper Mace", "Mace", 2, rgb(200, 120, 70), rgb(90, 60, 35), M.Metal },
-	{ "SilverScepter", "Silver Scepter", "Mace", 3, rgb(215, 220, 230), rgb(120, 180, 255), M.Metal },
-	{ "GoldenMorningstar", "Golden Morningstar", "Mace", 4, rgb(240, 200, 70), rgb(120, 80, 20), M.Metal },
-	{ "JeweledFlail", "Jeweled Flail", "Mace", 5, rgb(230, 190, 80), rgb(200, 40, 80), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
-	{ "MidasHammer", "Midas Hammer", "Mace", 6, rgb(255, 215, 60), rgb(255, 250, 200), M.Neon, { Type = "Lifesteal", Amount = 0.06 } },
-	{ "CrownBreaker", "Crown Breaker", "Mace", 7, rgb(120, 60, 160), rgb(255, 210, 80), M.Metal, { Type = "Frost", Amount = 0.4, Duration = 2 } },
-	{ "ScepterOfAvarice", "Scepter of Avarice", "Mace", 8, rgb(255, 200, 40), rgb(40, 200, 120), M.Metal, { Type = "Burn", Amount = 0.25, Duration = 3 } },
+	-- Bows (Ranger) ------------------------------------------------------------------
+	{ Id = "HuntingBow", Name = "Hunting Bow", Type = "Bow", Tier = 1, Color = rgb(140, 95, 55), Accent = rgb(230, 230, 230), Material = M.Wood, Combo = "Marksman",
+		Design = { Limbs = "Recurve", Trail = rgb(230, 230, 230) },
+		Skill = { Name = "Piercing Arrow", Mechanic = "Pierce", Damage = 2.5, Range = 60, Cooldown = 8, Color = rgb(230, 230, 230), Style = "Wind", Description = "An arrow that goes through every enemy in a line" } },
+	{ Id = "RecurveBow", Name = "Recurve Bow", Type = "Bow", Tier = 2, Color = rgb(110, 70, 40), Accent = rgb(230, 230, 230), Material = M.Wood, Combo = "Hunter",
+		Design = { Limbs = "Recurve", Trail = rgb(230, 230, 230) },
+		Skill = { Name = "Hail of Arrows", Mechanic = "Rain", Projectile = "Arrow", Damage = 0.6, Radius = 10, Count = 16, Duration = 2, Cooldown = 11, Color = rgb(230, 230, 230), Style = "Wind", Description = "Arrows rain down on an area" } },
+	{ Id = "Longbow", Name = "Longbow", Type = "Bow", Tier = 3, Color = rgb(160, 120, 70), Accent = rgb(255, 255, 255), Material = M.Wood, Combo = "Marksman",
+		Design = { Limbs = "Long", Trail = rgb(255, 255, 255) },
+		Skill = { Name = "Snipe", Mechanic = "Execute", Damage = 5, Range = 80, Cooldown = 10, Color = rgb(255, 255, 255), Style = "Steel", Description = "A precise shot; +50% damage to wounded enemies" } },
+	{ Id = "BoneBow", Name = "Bone Bow", Type = "Bow", Tier = 4, Color = rgb(225, 220, 200), Accent = rgb(160, 40, 40), Material = M.Marble, Effect = lifesteal(0.05), Combo = "Hunter",
+		Design = { Limbs = "Bone", Aura = { Kind = "Smoke", Color = rgb(140, 40, 40) }, Trail = rgb(200, 60, 60) },
+		Skill = { Name = "Bone Shrapnel", Mechanic = "Missiles", Projectile = "Arrow", Damage = 1, Count = 7, Range = 50, Cooldown = 10, Color = rgb(235, 230, 210), Style = "Bone", Description = "Split into 7 bone shards that seek enemies" } },
+	{ Id = "DesertWind", Name = "Desert Wind", Type = "Bow", Tier = 5, Color = rgb(220, 185, 110), Accent = rgb(60, 200, 200), Material = M.Sandstone, Effect = frost(0.3), Combo = "Hunter",
+		Design = { Limbs = "Wing", Aura = { Kind = "Dust", Color = rgb(230, 210, 150) }, Trail = rgb(120, 230, 230) },
+		Skill = { Name = "Gale Volley", Mechanic = "Shockwave", Damage = 2.4, Range = 26, Knockback = true, Cooldown = 10, Color = rgb(150, 240, 240), Style = "Wind", Description = "A howling gust that blasts enemies back" } },
+	{ Id = "ViperSting", Name = "Viper's Sting", Type = "Bow", Tier = 6, Color = rgb(40, 110, 50), Accent = rgb(140, 255, 80), Material = M.Metal, Effect = burn(0.2), Combo = "Marksman",
+		Design = { Limbs = "Serpent", Aura = { Kind = "Smoke", Color = rgb(120, 220, 60) }, Trail = rgb(150, 255, 90), Glow = rgb(140, 255, 80) },
+		Skill = { Name = "Venom Cloud", Mechanic = "Cloud", Damage = 0.5, Radius = 10, Ticks = 8, Duration = 4, Cooldown = 12, Color = rgb(140, 230, 70), Style = "Poison", Description = "A toxic cloud that poisons all inside" } },
+	{ Id = "FrostbiteBow", Name = "Frostbite Bow", Type = "Bow", Tier = 7, Color = rgb(160, 210, 245), Accent = rgb(230, 250, 255), Material = M.Ice, Effect = frost(0.45), Combo = "Marksman",
+		Design = { Limbs = "Crystal", Aura = { Kind = "Snow", Color = rgb(230, 245, 255) }, Trail = rgb(180, 235, 255), Glow = rgb(150, 220, 255) },
+		Skill = { Name = "Glacial Arrow", Mechanic = "Bomb", Damage = 3.5, Radius = 10, Range = 60, Cooldown = 11, Color = rgb(170, 230, 255), Style = "Ice", Description = "An arrow that explodes in freezing ice" } },
+	{ Id = "PhoenixBow", Name = "Phoenix Bow", Type = "Bow", Tier = 8, Color = rgb(255, 120, 30), Accent = rgb(255, 230, 120), Material = M.Neon, Effect = burn(0.25), Combo = "Hunter",
+		Design = { Limbs = "Flame", Aura = { Kind = "Embers", Color = rgb(255, 150, 50) }, Trail = rgb(255, 170, 60), Glow = rgb(255, 140, 40) },
+		Skill = { Name = "Phoenix Dive", Mechanic = "Pierce", Projectile = "Phoenix", Damage = 3.6, Range = 60, Cooldown = 13, Color = rgb(255, 150, 50), Style = "Fire", Description = "Loose a blazing phoenix that burns through a line" } },
+
+	-- Daggers (Assassin) ---------------------------------------------------------------
+	{ Id = "RustyShiv", Name = "Rusty Shiv", Type = "Dagger", Tier = 1, Color = rgb(140, 110, 90), Accent = rgb(70, 50, 40), Material = M.CorrodedMetal, Combo = "Flurry",
+		Design = { Blade = "Straight", Trail = rgb(180, 150, 130) },
+		Skill = { Name = "Dirty Trick", Mechanic = "Execute", Damage = 3, Range = 10, Cooldown = 8, Color = rgb(200, 60, 60), Style = "Blood", Description = "A vicious stab; +50% damage to wounded enemies" } },
+	{ Id = "IronDirk", Name = "Iron Dirk", Type = "Dagger", Tier = 2, Color = rgb(165, 165, 175), Accent = rgb(60, 45, 35), Material = M.Metal, Combo = "Twinfang",
+		Design = { Blade = "Straight", Trail = rgb(220, 220, 230) },
+		Skill = { Name = "Fan of Knives", Mechanic = "Nova", Projectile = "Knives", Damage = 2, Radius = 10, Cooldown = 9, Color = rgb(220, 220, 230), Style = "Steel", Description = "Throw knives in every direction" } },
+	{ Id = "SteelStiletto", Name = "Steel Stiletto", Type = "Dagger", Tier = 3, Color = rgb(210, 215, 225), Accent = rgb(40, 40, 45), Material = M.Metal, Combo = "Flurry",
+		Design = { Blade = "Needle", Trail = rgb(230, 235, 255) },
+		Skill = { Name = "Shadowstep Slash", Mechanic = "Blink", Damage = 2.4, Range = 16, Cooldown = 8, Color = rgb(120, 90, 200), Style = "Shadow", Description = "Dash through enemies in a blur of shadow" } },
+	{ Id = "VenomFang", Name = "Venom Fang", Type = "Dagger", Tier = 4, Color = rgb(90, 200, 90), Accent = rgb(30, 60, 30), Material = M.Glass, Effect = burn(0.15), Combo = "Twinfang",
+		Design = { Blade = "Fang", Aura = { Kind = "Smoke", Color = rgb(110, 220, 80) }, Trail = rgb(130, 255, 100), Glow = rgb(110, 255, 90) },
+		Skill = { Name = "Toxic Cloud", Mechanic = "Cloud", Damage = 0.5, Radius = 9, Ticks = 8, Duration = 4, Cooldown = 12, Color = rgb(120, 230, 80), Style = "Poison", Description = "Burst into a poison cloud" } },
+	{ Id = "NightshadeKris", Name = "Nightshade Kris", Type = "Dagger", Tier = 5, Color = rgb(120, 60, 160), Accent = rgb(30, 15, 40), Material = M.Metal, Effect = lifesteal(0.06), Combo = "Flurry",
+		Design = { Blade = "Wavy", Aura = { Kind = "Smoke", Color = rgb(120, 60, 160) }, Trail = rgb(170, 90, 230) },
+		Skill = { Name = "Blood Frenzy", Mechanic = "Empower", Buff = { Crit = 0.3, Speed = 0.2 }, Duration = 6, Cooldown = 16, Color = rgb(200, 40, 70), Style = "Blood", Description = "+30% crit chance and +20% speed for 6s" } },
+	{ Id = "Shadowfang", Name = "Shadowfang", Type = "Dagger", Tier = 6, Color = rgb(40, 40, 55), Accent = rgb(150, 110, 255), Material = M.Slate, Effect = frost(0.35), Combo = "Twinfang",
+		Design = { Blade = "Curved", Aura = { Kind = "Void", Color = rgb(150, 110, 255) }, Trail = rgb(150, 110, 255), Glow = rgb(150, 110, 255) },
+		Skill = { Name = "Phantom Blades", Mechanic = "Summon", Damage = 0.6, Radius = 7, Ticks = 10, Duration = 5, Cooldown = 15, Color = rgb(150, 110, 255), Style = "Shadow", Description = "Ghostly blades orbit you, slicing nearby enemies" } },
+	{ Id = "EclipseEdge", Name = "Eclipse Edge", Type = "Dagger", Tier = 7, Color = rgb(255, 170, 60), Accent = rgb(40, 20, 60), Material = M.Neon, Effect = burn(0.22), Combo = "Flurry",
+		Design = { Blade = "Crescent", Aura = { Kind = "Embers", Color = rgb(255, 170, 60) }, Trail = rgb(255, 180, 80), Glow = rgb(255, 160, 50) },
+		Skill = { Name = "Eclipse", Mechanic = "Collapse", Damage = 4, Radius = 12, Duration = 1.2, Cooldown = 15, Color = rgb(255, 160, 60), Style = "Void", Description = "Pull enemies into a dark sun, then detonate it" } },
+	{ Id = "PhantomReaper", Name = "Phantom Reaper", Type = "Dagger", Tier = 8, Color = rgb(170, 240, 255), Accent = rgb(20, 30, 50), Material = M.Glass, Effect = lifesteal(0.1), Combo = "Twinfang",
+		Design = { Blade = "Phantom", Aura = { Kind = "Spirit", Color = rgb(170, 240, 255) }, Trail = rgb(170, 240, 255), Glow = rgb(150, 230, 255) },
+		Skill = { Name = "Reap", Mechanic = "Ricochet", Damage = 2.2, Count = 5, Range = 30, Cooldown = 14, Color = rgb(170, 240, 255), Style = "Spirit", Description = "Flicker between up to 5 enemies, striking each" } },
+
+	-- Tomes (Healer) -------------------------------------------------------------------
+	{ Id = "PrayerBook", Name = "Prayer Book", Type = "Tome", Tier = 1, Color = rgb(120, 80, 50), Accent = rgb(255, 240, 200), Material = M.Leather, Combo = "Psalm",
+		Design = { Cover = "Plain", Trail = rgb(255, 240, 200) },
+		Skill = { Name = "Blessing", Mechanic = "Heal", HealPercent = 0.2, Radius = 25, Cooldown = 12, Color = rgb(255, 240, 180), Style = "Holy", Description = "Heal yourself and nearby teammates for 20%" } },
+	{ Id = "HymnalOfDawn", Name = "Hymnal of Dawn", Type = "Tome", Tier = 2, Color = rgb(170, 70, 50), Accent = rgb(255, 220, 150), Material = M.Leather, Combo = "Judgment",
+		Design = { Cover = "Clasped", Trail = rgb(255, 220, 150) },
+		Skill = { Name = "Dawn Light", Mechanic = "Missiles", Projectile = "Pillar", Damage = 2, Count = 3, Range = 40, Cooldown = 10, Color = rgb(255, 220, 150), Style = "Holy", Description = "Pillars of dawn strike up to 3 enemies" } },
+	{ Id = "CodexOfLight", Name = "Codex of Light", Type = "Tome", Tier = 3, Color = rgb(230, 225, 210), Accent = rgb(255, 230, 120), Material = M.Leather, Combo = "Psalm",
+		Design = { Cover = "Jeweled", Runes = rgb(255, 230, 120), Trail = rgb(255, 230, 120), Glow = rgb(255, 230, 120) },
+		Skill = { Name = "Radiant Beam", Mechanic = "Beam", Damage = 0.7, Range = 40, Ticks = 6, Duration = 1.8, Cooldown = 12, Color = rgb(255, 235, 140), Style = "Holy", Description = "Channel a beam of holy light" } },
+	{ Id = "TomeOfMending", Name = "Tome of Mending", Type = "Tome", Tier = 4, Color = rgb(60, 140, 90), Accent = rgb(150, 255, 170), Material = M.Leather, Effect = lifesteal(0.06), Combo = "Judgment",
+		Design = { Cover = "Vine", Aura = { Kind = "Leaves", Color = rgb(150, 255, 170) }, Trail = rgb(150, 255, 170), Glow = rgb(150, 255, 170) },
+		Skill = { Name = "Sanctuary", Mechanic = "Zone", Damage = 0.4, HealPercent = 0.04, Radius = 12, Ticks = 5, Duration = 5, Cooldown = 16, Color = rgb(150, 255, 170), Style = "Nature", Description = "A circle that heals allies and hurts enemies for 5s" } },
+	{ Id = "RadiantScripture", Name = "Radiant Scripture", Type = "Tome", Tier = 5, Color = rgb(240, 200, 90), Accent = rgb(255, 255, 220), Material = M.Metal, Effect = burn(0.15), Combo = "Psalm",
+		Design = { Cover = "Gilded", Orbit = 3, Aura = { Kind = "Holy", Color = rgb(255, 240, 170) }, Trail = rgb(255, 240, 170), Glow = rgb(255, 230, 140) },
+		Skill = { Name = "Holy Fire", Mechanic = "Rain", Projectile = "Holy", Damage = 0.8, Radius = 12, Count = 14, Duration = 2.5, Cooldown = 13, Color = rgb(255, 230, 140), Style = "Holy", Description = "Sacred flames fall across an area" } },
+	{ Id = "SeraphsGospel", Name = "Seraph's Gospel", Type = "Tome", Tier = 6, Color = rgb(245, 245, 255), Accent = rgb(140, 200, 255), Material = M.Fabric, Effect = frost(0.3), Combo = "Judgment",
+		Design = { Cover = "Winged", Orbit = 4, Aura = { Kind = "Holy", Color = rgb(190, 225, 255) }, Trail = rgb(170, 220, 255), Glow = rgb(150, 210, 255) },
+		Skill = { Name = "Seraph's Wings", Mechanic = "Guardian", Buff = { Defense = 0.3, Speed = 0.15 }, Radius = 25, Duration = 6, Cooldown = 18, Color = rgb(190, 225, 255), Style = "Holy", Description = "Teammates nearby get +30% defense and +15% speed" } },
+	{ Id = "CelestialCanticle", Name = "Celestial Canticle", Type = "Tome", Tier = 7, Color = rgb(60, 70, 160), Accent = rgb(255, 240, 150), Material = M.Fabric, Effect = burn(0.2), Combo = "Psalm",
+		Design = { Cover = "Starry", Orbit = 5, Aura = { Kind = "Sparkles", Color = rgb(255, 240, 150) }, Trail = rgb(255, 240, 150), Glow = rgb(255, 240, 150) },
+		Skill = { Name = "Starfall", Mechanic = "Rain", Projectile = "Star", Damage = 1, Radius = 14, Count = 16, Duration = 2.5, Cooldown = 14, Color = rgb(255, 240, 150), Style = "Arcane", Description = "Stars fall from the heavens onto your foes" } },
+	{ Id = "BookOfGenesis", Name = "Book of Genesis", Type = "Tome", Tier = 8, Color = rgb(255, 250, 235), Accent = rgb(255, 200, 60), Material = M.Neon, Effect = lifesteal(0.1), Combo = "Judgment",
+		Design = { Cover = "Radiant", Orbit = 6, Aura = { Kind = "Holy", Color = rgb(255, 220, 120) }, Trail = rgb(255, 220, 120), Glow = rgb(255, 210, 100) },
+		Skill = { Name = "Genesis", Mechanic = "Nova", Damage = 4, Radius = 18, HealPercent = 0.4, Cooldown = 20, Color = rgb(255, 220, 120), Style = "Holy", Description = "Unleash creation: heavy damage and heal allies 40%" } },
+
+	-- Maces (Treasurer) ----------------------------------------------------------------
+	{ Id = "WoodenCudgel", Name = "Wooden Cudgel", Type = "Mace", Tier = 1, Color = rgb(140, 100, 60), Accent = rgb(90, 60, 35), Material = M.Wood, Combo = "Crusher",
+		Design = { Head = "Club", Trail = rgb(200, 160, 110) },
+		Skill = { Name = "Bonk", Mechanic = "Execute", Damage = 3, Range = 10, Stun = 1.5, Cooldown = 8, Color = rgb(255, 230, 120), Style = "Wood", Description = "A huge bonk that stuns the target" } },
+	{ Id = "CopperMace", Name = "Copper Mace", Type = "Mace", Tier = 2, Color = rgb(200, 120, 70), Accent = rgb(90, 60, 35), Material = M.Metal, Combo = "Juggernaut",
+		Design = { Head = "Flanged", Trail = rgb(230, 150, 100) },
+		Skill = { Name = "Ground Pound", Mechanic = "Nova", Damage = 2.4, Radius = 12, Cooldown = 9, Color = rgb(200, 150, 100), Style = "Earth", Description = "Slam the ground, hitting everything around you" } },
+	{ Id = "SilverScepter", Name = "Silver Scepter", Type = "Mace", Tier = 3, Color = rgb(215, 220, 230), Accent = rgb(120, 180, 255), Material = M.Metal, Combo = "Crusher",
+		Design = { Head = "Crown", Trail = rgb(200, 220, 255), Glow = rgb(120, 180, 255) },
+		Skill = { Name = "Silver Lining", Mechanic = "Empower", Buff = { Damage = 0.2, Gold = 0.3 }, Duration = 8, Cooldown = 16, Color = rgb(200, 220, 255), Style = "Gold", Description = "+20% damage and +30% coins for 8s" } },
+	{ Id = "GoldenMorningstar", Name = "Golden Morningstar", Type = "Mace", Tier = 4, Color = rgb(240, 200, 70), Accent = rgb(120, 80, 20), Material = M.Metal, Combo = "Juggernaut",
+		Design = { Head = "SpikedBall", Aura = { Kind = "Sparkles", Color = rgb(255, 220, 100) }, Trail = rgb(255, 220, 100) },
+		Skill = { Name = "Golden Cyclone", Mechanic = "Cyclone", Damage = 0.7, Radius = 9, Ticks = 5, Cooldown = 12, Color = rgb(255, 215, 80), Style = "Gold", Description = "Whirl in a golden storm, hitting 5 times" } },
+	{ Id = "JeweledFlail", Name = "Jeweled Flail", Type = "Mace", Tier = 5, Color = rgb(230, 190, 80), Accent = rgb(200, 40, 80), Material = M.Metal, Effect = burn(0.15), Combo = "Crusher",
+		Design = { Head = "Gem", Aura = { Kind = "Sparkles", Color = rgb(255, 80, 140) }, Trail = rgb(255, 90, 150), Glow = rgb(255, 60, 120) },
+		Skill = { Name = "Gem Shatter", Mechanic = "Missiles", Projectile = "Gem", Damage = 1.2, Count = 6, Range = 40, Cooldown = 11, Color = rgb(255, 80, 140), Style = "Gem", Description = "Shatter gems that seek 6 enemies" } },
+	{ Id = "MidasHammer", Name = "Midas Hammer", Type = "Mace", Tier = 6, Color = rgb(255, 215, 60), Accent = rgb(255, 250, 200), Material = M.Neon, Effect = lifesteal(0.06), Combo = "Juggernaut",
+		Design = { Head = "Hammer", Aura = { Kind = "Sparkles", Color = rgb(255, 230, 120) }, Trail = rgb(255, 225, 90), Glow = rgb(255, 215, 60) },
+		Skill = { Name = "Midas Quake", Mechanic = "Shockwave", Damage = 3, Range = 24, Coins = 3, Cooldown = 12, Color = rgb(255, 215, 60), Style = "Gold", Description = "A golden quake that turns hits into coins" } },
+	{ Id = "CrownBreaker", Name = "Crown Breaker", Type = "Mace", Tier = 7, Color = rgb(120, 60, 160), Accent = rgb(255, 210, 80), Material = M.Metal, Effect = frost(0.4), Combo = "Crusher",
+		Design = { Head = "Crown", Aura = { Kind = "Void", Color = rgb(170, 110, 255) }, Trail = rgb(180, 120, 255), Glow = rgb(255, 210, 80) },
+		Skill = { Name = "Royal Decree", Mechanic = "Collapse", Damage = 4, Radius = 14, Duration = 1.2, Cooldown = 15, Color = rgb(180, 120, 255), Style = "Void", Description = "Command enemies to kneel: pull them in and crush them" } },
+	{ Id = "ScepterOfAvarice", Name = "Scepter of Avarice", Type = "Mace", Tier = 8, Color = rgb(255, 200, 40), Accent = rgb(40, 200, 120), Material = M.Metal, Effect = burn(0.25), Combo = "Juggernaut",
+		Design = { Head = "Gem", Aura = { Kind = "Coins", Color = rgb(255, 215, 60) }, Trail = rgb(255, 215, 60), Glow = rgb(60, 255, 150) },
+		Skill = { Name = "Avarice", Mechanic = "Rain", Projectile = "Coin", Damage = 1, Radius = 14, Count = 18, Duration = 2.5, Coins = 1, Cooldown = 16, Color = rgb(255, 215, 60), Style = "Gold", Description = "Make it rain: falling gold crushes enemies and pays you" } },
 
 	-- Mythic: never in normal loot tables, only from the ultra-rare drop (Config.MythicDrop)
-	{ "VoidlightGreatsword", "Voidlight Greatsword", "Sword", 9, rgb(236, 240, 252), rgb(28, 34, 92), M.Metal, { Type = "Frost", Amount = 0.5, Duration = 2.5 }, "Voidlight" },
-
-	-- Staffs (Mage)
-	{ "ApprenticeStaff", "Apprentice Staff", "Staff", 1, rgb(120, 85, 50), rgb(120, 180, 255), M.Wood },
-	{ "WillowStaff", "Willow Staff", "Staff", 2, rgb(140, 120, 80), rgb(120, 255, 140), M.Wood },
-	{ "CrystalStaff", "Crystal Staff", "Staff", 3, rgb(200, 200, 220), rgb(200, 120, 255), M.Metal },
-	{ "NecroStaff", "Necro Staff", "Staff", 4, rgb(50, 45, 55), rgb(120, 255, 120), M.Slate, { Type = "Lifesteal", Amount = 0.05 } },
-	{ "StaffOfCinders", "Staff of Cinders", "Staff", 5, rgb(70, 40, 30), rgb(255, 120, 40), M.Wood, { Type = "Burn", Amount = 0.15, Duration = 3 } },
-	{ "SunspireScepter", "Sunspire Scepter", "Staff", 6, rgb(230, 190, 70), rgb(255, 240, 150), M.Metal, { Type = "Burn", Amount = 0.2, Duration = 3 } },
-	{ "RimefrostStaff", "Rimefrost Staff", "Staff", 7, rgb(170, 210, 240), rgb(120, 220, 255), M.Ice, { Type = "Frost", Amount = 0.4, Duration = 2 } },
-	{ "ArchmagesInferno", "Archmage's Inferno", "Staff", 8, rgb(40, 20, 30), rgb(255, 80, 20), M.Basalt, { Type = "Burn", Amount = 0.3, Duration = 3 } },
-
-	-- Bows (Ranger)
-	{ "HuntingBow", "Hunting Bow", "Bow", 1, rgb(140, 95, 55), rgb(230, 230, 230), M.Wood },
-	{ "RecurveBow", "Recurve Bow", "Bow", 2, rgb(110, 70, 40), rgb(230, 230, 230), M.Wood },
-	{ "Longbow", "Longbow", "Bow", 3, rgb(160, 120, 70), rgb(255, 255, 255), M.Wood },
-	{ "BoneBow", "Bone Bow", "Bow", 4, rgb(225, 220, 200), rgb(160, 40, 40), M.Marble, { Type = "Lifesteal", Amount = 0.05 } },
-	{ "DesertWind", "Desert Wind", "Bow", 5, rgb(220, 185, 110), rgb(60, 200, 200), M.Sandstone, { Type = "Frost", Amount = 0.3, Duration = 2 } },
-	{ "ViperSting", "Viper's Sting", "Bow", 6, rgb(40, 110, 50), rgb(140, 255, 80), M.Metal, { Type = "Burn", Amount = 0.2, Duration = 3 } },
-	{ "FrostbiteBow", "Frostbite Bow", "Bow", 7, rgb(160, 210, 245), rgb(230, 250, 255), M.Ice, { Type = "Frost", Amount = 0.45, Duration = 2 } },
-	{ "PhoenixBow", "Phoenix Bow", "Bow", 8, rgb(255, 120, 30), rgb(255, 230, 120), M.Neon, { Type = "Burn", Amount = 0.25, Duration = 3 } },
+	{ Id = "VoidlightGreatsword", Name = "Voidlight Greatsword", Type = "Sword", Tier = 9, Color = rgb(236, 240, 252), Accent = rgb(28, 34, 92), Material = M.Metal, Effect = frost(0.5), Combo = "Executioner", Model = "Voidlight",
+		Design = { Aura = { Kind = "Void", Color = rgb(110, 140, 255) }, Trail = rgb(110, 140, 255) },
+		Skill = { Name = "Voidrend", Mechanic = "Collapse", Damage = 7, Radius = 18, Duration = 1.5, Cooldown = 14, Color = rgb(110, 140, 255), Style = "Void", Description = "Tear open the void: drag everything in, then implode" } },
 }
 
 -- Armor sets ------------------------------------------------------------------------
@@ -325,26 +442,28 @@ Items.WeaponOrder = {} :: { string }
 Items.ArmorOrder = {} :: { string }
 
 for _, entry in WEAPON_LIST do
-	local id, name, weaponType, tier = entry[1], entry[2], entry[3], entry[4]
-	local base = WEAPON_TYPES[weaponType]
-	Items.Weapons[id] = {
-		Id = id,
+	local base = WEAPON_TYPES[entry.Type]
+	Items.Weapons[entry.Id] = {
+		Id = entry.Id,
 		Kind = "Weapon",
-		DisplayName = name,
-		Type = weaponType,
-		Tier = tier,
-		Rarity = TIER_RARITY[tier],
-		Damage = math.floor(TIER_DAMAGE[tier] * base.DamageMultiplier),
+		DisplayName = entry.Name,
+		Type = entry.Type,
+		Tier = entry.Tier,
+		Rarity = TIER_RARITY[entry.Tier],
+		Damage = math.floor(TIER_DAMAGE[entry.Tier] * base.DamageMultiplier),
 		Cooldown = base.Cooldown,
 		Range = base.Range,
 		Splash = base.Splash,
-		Effect = entry[8],
-		Model = entry[9],
-		Color = entry[5],
-		Accent = entry[6],
-		Material = entry[7],
+		Effect = entry.Effect,
+		Model = entry.Model,
+		Color = entry.Color,
+		Accent = entry.Accent,
+		Material = entry.Material,
+		Combo = entry.Combo,
+		Design = entry.Design,
+		Skill = entry.Skill,
 	}
-	table.insert(Items.WeaponOrder, id)
+	table.insert(Items.WeaponOrder, entry.Id)
 end
 
 for _, set in ARMOR_SETS do

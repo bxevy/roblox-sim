@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local CardUI = require(ReplicatedStorage.Shared.CardUI)
 local Config = require(ReplicatedStorage.Shared.Config)
+local Items = require(ReplicatedStorage.Shared.Items)
 local Util = require(script.Parent.Util)
 
 local ABILITY_KEYS = { "Q", "E" }
@@ -16,6 +17,7 @@ local Hud = {}
 
 export type Actions = {
 	UseAbility: (abilityId: string) -> (),
+	UseWeaponSkill: () -> (),
 	UsePotion: (potionId: string) -> (),
 	ToggleWeapon: () -> (),
 	ToggleInventory: () -> (),
@@ -167,27 +169,39 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	local abilityFrame = Util.make("Frame", gui, {
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0.5, 10, 1, -94),
-		Size = UDim2.fromOffset(180, 64),
+		Size = UDim2.fromOffset(270, 64),
 		BackgroundTransparency = 1,
 	})
 	local abilityButtons: { [string]: { Button: TextButton, Cover: Frame, Timer: TextLabel } } = {}
 	local shownClass: string? = nil
+	local shownWeapon: string? = nil
 
-	local function buildAbilities(classId: string?)
+	-- Q / E class abilities, then R for the equipped weapon's own ability
+	-- (cooldown id "WeaponSkill").
+	local function buildAbilities(classId: string?, weaponId: string?)
 		Util.clear(abilityFrame)
 		table.clear(abilityButtons)
 		local class = classId and Config.Classes[classId]
-		if not class then
-			return
+		local entries = {}
+		if class then
+			for i, abilityId in class.Abilities do
+				local ability = Config.Abilities[abilityId]
+				table.insert(entries, { Id = abilityId, Color = ability.Color, Text = `{ability.DisplayName}\n[{ABILITY_KEYS[i]}]` })
+			end
 		end
-		for i, abilityId in class.Abilities do
-			local ability = Config.Abilities[abilityId]
+		local weapon = weaponId and Items.Weapons[weaponId]
+		if weapon then
+			table.insert(entries, { Id = "WeaponSkill", Color = weapon.Skill.Color, Text = `{weapon.Skill.Name}\n[R]` })
+		end
+		for i, entry in entries do
+			local abilityId = entry.Id
 			local button = Util.button(abilityFrame, {
 				Position = UDim2.fromOffset((i - 1) * 90, 0),
 				Size = UDim2.fromOffset(84, 64),
-				BackgroundColor3 = ability.Color,
+				BackgroundColor3 = entry.Color,
 				TextStrokeTransparency = 0.3,
-				Text = `{ability.DisplayName}\n[{ABILITY_KEYS[i]}]`,
+				TextScaled = true,
+				Text = entry.Text,
 			})
 			Util.padding(button, 6)
 			local cover = Util.make("Frame", button, {
@@ -201,7 +215,11 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 			Util.corner(cover, 8)
 			local timer = Util.text(cover, { Size = UDim2.fromScale(1, 1), ZIndex = 3 })
 			button.Activated:Connect(function()
-				actions.UseAbility(abilityId)
+				if abilityId == "WeaponSkill" then
+					actions.UseWeaponSkill()
+				else
+					actions.UseAbility(abilityId)
+				end
 			end)
 			abilityButtons[abilityId] = { Button = button, Cover = cover, Timer = timer }
 		end
@@ -343,9 +361,10 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 
 		weaponLabel.Text = if class then class.WeaponType else ""
 
-		if state.Class ~= shownClass then
+		if state.Class ~= shownClass or state.Equipped.Weapon ~= shownWeapon then
 			shownClass = state.Class
-			buildAbilities(state.Class)
+			shownWeapon = state.Equipped.Weapon
+			buildAbilities(state.Class, state.Equipped.Weapon)
 		end
 
 		for potionId, button in potionButtons do

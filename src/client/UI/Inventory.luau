@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Items = require(ReplicatedStorage.Shared.Items)
+local WeaponMoves = require(ReplicatedStorage.Shared.WeaponMoves)
 local Util = require(script.Parent.Util)
 
 local CLASS_FOR_TYPE = { Sword = "Warrior", Staff = "Mage", Bow = "Ranger", Dagger = "Assassin", Tome = "Healer", Mace = "Treasurer" }
@@ -39,10 +40,10 @@ function Inventory.new(gui: ScreenGui, equip: (kind: string, id: string) -> ())
 		tabButtons[kind] = button
 	end
 
-	local function row(order: number, title: string, subtitle: string, titleColor: Color3, equipped: boolean, usable: boolean, onClick: () -> ())
+	local function row(order: number, title: string, subtitle: string, titleColor: Color3, equipped: boolean, usable: boolean, onClick: () -> (), detail: string?)
 		local button = Util.button(list, {
 			LayoutOrder = order,
-			Size = UDim2.new(1, -10, 0, 56),
+			Size = UDim2.new(1, -10, 0, if detail then 96 else 56),
 			BackgroundColor3 = if equipped then Color3.fromRGB(50, 105, 55) elseif usable then Util.ButtonColor else Color3.fromRGB(40, 36, 44),
 			Text = "",
 			AutoButtonColor = usable,
@@ -63,6 +64,18 @@ function Inventory.new(gui: ScreenGui, equip: (kind: string, id: string) -> ())
 			TextTransparency = if usable then 0 else 0.4,
 			Text = subtitle,
 		})
+		if detail then
+			Util.text(button, {
+				Position = UDim2.fromOffset(10, 52),
+				Size = UDim2.new(1, -20, 0, 38),
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextYAlignment = Enum.TextYAlignment.Top,
+				TextWrapped = true,
+				TextColor3 = Color3.fromRGB(170, 200, 255),
+				TextTransparency = if usable then 0 else 0.4,
+				Text = detail,
+			})
+		end
 		button.Activated:Connect(onClick)
 	end
 
@@ -88,11 +101,13 @@ function Inventory.new(gui: ScreenGui, equip: (kind: string, id: string) -> ())
 					if not usable then
 						table.insert(parts, `{CLASS_FOR_TYPE[weapon.Type]} only`)
 					end
+					local moves = WeaponMoves.Combos[weapon.Combo]
+					local detail = `Combo: {moves.DisplayName} ({#moves.Steps} hits)\n[R] {weapon.Skill.Name}: {weapon.Skill.Description}`
 					row(order, `{weapon.DisplayName}{if equipped then "  (equipped)" else ""}`, `T{weapon.Tier} {weapon.Rarity} | {table.concat(parts, " | ")}`, Config.Rarities[weapon.Rarity], equipped, usable, function()
 						if usable and not equipped then
 							equip("Weapon", id)
 						end
-					end)
+					end, detail)
 				end
 			end
 		else

@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled" }
-local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove" }
+local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -45,7 +45,9 @@ return {
 	QuestsChanged = get("QuestsChanged") :: RemoteEvent, -- (quests) live quest progress
 
 	-- Client -> server
-	Attack = get("Attack") :: RemoteEvent, -- (aimDirection: Vector3)
+	Attack = get("Attack") :: RemoteEvent, -- (aimDirection: Vector3) next combo step
+	UseWeaponSkill = get("UseWeaponSkill") :: RemoteFunction, -- (aimDirection) -> (ok, cooldownRemaining)
+	PlayMove = get("PlayMove") :: RemoteEvent, -- (character, animationName) play an attack animation
 	SetSprint = get("SetSprint") :: RemoteEvent, -- (sprinting: boolean)
 	Dodge = get("Dodge") :: RemoteEvent, -- ()
 	GetState = get("GetState") :: RemoteFunction,

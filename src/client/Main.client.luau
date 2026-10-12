@@ -8,6 +8,8 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Items = require(ReplicatedStorage.Shared.Items)
+local WeaponMoves = require(ReplicatedStorage.Shared.WeaponMoves)
 
 local UI = script.Parent:WaitForChild("UI")
 local Util = require(UI.Util)
@@ -28,6 +30,7 @@ local RunService = game:GetService("RunService")
 local Controllers = script.Parent:WaitForChild("Controllers")
 local Movement = require(Controllers.Movement)
 local Audio = require(Controllers.Audio)
+local Animator = require(Controllers.Animator)
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -80,10 +83,35 @@ local function useAbility(abilityId: string)
 		return
 	end
 	local ok, cooldown = Remotes.UseAbility:InvokeServer(abilityId, getAim())
+	if ok then
+		Animator.Play(player.Character, WeaponMoves.AbilityAnims[abilityId])
+	end
 	if cooldown and cooldown > 0 then
 		hud.StartCooldown(abilityId, cooldown)
 	elseif not ok then
 		hud.Toast("Can't use that right now", ERROR_COLOR)
+	end
+end
+
+-- R: the equipped weapon's own ability (the weapon has to be out).
+local function useWeaponSkill()
+	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+	local weapon = tool and Items.Weapons[tool:GetAttribute("WeaponId") :: string]
+	if not weapon then
+		hud.Toast("Draw your weapon first [1]", ERROR_COLOR)
+		return
+	end
+	if hud.IsOnCooldown("WeaponSkill") then
+		return
+	end
+	local ok, cooldown = Remotes.UseWeaponSkill:InvokeServer(getAim())
+	if ok then
+		Animator.Play(player.Character, WeaponMoves.SkillAnims[weapon.Skill.Mechanic])
+	end
+	if cooldown and cooldown > 0 then
+		hud.StartCooldown("WeaponSkill", cooldown)
+	elseif not ok then
+		hud.Toast("No target in range", ERROR_COLOR)
 	end
 end
 
@@ -115,6 +143,7 @@ end
 
 hud = Hud.new(gui, {
 	UseAbility = useAbility,
+	UseWeaponSkill = useWeaponSkill,
 	UsePotion = usePotion,
 	ToggleInventory = function()
 		inventory.Toggle()
@@ -245,22 +274,43 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 
 -- Attacking --------------------------------------------------------------------------
--- Clicking with your weapon out sends the aim direction; the server does the rest.
+-- Clicking with your weapon out sends the aim direction; the server does the damage.
+-- The combo step is worked out here too (same rules as the server) so the move's
+-- animation plays instantly.
+
+local combo = { Step = 0, Time = 0, ReadyAt = 0 }
+
+local function attack(tool: Tool)
+	local weapon = Items.Weapons[tool:GetAttribute("WeaponId") :: string]
+	local moves = weapon and WeaponMoves.Combos[weapon.Combo]
+	local now = os.clock()
+	if not moves or now < combo.ReadyAt then
+		return
+	end
+	local step = if now - combo.Time <= WeaponMoves.ComboWindow and combo.Step < #moves.Steps then combo.Step + 1 else 1
+	combo.Step = step
+	combo.Time = now
+	combo.ReadyAt = now + moves.Steps[step].Cooldown
+	Remotes.Attack:FireServer(getAim())
+	Animator.Play(player.Character, moves.Steps[step].Anim)
+end
+
+local watchedTools: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+local function watchTool(child: Instance)
+	-- Tools move between the backpack and the character, so only connect once.
+	if child:IsA("Tool") and child:GetAttribute("WeaponId") and not watchedTools[child] then
+		watchedTools[child] = true
+		child.Activated:Connect(function()
+			attack(child)
+		end)
+	end
+end
 
 local function watchCharacter(character: Model)
-	character.ChildAdded:Connect(function(child)
-		if child:IsA("Tool") and child:GetAttribute("WeaponId") then
-			child.Activated:Connect(function()
-				Remotes.Attack:FireServer(getAim())
-			end)
-		end
-	end)
+	combo.Step = 0
+	character.ChildAdded:Connect(watchTool)
 	for _, child in character:GetChildren() do
-		if child:IsA("Tool") and child:GetAttribute("WeaponId") then
-			child.Activated:Connect(function()
-				Remotes.Attack:FireServer(getAim())
-			end)
-		end
+		watchTool(child)
 	end
 end
 player.CharacterAdded:Connect(watchCharacter)
@@ -285,6 +335,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	local potionIndex = table.find(POTION_KEYS, input.KeyCode)
 	if potionIndex then
 		usePotion(Config.PotionOrder[potionIndex])
+	elseif input.KeyCode == Enum.KeyCode.R then
+		useWeaponSkill()
 	elseif input.KeyCode == Enum.KeyCode.One then
 		toggleWeapon()
 	elseif input.KeyCode == Enum.KeyCode.G then
@@ -302,6 +354,7 @@ end)
 
 Movement.Start(Util.playSfx)
 Audio.Start()
+Animator.Start()
 
 -- Data may have loaded before this script started listening.
 task.spawn(function()

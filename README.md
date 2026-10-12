@@ -33,6 +33,8 @@ pieces with hand-built models in Studio.
 3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
    After a 10 second countdown, everyone on the pad (up to 4 players) goes in together.
 4. **Fight:** press **1** to draw / put away your weapon, **click** to attack toward your mouse.
+   Keep clicking to chain your weapon's **combo** (the last hit is a big finisher), and press
+   **R** for your weapon's own ability.
    Hold **Shift** to sprint and press **C** to dodge (you're immune to damage mid-dodge); both use
    the yellow stamina bar. Kill every enemy in a room to open the next door.
    Watch for the boss's **red circle** and get out before it slams!
@@ -52,8 +54,19 @@ more XP and Gold, and drop **higher-tier loot**.
 
 ### Gear
 
-- **24 weapons:** 8 swords, 8 staffs, 8 bows across tiers 1-8 (Common to Legendary). Higher tiers
-  have special effects: **Burn** (damage over time), **Frost** (slows enemies) or **Lifesteal**.
+- **48 weapons:** 8 for each class (swords, staffs, bows, daggers, tomes, maces) across tiers 1-8
+  (Common to Legendary). Higher tiers have special effects: **Burn** (damage over time), **Frost**
+  (slows enemies) or **Lifesteal**. Every weapon has:
+  - **its own design and VFX** (blade shape, guard, head, glowing runes, particle aura, light, and a
+    swing trail), built from parts in `WeaponModels.luau` - no meshes to upload;
+  - **its own ability on R** (25 kinds: cyclones, meteors, chain lightning, blinks, summoned blades,
+    healing zones, coin bombs...) with its own cooldown, in `WeaponSkills.luau`;
+  - **a combo style** (13 of them, e.g. *Blademaster*: slash, slash, spin; *Marksman*: shot, shot,
+    triple shot; *Juggernaut*: overhead, backswing, ground pound). Each step has its own hit shape,
+    damage and **animation**.
+  - Animations are code-driven (they bend the character's joints), so they need no uploaded
+    animation assets and everyone in the server sees them. Combos and animations live in
+    `shared/WeaponMoves.luau`. Assassins also hold a second dagger in their left hand.
 - **Mythic: Voidlight Greatsword.** A 0.05% (1 in 2,000) bonus drop from any dungeon victory.
   The whole server is told when someone finds it. Change the odds in `Config.MythicDrop`.
 - **10 armor sets**, each with 4 pieces (helmet, chestplate, leggings, boots) that work for every
@@ -157,6 +170,7 @@ src/
     Dungeons.luau           dungeons: rooms, boss, rewards, unlock levels + loot per difficulty
     Cosmetics.luau          card backgrounds, titles, frames, prestige emblems, unlock rules
     CardUI.luau             draws emblems and player cards (client + server nameplates)
+    WeaponMoves.luau        combo styles + keyframed weapon animations
     Remotes.luau            RemoteEvents/RemoteFunctions
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
@@ -164,10 +178,13 @@ src/
     DungeonDecor.luau       themed decorations for Crypt / Temple / Ice rooms
     ArmorVisuals.luau       builds every armor piece's look and effects on the character
     Sfx.luau                plays sound effects in the world
+    Effects.luau            VFX: projectiles, rings, beams, lightning, meteors...
+    WeaponModels.luau       builds every weapon's model, glow, aura and swing trail
+    WeaponSkills.luau       weapon abilities (R)
     Services/
       DataService.luau      load/save player data
       PlayerService.luau    level, XP, gold, class, items, buffs, stats
-      CombatService.luau    weapon/armor models, attacks, effects, class abilities
+      CombatService.luau    combos, weapon + class abilities, loadout (weapon/armor on you)
       EnemyService.luau     builds enemies, AI, boss slam attack
       DungeonService.luau   lobby portals, difficulty picking, parties, dungeon runs, loot
       ShopService.luau      potion shop stall, buying and drinking potions
@@ -183,8 +200,9 @@ src/
       CardService.luau      player card customization, nameplates
       ClassService.luau     class rolling (coins / Robux developer product)
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, 1, Q/E, 2-6, G, T, J, H, P) and wiring
-    Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting)
+    Main.client.luau        input (attack, 1, Q/E, R, 2-6, G, T, J, H, P) and wiring
+    Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting),
+                            Animator (plays weapon animations)
     UI/                     Hud, Inventory, Shop, PortalPanel, AdminPanel,
                             CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow,
                             ClassRoller
@@ -193,7 +211,8 @@ src/
 ### Adding content
 
 - **New weapon or armor:** add a line to `WEAPON_LIST` / `ARMOR_LIST` in `Items.luau`. It drops
-  automatically from any difficulty whose loot includes its tier.
+  automatically from any difficulty whose loot includes its tier. A weapon's `Design` picks its
+  look, `Combo` its combo style and `Skill` its R ability.
 - **New potion:** add it to `Config.Potions` and `Config.PotionOrder`.
 - **New class:** add it to `Config.Classes` / `Config.ClassOrder` with a new weapon type and abilities
   (abilities are coded in `CombatService`).

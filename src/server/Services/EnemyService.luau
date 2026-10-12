@@ -494,6 +494,45 @@ function EnemyService.Damage(enemy: Enemy, amount: number, isCrit: boolean, colo
 	return amount
 end
 
+-- Drags an enemy `step` studs toward a point (vortexes, collapses).
+function EnemyService.Pull(enemy: Enemy, toward: Vector3, step: number)
+	if enemy.Dead or enemy.Dummy then
+		return
+	end
+	local offset = (toward - enemy.Root.Position) * Vector3.new(1, 0, 1)
+	if offset.Magnitude > 1 then
+		enemy.Root.CFrame += offset.Unit * math.min(step, offset.Magnitude - 1)
+	end
+end
+
+-- Stops an enemy from moving or attacking for `duration` seconds.
+function EnemyService.Stun(enemy: Enemy, duration: number)
+	if enemy.Dead or enemy.Dummy then
+		return
+	end
+	enemy.Busy = true
+	enemy.Humanoid.WalkSpeed = 0
+	enemy.Humanoid:MoveTo(enemy.Root.Position)
+	local until_ = os.clock() + duration
+	enemy.SlowedUntil = math.max(enemy.SlowedUntil, until_)
+	task.delay(duration, function()
+		if not enemy.Dead and os.clock() >= enemy.SlowedUntil - 0.05 then
+			enemy.Busy = false
+			enemy.Humanoid.WalkSpeed = enemy.Def.Speed
+		end
+	end)
+end
+
+-- Throws an enemy away from a point.
+function EnemyService.Knockback(enemy: Enemy, from: Vector3, force: number)
+	if enemy.Dead or enemy.Dummy then
+		return
+	end
+	local away = (enemy.Root.Position - from) * Vector3.new(1, 0, 1)
+	local direction = if away.Magnitude > 0.1 then away.Unit else Vector3.zAxis
+	enemy.Root.AssemblyLinearVelocity = direction * force + Vector3.new(0, force * 0.4, 0)
+end
+
 -- Slows an enemy by `fraction` (0.4 = 40% slower) for `duration` seconds.
 function EnemyService.Slow(enemy: Enemy, fraction: number, duration: number)
 	if enemy.Dead then

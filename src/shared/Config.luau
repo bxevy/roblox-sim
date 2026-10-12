@@ -581,4 +581,16 @@ end
 
 Config.TrainingSpawn = Vector3.new(0, 4, 75)
 
+-- Buffs granted by weapon abilities (Empower / Guardian) are named "Skill_<WeaponId>".
+do
+	local Items = require(script.Parent.Items)
+	for id, weapon in Items.Weapons do
+		if weapon.Skill.Buff then
+			local buff = table.clone(weapon.Skill.Buff)
+			buff.DisplayName = weapon.Skill.Name
+			Config.Buffs[`Skill_{id}`] = buff
+		end
+	end
+end
+
 return Config
