@@ -10,6 +10,7 @@
 --   |  tavern       SPAWN     shop   |   <- ShopService builds the potion shop
 --   |  houses                market  |
 --   +------ gatehouse (south) -------+
+--          [ training grounds ]          <- TrainingService
 --
 -- Everything is plain parts, so it can be swapped for hand-built models in Studio later.
 
@@ -256,7 +257,7 @@ local function buildGround()
 	Build.block(hub, "Plaza", Vector3.new(EAST - WEST, 0.4, SOUTH - NORTH), CFrame.new((WEST + EAST) / 2, 0, (NORTH + SOUTH) / 2), rgb(128, 122, 112), M.Cobblestone)
 	-- Main roads (slightly raised so they don't flicker against the plaza)
 	local road = rgb(98, 92, 86)
-	Build.block(hub, "Road", Vector3.new(12, 0.1, SOUTH - NORTH - 4), CFrame.new(0, 0.25, (NORTH + SOUTH) / 2 + 2), road, M.Pavement)
+	Build.block(hub, "Road", Vector3.new(12, 0.1, SOUTH - NORTH + 4), CFrame.new(0, 0.25, (NORTH + SOUTH) / 2 + 6), road, M.Pavement)
 	Build.block(hub, "Road", Vector3.new(EAST - WEST - 30, 0.1, 10), CFrame.new(0, 0.25, 0), road, M.Pavement)
 end
 
@@ -278,15 +279,11 @@ local function buildWalls()
 	end
 	Build.block(hub, "GateArch", Vector3.new(20, 6, 6), CFrame.new(0, 17, SOUTH), STONE, M.Cobblestone)
 	battlements(hub, Vector3.new(-10, 20, SOUTH), Vector3.new(10, 20, SOUTH), 6)
+	-- The portcullis is raised: only its bottom spikes show under the arch.
 	for x = -9, 9, 1.5 do
-		Build.block(hub, "PortcullisBar", Vector3.new(0.4, 14, 0.4), CFrame.new(x, 7, SOUTH), IRON, M.Metal)
+		Build.block(hub, "PortcullisBar", Vector3.new(0.4, 3, 0.4), CFrame.new(x, 12.5, SOUTH), IRON, M.Metal)
 	end
-	for y = 2, 13, 2.5 do
-		Build.block(hub, "PortcullisBar", Vector3.new(19, 0.4, 0.4), CFrame.new(0, y, SOUTH), IRON, M.Metal)
-	end
-	-- Something solid behind the bars so nobody slips out
-	local blocker = Build.block(hub, "GateBlocker", Vector3.new(20, 14, 1), CFrame.new(0, 7, SOUTH + 1), STONE, M.SmoothPlastic)
-	blocker.Transparency = 1
+	Build.block(hub, "PortcullisBar", Vector3.new(19, 0.4, 0.4), CFrame.new(0, 13.5, SOUTH), IRON, M.Metal)
 
 	-- Torches along the inside of the walls
 	for _, x in { -60, -24, 24, 60 } do
@@ -469,9 +466,10 @@ local function buildDecor()
 		"ADVENTURERS WANTED",
 		"",
 		"Stand on a portal to enter a dungeon",
-		"Shop: press F for potions (keys 1-5)",
-		"G: your gear   Q / E: abilities",
-		"Click to attack toward your mouse",
+		"Click to attack   1: draw / sheathe weapon",
+		"Q / E: abilities   2-6: potions   G: gear",
+		"Shift: sprint   C: dodge",
+		"Training grounds: through the south gate",
 	}, "\n"), rgb(50, 30, 20), Enum.Font.Fantasy)
 	text.TextScaled = true
 	local padding = Instance.new("UIPadding")

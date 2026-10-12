@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack" }
-local FUNCTIONS = { "GetState", "Equip", "ChooseClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge" }
+local FUNCTIONS = { "GetState", "Equip", "ChooseClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -36,12 +36,14 @@ return {
 	-- Server -> client
 	Notify = get("Notify") :: RemoteEvent, -- (message: string, color: Color3?)
 	StateChanged = get("StateChanged") :: RemoteEvent, -- (state)
-	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?)
+	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?, info: { Style: string, Boss: boolean }?)
 	PortalUpdate = get("PortalUpdate") :: RemoteEvent, -- (info?) while standing on a portal pad
 	OpenShop = get("OpenShop") :: RemoteEvent, -- ()
 
 	-- Client -> server
 	Attack = get("Attack") :: RemoteEvent, -- (aimDirection: Vector3)
+	SetSprint = get("SetSprint") :: RemoteEvent, -- (sprinting: boolean)
+	Dodge = get("Dodge") :: RemoteEvent, -- ()
 	GetState = get("GetState") :: RemoteFunction,
 	Equip = get("Equip") :: RemoteFunction, -- (kind: "Weapon" | "Armor", id) -> (ok, err?)
 	ChooseClass = get("ChooseClass") :: RemoteFunction, -- (classId) -> (ok, err?)
@@ -49,4 +51,5 @@ return {
 	SetDifficulty = get("SetDifficulty") :: RemoteFunction, -- (difficultyId) -> (ok, err?)
 	BuyPotion = get("BuyPotion") :: RemoteFunction, -- (potionId) -> (ok, err?)
 	UsePotion = get("UsePotion") :: RemoteFunction, -- (potionId) -> (ok, err?)
+	Admin = get("Admin") :: RemoteFunction, -- (action, arg?) -> (ok, message?)  admins only
 }

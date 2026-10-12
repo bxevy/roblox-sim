@@ -14,9 +14,11 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 local TOOL_ATTRIBUTE = "WeaponId"
 local ARMOR_FOLDER = "ArmorVisual"
+local BACK_MODEL = "SheathedWeapon"
 local PROJECTILE_SPEED = { Staff = 90, Bow = 150 }
 local BURN_COLOR = Color3.fromRGB(255, 140, 40)
 local FROST_COLOR = Color3.fromRGB(140, 220, 255)
@@ -257,6 +259,7 @@ local function onAttack(player: Player, aim: unknown)
 	anim.Parent = tool
 
 	local direction = sanitizeAim(aim, root)
+	Sfx.play(if weapon.Type == "Sword" then "Swing" elseif weapon.Type == "Staff" then "Cast" else "BowShot", root)
 	if weapon.Type == "Sword" then
 		swordAttack(player, root, direction, weapon)
 	else
@@ -417,6 +420,53 @@ local function removeWeaponTools(player: Player)
 	end
 end
 
+-- While the weapon is put away, a copy of it is strapped diagonally across your back.
+local function updateBackWeapon(player: Player, tool: Tool)
+	local character = player.Character
+	if not character then
+		return
+	end
+	local old = character:FindFirstChild(BACK_MODEL)
+	if old then
+		old:Destroy()
+	end
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	local torso: BasePart? = (character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) :: any
+	local handle = tool:FindFirstChild("Handle") :: BasePart?
+	if tool.Parent ~= backpack or not torso or not handle then
+		return
+	end
+
+	local model = Instance.new("Model")
+	model.Name = BACK_MODEL
+	local handleCFrame = torso.CFrame
+		* CFrame.new(0, 0, torso.Size.Z / 2 + 0.35)
+		* CFrame.Angles(0, 0, math.rad(40))
+		* CFrame.Angles(0, math.rad(90), 0)
+	for _, part in tool:GetDescendants() do
+		if part:IsA("BasePart") then
+			local copy = part:Clone()
+			for _, child in copy:GetChildren() do
+				if child:IsA("WeldConstraint") or child:IsA("Light") then
+					child:Destroy()
+				end
+			end
+			copy.CanCollide = false
+			copy.CanQuery = false
+			copy.CanTouch = false
+			copy.Massless = true
+			copy.Anchored = false
+			copy.CFrame = handleCFrame * handle.CFrame:ToObjectSpace(part.CFrame)
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = torso
+			w.Part1 = copy
+			w.Parent = copy
+			copy.Parent = model
+		end
+	end
+	model.Parent = character
+end
+
 local function applyLoadout(player: Player)
 	local humanoid = getAlive(player)
 	local character = player.Character
@@ -439,8 +489,38 @@ local function applyLoadout(player: Player)
 	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
 	if weapon and backpack then
 		local tool = buildTool(weapon)
+		tool.AncestryChanged:Connect(function()
+			updateBackWeapon(player, tool)
+		end)
+		tool.Equipped:Connect(function()
+			local handle = tool:FindFirstChild("Handle") :: BasePart?
+			if handle then
+				Sfx.play("Unsheath", handle)
+			end
+		end)
+		tool.Destroying:Connect(function()
+			local back = player.Character and player.Character:FindFirstChild(BACK_MODEL)
+			if back then
+				back:Destroy()
+			end
+		end)
 		tool.Parent = backpack
 		humanoid:EquipTool(tool)
+	end
+end
+
+-- Takes the weapon out (used when a dungeon starts).
+function CombatService.DrawWeapon(player: Player)
+	local humanoid = getAlive(player)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not humanoid or not backpack then
+		return
+	end
+	for _, child in backpack:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute(TOOL_ATTRIBUTE) then
+			humanoid:EquipTool(child)
+			return
+		end
 	end
 end
 
@@ -554,6 +634,15 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 
 	local ability = Config.Abilities[abilityId]
 	readyAt[abilityId] = now + ability.Cooldown
+	local sound = ({
+		Whirlwind = "Lunge",
+		ShieldWall = "Unsheath",
+		Fireball = "Cast",
+		HealingCircle = "Heal",
+		Volley = "BowShot",
+		SwiftStep = "Dodge",
+	})[abilityId]
+	Sfx.play(sound or "Lunge", root, 1.3)
 	abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon)
 	return true, ability.Cooldown
 end

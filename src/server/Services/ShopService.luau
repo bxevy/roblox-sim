@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 local SHOP_POSITION = Vector3.new(38, 0, 6)
 
@@ -132,6 +133,10 @@ local function onUsePotion(player: Player, potionId: unknown): (boolean, string?
 		PlayerService.AddBuff(player, potion.Buff, potion.Duration)
 	end
 
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then
+		Sfx.play("Drink", root)
+	end
 	data.Potions[potionId] -= 1
 	if data.Potions[potionId] <= 0 then
 		data.Potions[potionId] = nil

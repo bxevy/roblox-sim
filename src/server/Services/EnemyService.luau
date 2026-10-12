@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Enemies = require(ReplicatedStorage.Shared.Enemies)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 local AI_TICK = 0.2
 local AGGRO_RANGE = 250
@@ -28,6 +29,10 @@ export type Enemy = {
 	Busy: boolean,
 	Dead: boolean,
 	SlowedUntil: number,
+	-- Training dummies never move, attack or die; they just track damage.
+	Dummy: boolean,
+	DummyLabel: TextLabel?,
+	DummyHits: { { Time: number, Amount: number } }?,
 }
 
 export type SpawnOptions = {
@@ -175,9 +180,36 @@ end
 
 -- AI -----------------------------------------------------------------------
 
+local function floatingText(part: BasePart, text: string, color: Color3)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(120, 36)
+	gui.StudsOffset = Vector3.new(0, 3, 0)
+	gui.AlwaysOnTop = true
+	gui.Parent = part
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0.3
+	label.Text = text
+	label.Parent = gui
+	TweenService:Create(gui, TweenInfo.new(0.6), { StudsOffset = Vector3.new(0, 5, 0) }):Play()
+	Debris:AddItem(gui, 0.6)
+end
+
 -- Hurts a player's character, reduced by their Defense (armor, class, buffs).
+-- Dodging (and admin god mode) makes you immune.
 local function damagePlayer(humanoid: Humanoid, amount: number)
 	local character = humanoid.Parent
+	if character and (character:GetAttribute("God") or (character:GetAttribute("InvulnerableUntil") or 0) > os.clock()) then
+		local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			floatingText(root, if character:GetAttribute("God") then "Immune" else "Dodged!", Color3.fromRGB(150, 230, 255))
+		end
+		return
+	end
 	local defense = character and character:GetAttribute("Defense") or 0
 	humanoid:TakeDamage(amount * (1 - defense))
 	if character then
@@ -237,6 +269,7 @@ local function slam(enemy: Enemy)
 	end
 
 	local damage = boss.SlamDamage * enemy.DamageMultiplier
+	Sfx.play("Slam", center)
 	for _, player in enemy.GetTargets() do
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -325,6 +358,7 @@ function EnemyService.Spawn(enemyId: string, options: SpawnOptions): Enemy
 		Busy = false,
 		Dead = false,
 		SlowedUntil = 0,
+		Dummy = false,
 	}
 	buildHealthBar(enemy, head)
 
@@ -339,6 +373,7 @@ function EnemyService.Spawn(enemyId: string, options: SpawnOptions): Enemy
 		end
 		enemy.Dead = true
 		enemies[enemy] = nil
+		Sfx.play("EnemyDeath", root.Position)
 		task.spawn(enemy.OnDied, enemy)
 		-- Joints break on death so the enemy falls apart; clean up shortly after.
 		Debris:AddItem(model, 2)
@@ -353,6 +388,80 @@ function EnemyService.Despawn(enemy: Enemy)
 	enemy.Dead = true
 	enemies[enemy] = nil
 	enemy.Model:Destroy()
+end
+
+-- Turns a static model into a target players can practice on. The model needs a
+-- HumanoidRootPart (anchored) and a Head part for the label.
+function EnemyService.RegisterDummy(model: Model, displayName: string): Enemy
+	local root = model:FindFirstChild("HumanoidRootPart") :: BasePart
+	local head = model:FindFirstChild("Head") :: BasePart
+	local humanoid = Instance.new("Humanoid")
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+	humanoid.WalkSpeed = 0
+	humanoid.Parent = model
+
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(160, 44)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, head.Size.Y + 1.2, 0)
+	gui.MaxDistance = 80
+	gui.Parent = head
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.3
+	label.Text = `{displayName}\nHit me!`
+	label.Parent = gui
+
+	local enemy: Enemy = {
+		Model = model,
+		Root = root,
+		Humanoid = humanoid,
+		Def = Enemies.Skeleton, -- unused for dummies, keeps the type happy
+		Damage = 0,
+		DamageMultiplier = 0,
+		Radius = math.max(root.Size.X, root.Size.Z) / 2,
+		GroundOffset = root.CFrame.Position.Y,
+		GetTargets = function()
+			return {}
+		end,
+		OnDied = function() end,
+		LastAttack = 0,
+		LastSlam = 0,
+		Busy = false,
+		Dead = false,
+		SlowedUntil = 0,
+		Dummy = true,
+		DummyLabel = label,
+		DummyHits = {},
+	}
+	enemies[enemy] = true
+	return enemy
+end
+
+local DPS_WINDOW = 5
+
+local function updateDummy(enemy: Enemy, now: number)
+	local hits = enemy.DummyHits :: { { Time: number, Amount: number } }
+	local total, last = 0, nil
+	for i = #hits, 1, -1 do
+		if now - hits[i].Time > DPS_WINDOW then
+			table.remove(hits, i)
+		else
+			total += hits[i].Amount
+			last = last or hits[i].Amount
+		end
+	end
+	local label = enemy.DummyLabel :: TextLabel
+	if #hits == 0 then
+		label.Text = `{enemy.Model.Name}\nHit me!`
+	else
+		local span = math.max(1, now - hits[1].Time)
+		label.Text = `DPS: {math.floor(total / span)}\nLast hit: {last}`
+	end
 end
 
 function EnemyService.GetEnemiesNear(position: Vector3, radius: number): { Enemy }
@@ -371,9 +480,17 @@ function EnemyService.Damage(enemy: Enemy, amount: number, isCrit: boolean, colo
 		return 0
 	end
 	amount = math.max(1, math.floor(amount))
-	enemy.Humanoid.Health = math.max(0, enemy.Humanoid.Health - amount)
 	showDamageNumber(enemy, amount, isCrit, color)
 	flash(enemy.Model, color or Color3.new(1, 1, 1))
+	Sfx.play("Hit", enemy.Root, if isCrit then 1.4 else 0.8)
+	if enemy.Dummy then
+		-- Dummies don't lose health; they record hits for the damage-per-second readout.
+		local now = os.clock()
+		local hits = enemy.DummyHits :: { { Time: number, Amount: number } }
+		table.insert(hits, { Time = now, Amount = amount })
+		return amount
+	end
+	enemy.Humanoid.Health = math.max(0, enemy.Humanoid.Health - amount)
 	return amount
 end
 
@@ -398,7 +515,9 @@ function EnemyService.Start()
 			task.wait(AI_TICK)
 			local now = os.clock()
 			for enemy in enemies do
-				if enemy.Root.Parent then
+				if enemy.Dummy then
+					updateDummy(enemy, now)
+				elseif enemy.Root.Parent then
 					think(enemy, now)
 				else
 					enemies[enemy] = nil

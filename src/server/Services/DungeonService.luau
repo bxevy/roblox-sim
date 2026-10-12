@@ -17,6 +17,9 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Items = require(ReplicatedStorage.Shared.Items)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
+local CombatService = require(script.Parent.CombatService)
+local DungeonDecor = require(script.Parent.Parent.DungeonDecor)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 -- Layout (studs)
 local ENTRY_ROOM_SIZE = 40
@@ -45,6 +48,7 @@ type Room = {
 
 type Run = {
 	Def: Dungeons.DungeonDef,
+	Phase: string, -- "Rooms" | "Boss" | "Done": tells the client which music to play
 	DifficultyId: string,
 	HealthMultiplier: number,
 	DamageMultiplier: number,
@@ -139,6 +143,9 @@ local function buildRoom(parent: Instance, room: Room, theme, openSouth: boolean
 		end
 	end
 
+	-- Ceiling, so dungeons are dark and lit only by their torches
+	block(parent, "Ceiling", Vector3.new(s + WALL_THICKNESS * 2, 2, s + WALL_THICKNESS * 2), CFrame.new(c + Vector3.new(0, WALL_HEIGHT + 1, 0)), theme.Wall, theme.WallMaterial)
+
 	-- Torches along the side walls
 	for _, x in { -half + 1.5, half - 1.5 } do
 		for _, z in { -half / 2, half / 2 } do
@@ -161,14 +168,10 @@ local function buildCorridor(parent: Instance, x: number, z0: number, theme): Ba
 			theme.WallMaterial
 		)
 	end
-	local door = block(
-		parent,
-		"Door",
-		Vector3.new(CORRIDOR_WIDTH, WALL_HEIGHT, 2),
-		CFrame.new(x, WALL_HEIGHT / 2, zMid),
-		Color3.fromRGB(70, 45, 30),
-		Enum.Material.WoodPlanks
-	)
+	block(parent, "Ceiling", Vector3.new(CORRIDOR_WIDTH + WALL_THICKNESS * 2, 2, CORRIDOR_LENGTH), CFrame.new(x, WALL_HEIGHT + 1, zMid), theme.Wall, theme.WallMaterial)
+	local color, material, transparency = DungeonDecor.doorLook(theme.Style)
+	local door = block(parent, "Door", Vector3.new(CORRIDOR_WIDTH, WALL_HEIGHT, 2), CFrame.new(x, WALL_HEIGHT / 2, zMid), color, material)
+	door.Transparency = transparency
 	return door
 end
 
@@ -188,6 +191,7 @@ local function buildDungeon(run: Run)
 		local room = { Center = Vector3.new(x, 0, z + size / 2), Size = size }
 		table.insert(run.Rooms, room)
 		buildRoom(run.Folder, room, theme, i > 1, i < #sizes)
+		DungeonDecor.decorate(theme.Style, run.Folder, room, i == #sizes, run.Slot * 100 + i)
 		z += size
 		if i < #sizes then
 			table.insert(run.Doors, buildCorridor(run.Folder, x, z, theme))
@@ -199,8 +203,9 @@ end
 -- Run lifecycle --------------------------------------------------------------
 
 local function setStatus(run: Run, text: string?)
+	local info = { Style = run.Def.Theme.Style, Boss = run.Phase == "Boss" }
 	for player in run.Players do
-		Remotes.DungeonStatus:FireClient(player, text)
+		Remotes.DungeonStatus:FireClient(player, text, info)
 	end
 end
 
@@ -219,6 +224,7 @@ local function partyList(run: Run): { Player }
 end
 
 local function openDoor(door: BasePart)
+	Sfx.play("Door", door)
 	door.CanCollide = false
 	local tween = TweenService:Create(door, TweenInfo.new(1.2, Enum.EasingStyle.Quad), {
 		CFrame = door.CFrame - Vector3.new(0, WALL_HEIGHT, 0),
@@ -304,6 +310,7 @@ local function winRun(run: Run)
 		return
 	end
 	run.Ended = true
+	run.Phase = "Done"
 	local def = run.Def
 	setStatus(run, `{def.DisplayName} ({run.DifficultyId}) - CLEARED!`)
 	notifyRun(run, "VICTORY!", Color3.fromRGB(255, 220, 80))
@@ -390,6 +397,7 @@ activateRoom = function(run: Run, index: number)
 	run.Remaining = 0
 
 	if index == #run.Rooms then
+		run.Phase = "Boss"
 		setStatus(run, `{title} - BOSS`)
 		notifyRun(run, `{Enemies[def.Boss].DisplayName} awaits...`, Color3.fromRGB(255, 90, 90))
 		spawnInRoom(run, index, def.Boss, room.Center + Vector3.new(0, 0, room.Size / 4))
@@ -419,6 +427,7 @@ local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: {
 	local difficulty = Config.Difficulties[difficultyId]
 	local run: Run = {
 		Def = def,
+		Phase = "Rooms",
 		DifficultyId = difficultyId,
 		HealthMultiplier = def.Power * difficulty.Health,
 		DamageMultiplier = def.Power * difficulty.Damage,
@@ -452,6 +461,7 @@ local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: {
 			end)
 			local x = (i - (#party + 1) / 2) * 5
 			teleport(player, entry.Center + Vector3.new(x, 4, -entry.Size / 4), Vector3.zAxis)
+			CombatService.DrawWeapon(player)
 		end
 	end
 
@@ -652,6 +662,20 @@ local function onSetDifficulty(player: Player, difficultyId: unknown): (boolean,
 		end
 	end
 	return false, "Stand on a portal first"
+end
+
+-- Admin tool: defeats every enemy in the player's current dungeon room.
+function DungeonService.KillRoom(player: Player): boolean
+	local run = playerRun[player]
+	if not run or run.Ended then
+		return false
+	end
+	for enemy in run.Enemies do
+		if not enemy.Dead then
+			enemy.Humanoid.Health = 0
+		end
+	end
+	return true
 end
 
 function DungeonService.Start()

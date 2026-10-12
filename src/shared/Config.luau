@@ -213,7 +213,7 @@ Config.Potions = {
 		Color = Color3.fromRGB(170, 170, 190),
 	},
 }
--- Hotbar order: keys 1-5
+-- Hotbar order: keys 2-6 (key 1 draws / puts away your weapon)
 Config.PotionOrder = { "HealthPotion", "GreaterHealthPotion", "StrengthPotion", "SwiftnessPotion", "IronskinPotion" }
 Config.MaxPotionStack = 10
 Config.HealPotionCooldown = 3 -- seconds between healing potions
@@ -236,5 +236,68 @@ Config.Party = {
 
 -- Gold given instead of an item you already own (x item tier).
 Config.DuplicateGoldPerTier = 20
+
+-- Movement: sprint (hold Shift) and dodge (C) share a stamina bar ------------------
+
+Config.Movement = {
+	MaxStamina = 100,
+	SprintMultiplier = 1.6, -- walk speed while sprinting
+	SprintDrain = 22, -- stamina per second while sprinting and moving
+	RegenRate = 30, -- stamina per second
+	RegenDelay = 0.8, -- seconds after using stamina before it refills
+	DodgeCost = 30,
+	DodgeCooldown = 0.6,
+	DodgeSpeed = 60, -- studs per second during the dash
+	DodgeDuration = 0.22,
+	InvulnerableTime = 0.4, -- dodging makes you immune to damage for this long
+}
+
+-- Admins ----------------------------------------------------------------------------
+-- The game's owner (or group rank 254+ for group games) and anyone testing in Studio are
+-- admins automatically. Add extra Roblox user ids here to give them the admin menu.
+
+Config.AdminUserIds = {
+	-- 123456789,
+}
+
+-- Audio -------------------------------------------------------------------------------
+-- Music uses Creator Store audio ids. Roblox only lets public or owned audio play, so if a
+-- track is silent, find one in Studio (Toolbox > Audio, or the Creator Store website),
+-- copy its id, and paste it here as "rbxassetid://<id>".
+-- Sound effects use sounds built into every Roblox install (rbxasset://sounds/...).
+
+Config.Audio = {
+	MusicVolume = 0.35,
+	Music = {
+		Town = "rbxassetid://1846853445",
+		Training = "rbxassetid://1846853445",
+		Crypt = "rbxassetid://139743346356072",
+		Temple = "rbxassetid://139743346356072",
+		Ice = "rbxassetid://139743346356072",
+		Boss = "rbxassetid://101000446004472",
+	},
+	-- { Id, Volume, PlaybackSpeed }
+	Sfx = {
+		Swing = { "rbxasset://sounds/swordslash.wav", 0.6, 1 },
+		Lunge = { "rbxasset://sounds/swordlunge.wav", 0.7, 1 },
+		Cast = { "rbxasset://sounds/swordlunge.wav", 0.5, 1.6 },
+		BowShot = { "rbxasset://sounds/Rubber band.wav", 0.8, 0.8 },
+		Unsheath = { "rbxasset://sounds/unsheath.wav", 0.6, 1 },
+		Hit = { "rbxasset://sounds/action_jump_land.mp3", 0.8, 1.3 },
+		EnemyDeath = { "rbxasset://sounds/action_jump_land.mp3", 1, 0.6 },
+		Slam = { "rbxasset://sounds/action_jump_land.mp3", 2, 0.35 },
+		Door = { "rbxasset://sounds/action_jump_land.mp3", 1.5, 0.3 },
+		Drink = { "rbxasset://sounds/impact_water.mp3", 0.6, 1.4 },
+		Heal = { "rbxasset://sounds/electronicpingshort.wav", 0.5, 0.8 },
+		LevelUp = { "rbxasset://sounds/electronicpingshort.wav", 0.8, 1.2 },
+		Coins = { "rbxasset://sounds/electronicpingshort.wav", 0.5, 1.6 },
+		Dodge = { "rbxasset://sounds/action_jump.mp3", 0.7, 1.4 },
+		Click = { "rbxasset://sounds/button.wav", 0.4, 1 },
+	},
+}
+
+-- Training grounds ----------------------------------------------------------------------
+
+Config.TrainingSpawn = Vector3.new(0, 4, 75)
 
 return Config

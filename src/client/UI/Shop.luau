@@ -42,7 +42,7 @@ function Shop.new(gui: ScreenGui, buy: (potionId: string) -> ())
 			Position = UDim2.fromOffset(46, 6),
 			Size = UDim2.new(1, -160, 0, 24),
 			TextXAlignment = Enum.TextXAlignment.Left,
-			Text = `[{order}] {potion.DisplayName}`,
+			Text = `[{order + 1}] {potion.DisplayName}`,
 		})
 		Util.text(row, {
 			Position = UDim2.fromOffset(46, 32),

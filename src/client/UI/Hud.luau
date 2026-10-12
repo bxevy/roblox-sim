@@ -4,6 +4,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(script.Parent.Util)
@@ -15,8 +16,13 @@ local Hud = {}
 export type Actions = {
 	UseAbility: (abilityId: string) -> (),
 	UsePotion: (potionId: string) -> (),
+	ToggleWeapon: () -> (),
 	ToggleInventory: () -> (),
 	OpenClassPicker: () -> (),
+	OpenAdmin: () -> (),
+	ToggleMusic: () -> boolean, -- returns whether music is now on
+	SetSprint: (on: boolean) -> (),
+	Dodge: () -> (),
 }
 
 function Hud.new(gui: ScreenGui, actions: Actions)
@@ -61,9 +67,34 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	})
 	classButton.Activated:Connect(actions.OpenClassPicker)
 
+	-- Admin button, only for admins
+	local player = Players.LocalPlayer
+	local adminButton = Util.button(gui, {
+		Position = UDim2.fromOffset(16, 172),
+		Size = UDim2.fromOffset(220, 34),
+		BackgroundColor3 = Color3.fromRGB(170, 40, 40),
+		Text = "Admin Menu [P]",
+		Visible = player:GetAttribute("IsAdmin") == true,
+	})
+	adminButton.Activated:Connect(actions.OpenAdmin)
+	player:GetAttributeChangedSignal("IsAdmin"):Connect(function()
+		adminButton.Visible = player:GetAttribute("IsAdmin") == true
+	end)
+
+	-- Music toggle (top-right)
+	local musicButton = Util.button(gui, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -16, 0, 16),
+		Size = UDim2.fromOffset(110, 34),
+		Text = "Music: On",
+	})
+	musicButton.Activated:Connect(function()
+		musicButton.Text = if actions.ToggleMusic() then "Music: On" else "Music: Off"
+	end)
+
 	-- Buff list (under the buttons)
 	local buffList = Util.make("Frame", gui, {
-		Position = UDim2.fromOffset(16, 172),
+		Position = UDim2.fromOffset(16, 214),
 		Size = UDim2.fromOffset(220, 200),
 		BackgroundTransparency = 1,
 	})
@@ -83,11 +114,21 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	end
 	local healthFill, healthLabel = bar(-40, 28, Color3.fromRGB(200, 50, 50))
 	local xpFill, xpLabel = bar(-14, 20, Color3.fromRGB(70, 140, 255))
+	local staminaFill, staminaLabel = bar(-74, 12, Color3.fromRGB(240, 200, 60))
+	staminaLabel.Visible = false
+
+	local function updateStamina()
+		local stamina = player:GetAttribute("Stamina") or Config.Movement.MaxStamina
+		staminaFill.Size = UDim2.fromScale(math.clamp(stamina / Config.Movement.MaxStamina, 0, 1), 1)
+		staminaFill.BackgroundColor3 = if stamina < Config.Movement.DodgeCost then Color3.fromRGB(200, 110, 50) else Color3.fromRGB(240, 200, 60)
+	end
+	player:GetAttributeChangedSignal("Stamina"):Connect(updateStamina)
+	updateStamina()
 
 	-- Ability buttons (above the bars, right of center) -----------------------
 	local abilityFrame = Util.make("Frame", gui, {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.5, 10, 1, -78),
+		Position = UDim2.new(0.5, 10, 1, -94),
 		Size = UDim2.fromOffset(180, 64),
 		BackgroundTransparency = 1,
 	})
@@ -131,15 +172,43 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	-- Potion hotbar (above the bars, left of center) --------------------------
 	local potionFrame = Util.make("Frame", gui, {
 		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(0.5, -10, 1, -78),
-		Size = UDim2.fromOffset(#Config.PotionOrder * 48 - 4, 44),
+		Position = UDim2.new(0.5, -10, 1, -94),
+		Size = UDim2.fromOffset((#Config.PotionOrder + 1) * 48 - 4, 44),
 		BackgroundTransparency = 1,
 	})
+
+	-- Slot 1: draw / put away your weapon
+	local weaponButton = Util.button(potionFrame, {
+		Position = UDim2.fromOffset(0, 0),
+		Size = UDim2.fromOffset(44, 44),
+		BackgroundColor3 = Util.ButtonColor,
+		Text = "",
+	})
+	Util.padding(weaponButton, 4)
+	Util.text(weaponButton, {
+		Size = UDim2.fromScale(0.45, 0.45),
+		Text = "1",
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	})
+	local weaponLabel = Util.text(weaponButton, {
+		Position = UDim2.fromScale(0, 0.45),
+		Size = UDim2.fromScale(1, 0.55),
+		Text = "",
+	})
+	weaponButton.Activated:Connect(actions.ToggleWeapon)
+	local weaponStroke = Util.make("UIStroke", weaponButton, {
+		Color = Color3.fromRGB(255, 220, 120),
+		Thickness = 2,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Enabled = false,
+	})
+
 	local potionButtons: { [string]: TextButton } = {}
 	for i, potionId in Config.PotionOrder do
 		local potion = Config.Potions[potionId]
 		local button = Util.button(potionFrame, {
-			Position = UDim2.fromOffset((i - 1) * 48, 0),
+			Position = UDim2.fromOffset(i * 48, 0),
 			Size = UDim2.fromOffset(44, 44),
 			BackgroundColor3 = potion.Color,
 			TextStrokeTransparency = 0.2,
@@ -148,7 +217,7 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		Util.padding(button, 4)
 		Util.text(button, {
 			Size = UDim2.fromScale(0.45, 0.45),
-			Text = tostring(i),
+			Text = tostring(i + 1),
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Top,
 		})
@@ -227,6 +296,8 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		xpFill.Size = UDim2.fromScale(math.clamp(state.XP / state.XPNeeded, 0, 1), 1)
 		xpLabel.Text = `XP {state.XP} / {state.XPNeeded}`
 
+		weaponLabel.Text = if class then class.WeaponType else ""
+
 		if state.Class ~= shownClass then
 			shownClass = state.Class
 			buildAbilities(state.Class)
@@ -270,10 +341,47 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(update)
 		update()
 	end
-	local player = Players.LocalPlayer
+	local function trackWeapon(character: Model)
+		local function update()
+			weaponStroke.Enabled = character:FindFirstChildOfClass("Tool") ~= nil
+		end
+		character.ChildAdded:Connect(update)
+		character.ChildRemoved:Connect(update)
+		update()
+	end
+
+	player.CharacterAdded:Connect(trackWeapon)
+	if player.Character then
+		trackWeapon(player.Character)
+	end
 	player.CharacterAdded:Connect(trackCharacter)
 	if player.Character then
 		task.spawn(trackCharacter, player.Character)
+	end
+
+	-- Touch screens get Sprint and Dodge buttons (keyboard uses Shift and C)
+	if UserInputService.TouchEnabled then
+		local sprinting = false
+		local sprintButton = Util.button(gui, {
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -110, 1, -170),
+			Size = UDim2.fromOffset(80, 50),
+			BackgroundColor3 = Color3.fromRGB(200, 160, 40),
+			Text = "Sprint",
+		})
+		sprintButton.Activated:Connect(function()
+			sprinting = not sprinting
+			sprintButton.BackgroundColor3 = if sprinting then Color3.fromRGB(240, 210, 80) else Color3.fromRGB(200, 160, 40)
+			actions.SetSprint(sprinting)
+		end)
+		local dodgeButton = Util.button(gui, {
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -20, 1, -170),
+			Size = UDim2.fromOffset(80, 50),
+			BackgroundColor3 = Color3.fromRGB(80, 160, 200),
+			Text = "Dodge",
+		})
+		dodgeButton.Activated:Connect(actions.Dodge)
 	end
 
 	return self

@@ -1,6 +1,33 @@
 -- Small helpers for building UI from code.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
 local Util = {}
+
+local clickSound = Instance.new("Sound")
+clickSound.SoundId = Config.Audio.Sfx.Click[1]
+clickSound.Volume = Config.Audio.Sfx.Click[2]
+clickSound.Parent = SoundService
+
+-- Plays a sound effect from Config.Audio.Sfx for this player only.
+function Util.playSfx(name: string)
+	local def = Config.Audio.Sfx[name]
+	if not def then
+		return
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = def[1]
+	sound.Volume = def[2]
+	sound.PlaybackSpeed = def[3]
+	sound.Parent = SoundService
+	sound.Ended:Once(function()
+		sound:Destroy()
+	end)
+	sound:Play()
+end
 
 Util.Font = Enum.Font.FredokaOne
 Util.PanelColor = Color3.fromRGB(25, 22, 30)
@@ -73,6 +100,9 @@ function Util.button(parent: Instance, props: { [string]: any }): TextButton
 		(button :: any)[k] = v
 	end
 	Util.corner(button, 8)
+	button.Activated:Connect(function()
+		SoundService:PlayLocalSound(clickSound)
+	end)
 	button.Parent = parent
 	return button
 end

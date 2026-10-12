@@ -16,12 +16,16 @@ local Inventory = require(UI.Inventory)
 local Shop = require(UI.Shop)
 local ClassPicker = require(UI.ClassPicker)
 local PortalPanel = require(UI.PortalPanel)
+local AdminPanel = require(UI.AdminPanel)
+local Controllers = script.Parent:WaitForChild("Controllers")
+local Movement = require(Controllers.Movement)
+local Audio = require(Controllers.Audio)
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
 local ABILITY_KEYS = { Enum.KeyCode.Q, Enum.KeyCode.E }
-local POTION_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five }
+local POTION_KEYS = { Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six }
 local ERROR_COLOR = Color3.fromRGB(255, 90, 90)
 
 -- Your weapon is always out, and we draw our own health bar.
@@ -36,7 +40,7 @@ local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 })
 
 local state = nil
-local hud, inventory, shop, classPicker
+local hud, inventory, shop, classPicker, adminPanel
 
 -- Direction from your character toward the mouse (flat on the ground).
 local function getAim(): Vector3?
@@ -79,6 +83,28 @@ local function usePotion(potionId: string)
 	request(Remotes.UsePotion, potionId)
 end
 
+-- Key 1: draw or put away your weapon.
+local function toggleWeapon()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid or humanoid.Health <= 0 then
+		return
+	end
+	if character:FindFirstChildOfClass("Tool") then
+		humanoid:UnequipTools()
+		return
+	end
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if backpack then
+		for _, tool in backpack:GetChildren() do
+			if tool:IsA("Tool") and tool:GetAttribute("WeaponId") then
+				humanoid:EquipTool(tool)
+				return
+			end
+		end
+	end
+end
+
 hud = Hud.new(gui, {
 	UseAbility = useAbility,
 	UsePotion = usePotion,
@@ -88,7 +114,21 @@ hud = Hud.new(gui, {
 	OpenClassPicker = function()
 		classPicker.Open()
 	end,
+	OpenAdmin = function()
+		adminPanel.Toggle()
+	end,
+	ToggleWeapon = toggleWeapon,
+	ToggleMusic = Audio.ToggleMusic,
+	SetSprint = Movement.SetSprint,
+	Dodge = Movement.Dodge,
 })
+
+adminPanel = AdminPanel.new(gui, function(action, arg)
+	local ok, message = Remotes.Admin:InvokeServer(action, arg)
+	if message then
+		hud.Toast(message, if ok then Color3.fromRGB(150, 255, 150) else ERROR_COLOR)
+	end
+end)
 
 inventory = Inventory.new(gui, function(kind, id)
 	request(Remotes.Equip, kind, id)
@@ -96,6 +136,7 @@ end)
 
 shop = Shop.new(gui, function(potionId)
 	if request(Remotes.BuyPotion, potionId) then
+		Util.playSfx("Coins")
 		hud.Toast(`Bought {Config.Potions[potionId].DisplayName}`, Config.Potions[potionId].Color)
 	end
 end)
@@ -127,7 +168,10 @@ Remotes.StateChanged.OnClientEvent:Connect(render)
 Remotes.Notify.OnClientEvent:Connect(function(message, color)
 	hud.Toast(message, color)
 end)
-Remotes.DungeonStatus.OnClientEvent:Connect(hud.SetStatus)
+Remotes.DungeonStatus.OnClientEvent:Connect(function(status, info)
+	hud.SetStatus(status)
+	Audio.SetDungeon(if status then info else nil)
+end)
 Remotes.PortalUpdate.OnClientEvent:Connect(portalPanel.Update)
 Remotes.OpenShop.OnClientEvent:Connect(shop.Open)
 
@@ -172,10 +216,17 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	local potionIndex = table.find(POTION_KEYS, input.KeyCode)
 	if potionIndex then
 		usePotion(Config.PotionOrder[potionIndex])
+	elseif input.KeyCode == Enum.KeyCode.One then
+		toggleWeapon()
 	elseif input.KeyCode == Enum.KeyCode.G then
 		inventory.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.P and player:GetAttribute("IsAdmin") then
+		adminPanel.Toggle()
 	end
 end)
+
+Movement.Start(Util.playSfx)
+Audio.Start()
 
 -- Data may have loaded before this script started listening.
 render(Remotes.GetState:InvokeServer())

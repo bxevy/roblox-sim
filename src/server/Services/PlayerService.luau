@@ -8,6 +8,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local DataService = require(script.Parent.DataService)
+local Sfx = require(script.Parent.Parent.Sfx)
 
 local PlayerService = {}
 
@@ -66,7 +67,8 @@ end
 function PlayerService.GetWalkSpeed(player: Player): number
 	local data = DataService.Get(player)
 	local class = data and getClass(data)
-	return Config.BaseWalkSpeed * (if class then class.SpeedMultiplier else 1) * (1 + buffTotal(player, "Speed"))
+	local sprint = if player:GetAttribute("Sprinting") then Config.Movement.SprintMultiplier else 1
+	return Config.BaseWalkSpeed * (if class then class.SpeedMultiplier else 1) * (1 + buffTotal(player, "Speed")) * sprint
 end
 
 -- Pushes current stats onto the character. `refill` restores full health.
@@ -208,6 +210,10 @@ function PlayerService.AddXP(player: Player, amount: number)
 	if leveledUp then
 		PlayerService.RefreshStats(player, true)
 		PlayerService.Notify(player, `LEVEL UP! You are now level {data.Level}`, Color3.fromRGB(255, 220, 80))
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then
+			Sfx.play("LevelUp", root)
+		end
 	end
 	PlayerService.Push(player)
 end

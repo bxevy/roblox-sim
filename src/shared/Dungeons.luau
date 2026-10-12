@@ -17,6 +17,7 @@ export type DungeonDef = {
 	Rewards: { XP: number, Gold: number },
 	Difficulties: { [string]: DifficultySettings }, -- keyed by Config.DifficultyOrder ids
 	Theme: {
+		Style: string, -- "Crypt" | "Temple" | "Ice": decorations, music and mood
 		Floor: Color3,
 		FloorMaterial: Enum.Material,
 		Wall: Color3,
@@ -45,6 +46,7 @@ Dungeons.Defs = {
 			Nightmare = { Level = 9, Loot = { [4] = 70, [5] = 30 } },
 		},
 		Theme = {
+			Style = "Crypt",
 			Floor = Color3.fromRGB(70, 70, 75),
 			FloorMaterial = Enum.Material.Slate,
 			Wall = Color3.fromRGB(95, 95, 100),
@@ -69,6 +71,7 @@ Dungeons.Defs = {
 			Nightmare = { Level = 19, Loot = { [6] = 75, [7] = 25 } },
 		},
 		Theme = {
+			Style = "Temple",
 			Floor = Color3.fromRGB(200, 170, 110),
 			FloorMaterial = Enum.Material.Sandstone,
 			Wall = Color3.fromRGB(180, 150, 95),
@@ -93,6 +96,7 @@ Dungeons.Defs = {
 			Nightmare = { Level = 32, Loot = { [7] = 40, [8] = 60 } },
 		},
 		Theme = {
+			Style = "Ice",
 			Floor = Color3.fromRGB(200, 225, 240),
 			FloorMaterial = Enum.Material.Glacier,
 			Wall = Color3.fromRGB(150, 180, 210),

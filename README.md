@@ -6,8 +6,11 @@ A Roblox dungeon crawler (inspired by games like Dungeon Quest), managed as code
 
 You spawn in a walled medieval town: stone walls and towers, a gatehouse, the castle keep looming
 behind the dungeon portals, timber-framed houses, **The Rusty Tankard** tavern, a blacksmith's forge,
-a market, a fountain, and lamp-lit streets at golden hour. The notice board next to the spawn has
-quick tips. It's all built from code in `HubService.luau`, so you can tweak it there or replace
+a market, a fountain, and lamp-lit streets at golden hour. Townsfolk wander the streets and chat,
+guards watch the gate, and the notice board next to the spawn has quick tips.
+
+Through the south gate are the **Training Grounds**: straw dummies that show your damage per
+second, an archery & magic range, and a sparring ring. It's all built from code in `HubService.luau`, so you can tweak it there or replace
 pieces with hand-built models in Studio.
 
 ## How to play
@@ -18,10 +21,12 @@ pieces with hand-built models in Studio.
    | Warrior | Sword  | +30% health, +10% defense         | Whirlwind  | Shield Wall    |
    | Mage    | Staff  | +25% damage, ranged splash magic  | Fireball   | Healing Circle (heals the party) |
    | Ranger  | Bow    | +15% speed, longest range         | Volley     | Swift Step     |
-2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **1-5**.
+2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **2-6**.
 3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
    After a 10 second countdown, everyone on the pad (up to 4 players) goes in together.
-4. **Fight:** **click** to attack toward your mouse. Kill every enemy in a room to open the next door.
+4. **Fight:** press **1** to draw / put away your weapon, **click** to attack toward your mouse.
+   Hold **Shift** to sprint and press **C** to dodge (you're immune to damage mid-dodge); both use
+   the yellow stamina bar. Kill every enemy in a room to open the next door.
    Watch for the boss's **red circle** and get out before it slams!
 5. **Loot:** winning gives XP, Gold, and an item: a weapon for your class or a piece of armor.
    Equip gear with the **Gear** button (or **G**).
@@ -45,10 +50,26 @@ more XP and Gold, and drop **higher-tier loot**.
 
 If your whole party dies, the run fails and you're back in the lobby. Progress saves automatically.
 
-### Studio test commands
+### Dungeon themes
 
-When playing in Roblox Studio (never in a live game), type in chat:
-`/level 20`, `/gold 5000`, `/give Dragonfang`, `/giveall`.
+Each dungeon has its own look, lighting mood and music: the **Crypt** (coffins, skull shelves,
+cobwebs, green mist), the **Sunken Temple** (gold-capped columns, jackal statues, sand, treasure),
+and the **Frozen Keep** (glowing ice crystals, icicles, snowdrifts, falling snow).
+
+### Admin menu
+
+Admins see an **Admin Menu** button (or press **P**): **Give All Items**, max potions, gold, level,
+heal, god mode, clear the current room, teleport to town / training, and give any item by id.
+Chat commands work too: `/giveall`, `/level 20`, `/gold 5000`, `/give Dragonfang`.
+
+Admins are: anyone testing in Studio, the game's owner (or rank 254+ in the owning group), and
+any user ids added to `Config.AdminUserIds`. The server checks every admin action.
+
+### Music & sounds
+
+Sound effects use sounds built into Roblox. Music ids are in `Config.Audio.Music`; if a track
+is silent, swap in any audio id from the Creator Store (Studio: *Toolbox > Audio*). There's a
+**Music: On/Off** button in the top-right.
 
 ## Quick start (no setup)
 
@@ -79,6 +100,8 @@ src/
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
     Build.luau              helpers for building scenery from parts
+    DungeonDecor.luau       themed decorations for Crypt / Temple / Ice rooms
+    Sfx.luau                plays sound effects in the world
     Services/
       DataService.luau      load/save player data
       PlayerService.luau    level, XP, gold, class, items, buffs, stats
@@ -87,10 +110,14 @@ src/
       DungeonService.luau   lobby portals, difficulty picking, parties, dungeon runs, loot
       ShopService.luau      potion shop stall, buying and drinking potions
       HubService.luau       builds the medieval town and sets the lighting
-      DevService.luau       Studio-only chat commands for testing
+      TrainingService.luau  training grounds: dummies, archery range, sparring ring
+      TownsfolkService.luau villagers who walk around and talk, guards, shopkeepers
+      MovementService.luau  stamina, sprint and dodge
+      AdminService.luau     admin menu actions and chat commands
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, Q/E, 1-5, G) and wiring
-    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel
+    Main.client.luau        input (attack, 1, Q/E, 2-6, G, P) and wiring
+    Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting)
+    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel, AdminPanel
 ```
 
 ### Adding content
