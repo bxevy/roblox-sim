@@ -1,0 +1,11 @@
+# Built place files
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm
+*.rbxmx
+
+# Generated
+sourcemap.json
+roblox.d.luau
