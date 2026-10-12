@@ -487,15 +487,10 @@ type Portal = {
 local portals: { Portal } = {}
 
 local function buildLobby()
+	-- The town around the portals is built by HubService.
 	local lobby = Instance.new("Folder")
-	lobby.Name = "Lobby"
+	lobby.Name = "Portals"
 	lobby.Parent = workspace
-
-	local sign = block(lobby, "Sign", Vector3.new(30, 8, 1), CFrame.new(0, 14, -62), Color3.fromRGB(60, 45, 35), Enum.Material.WoodPlanks)
-	local title = billboard(sign, UDim2.fromOffset(500, 80), Vector3.new(0, 0, 0))
-	title.Parent.MaxDistance = 300
-	title.Text = Config.GameName:upper()
-	title.TextColor3 = Color3.fromRGB(255, 210, 90)
 
 	local count = #Dungeons.Order
 	for i, dungeonId in Dungeons.Order do

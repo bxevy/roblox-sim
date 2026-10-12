@@ -30,11 +30,11 @@
             20,
             512
           ],
-          "Material": "Slate",
+          "Material": "Grass",
           "Color": [
-            0.35,
-            0.35,
-            0.38
+            0.33,
+            0.5,
+            0.25
           ],
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth",
@@ -76,11 +76,11 @@
             12
           ],
           "Duration": 0,
-          "Material": "WoodPlanks",
+          "Material": "Slate",
           "Color": [
-            0.55,
-            0.45,
-            0.3
+            0.42,
+            0.4,
+            0.38
           ],
           "TopSurface": "Smooth",
           "BottomSurface": "Smooth",
@@ -115,7 +115,8 @@
     },
     "Lighting": {
       "$properties": {
-        "ClockTime": 14
+        "ClockTime": 16.8,
+        "Technology": "Future"
       }
     }
   }

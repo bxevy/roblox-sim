@@ -2,6 +2,14 @@
 
 A Roblox dungeon crawler (inspired by games like Dungeon Quest), managed as code with [Rojo](https://rojo.space).
 
+## The town
+
+You spawn in a walled medieval town: stone walls and towers, a gatehouse, the castle keep looming
+behind the dungeon portals, timber-framed houses, **The Rusty Tankard** tavern, a blacksmith's forge,
+a market, a fountain, and lamp-lit streets at golden hour. The notice board next to the spawn has
+quick tips. It's all built from code in `HubService.luau`, so you can tweak it there or replace
+pieces with hand-built models in Studio.
+
 ## How to play
 
 1. **Pick a class** when you first join (change it any time in the lobby with the **Class** button):
@@ -70,6 +78,7 @@ src/
     Remotes.luau            RemoteEvents/RemoteFunctions
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
+    Build.luau              helpers for building scenery from parts
     Services/
       DataService.luau      load/save player data
       PlayerService.luau    level, XP, gold, class, items, buffs, stats
@@ -77,6 +86,7 @@ src/
       EnemyService.luau     builds enemies, AI, boss slam attack
       DungeonService.luau   lobby portals, difficulty picking, parties, dungeon runs, loot
       ShopService.luau      potion shop stall, buying and drinking potions
+      HubService.luau       builds the medieval town and sets the lighting
       DevService.luau       Studio-only chat commands for testing
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau        input (attack, Q/E, 1-5, G) and wiring
