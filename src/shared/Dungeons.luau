@@ -1,16 +1,21 @@
 -- Dungeon definitions. Each dungeon is a line of rooms; clear a room to open the
 -- next door. The last room holds the boss.
+--
+-- Every dungeon has 4 difficulties. Each unlocks at a level and drops better loot tiers
+-- (see Items.luau for what each tier contains). Difficulty stat multipliers are in Config.
 
-export type LootEntry = { Weapon: string, Weight: number }
+export type DifficultySettings = {
+	Level: number, -- level needed to unlock this difficulty
+	Loot: { [number]: number }, -- item tier -> weight; each player gets one item on victory
+}
 
 export type DungeonDef = {
 	DisplayName: string,
-	MinLevel: number,
-	Power: number, -- multiplies enemy Health, Damage, XP and Gold
+	Power: number, -- multiplies enemy Health, Damage, XP and Gold (difficulty multiplies on top)
 	Rooms: { { [string]: number } }, -- each room: { EnemyId = count }
 	Boss: string,
 	Rewards: { XP: number, Gold: number },
-	Loot: { LootEntry }, -- one weapon is rolled for each player on victory
+	Difficulties: { [string]: DifficultySettings }, -- keyed by Config.DifficultyOrder ids
 	Theme: {
 		Floor: Color3,
 		FloorMaterial: Enum.Material,
@@ -25,7 +30,6 @@ local Dungeons = {}
 Dungeons.Defs = {
 	Crypt = {
 		DisplayName = "Crypt of Bones",
-		MinLevel = 1,
 		Power = 1,
 		Rooms = {
 			{ Skeleton = 3 },
@@ -34,10 +38,11 @@ Dungeons.Defs = {
 		},
 		Boss = "BoneKing",
 		Rewards = { XP = 150, Gold = 60 },
-		Loot = {
-			{ Weapon = "IronSword", Weight = 60 },
-			{ Weapon = "SteelBlade", Weight = 30 },
-			{ Weapon = "KnightsLongsword", Weight = 10 },
+		Difficulties = {
+			Easy = { Level = 1, Loot = { [1] = 70, [2] = 30 } },
+			Normal = { Level = 3, Loot = { [2] = 70, [3] = 30 } },
+			Hard = { Level = 6, Loot = { [3] = 70, [4] = 30 } },
+			Nightmare = { Level = 9, Loot = { [4] = 70, [5] = 30 } },
 		},
 		Theme = {
 			Floor = Color3.fromRGB(70, 70, 75),
@@ -49,7 +54,6 @@ Dungeons.Defs = {
 	},
 	Temple = {
 		DisplayName = "Sunken Temple",
-		MinLevel = 5,
 		Power = 3,
 		Rooms = {
 			{ Mummy = 3, Scarab = 3 },
@@ -58,11 +62,11 @@ Dungeons.Defs = {
 		},
 		Boss = "Pharaoh",
 		Rewards = { XP = 600, Gold = 250 },
-		Loot = {
-			{ Weapon = "SteelBlade", Weight = 40 },
-			{ Weapon = "KnightsLongsword", Weight = 35 },
-			{ Weapon = "SandReaver", Weight = 23 },
-			{ Weapon = "Dragonfang", Weight = 2 },
+		Difficulties = {
+			Easy = { Level = 10, Loot = { [3] = 70, [4] = 30 } },
+			Normal = { Level = 13, Loot = { [4] = 70, [5] = 30 } },
+			Hard = { Level = 16, Loot = { [5] = 70, [6] = 30 } },
+			Nightmare = { Level = 19, Loot = { [6] = 75, [7] = 25 } },
 		},
 		Theme = {
 			Floor = Color3.fromRGB(200, 170, 110),
@@ -74,8 +78,7 @@ Dungeons.Defs = {
 	},
 	Keep = {
 		DisplayName = "Frozen Keep",
-		MinLevel = 10,
-		Power = 7,
+		Power = 8,
 		Rooms = {
 			{ Yeti = 2, FrostWraith = 4 },
 			{ Yeti = 3, FrostWraith = 5 },
@@ -83,11 +86,11 @@ Dungeons.Defs = {
 		},
 		Boss = "FrostLord",
 		Rewards = { XP = 2000, Gold = 800 },
-		Loot = {
-			{ Weapon = "SandReaver", Weight = 40 },
-			{ Weapon = "ObsidianCleaver", Weight = 32 },
-			{ Weapon = "Frostbrand", Weight = 23 },
-			{ Weapon = "Dragonfang", Weight = 5 },
+		Difficulties = {
+			Easy = { Level = 20, Loot = { [5] = 70, [6] = 30 } },
+			Normal = { Level = 24, Loot = { [6] = 70, [7] = 30 } },
+			Hard = { Level = 28, Loot = { [7] = 75, [8] = 25 } },
+			Nightmare = { Level = 32, Loot = { [7] = 40, [8] = 60 } },
 		},
 		Theme = {
 			Floor = Color3.fromRGB(200, 225, 240),

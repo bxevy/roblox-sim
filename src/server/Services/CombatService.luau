@@ -1,5 +1,8 @@
--- Player combat: gives each player their equipped sword, handles swings and abilities.
--- Everything is checked on the server (cooldowns, range, damage).
+-- Player combat: builds weapon and armor models, handles attacks, weapon effects and
+-- class abilities. Everything is checked on the server (cooldowns, range, damage).
+--
+-- Attacking: the client sends the direction it's aiming (toward the mouse). Swords hit
+-- an arc in that direction; staffs and bows auto-target the enemy closest to your aim.
 
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
@@ -7,17 +10,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Items = require(ReplicatedStorage.Shared.Items)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local Weapons = require(ReplicatedStorage.Shared.Weapons)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
 
-local TOOL_TAG = "DungeonWeapon"
+local TOOL_ATTRIBUTE = "WeaponId"
+local ARMOR_FOLDER = "ArmorVisual"
+local PROJECTILE_SPEED = { Staff = 90, Bow = 150 }
+local BURN_COLOR = Color3.fromRGB(255, 140, 40)
+local FROST_COLOR = Color3.fromRGB(140, 220, 255)
 
 local CombatService = {}
 
-local lastSwing: { [Player]: number } = {}
+local lastAttack: { [Player]: number } = {}
 local abilityReadyAt: { [Player]: { [string]: number } } = {}
+
+-- Helpers --------------------------------------------------------------------
 
 local function getAlive(player: Player): (Humanoid?, BasePart?)
 	local character = player.Character
@@ -29,8 +38,20 @@ local function getAlive(player: Player): (Humanoid?, BasePart?)
 	return nil, nil
 end
 
+-- Turns whatever the client sent into a safe flat unit direction.
+local function sanitizeAim(aim: unknown, root: BasePart): Vector3
+	if typeof(aim) == "Vector3" then
+		local flat = Vector3.new(aim.X, 0, aim.Z)
+		if flat.Magnitude > 0.01 and flat.Magnitude == flat.Magnitude then -- second check rejects NaN
+			return flat.Unit
+		end
+	end
+	local look = root.CFrame.LookVector
+	return Vector3.new(look.X, 0, look.Z).Unit
+end
+
 local function rollDamage(player: Player, base: number): (number, boolean)
-	local amount = base * Config.DamageMultiplier(PlayerService.GetLevel(player)) * (0.9 + math.random() * 0.2)
+	local amount = base * PlayerService.GetDamageMultiplier(player) * (0.9 + math.random() * 0.2)
 	local isCrit = math.random() < Config.CritChance
 	if isCrit then
 		amount *= Config.CritMultiplier
@@ -38,97 +59,357 @@ local function rollDamage(player: Player, base: number): (number, boolean)
 	return amount, isCrit
 end
 
--- Swords -------------------------------------------------------------------
-
-local function slashEffect(root: BasePart, weapon: Weapons.WeaponDef)
-	local slash = Instance.new("Part")
-	slash.Anchored = true
-	slash.CanCollide = false
-	slash.CanQuery = false
-	slash.Material = Enum.Material.Neon
-	slash.Color = weapon.BladeColor
-	slash.Transparency = 0.4
-	slash.Size = Vector3.new(weapon.Range * 1.4, 0.2, 1.2)
-	slash.CFrame = root.CFrame * CFrame.new(0, 0.5, -weapon.Range / 2) * CFrame.Angles(0, math.rad(math.random(-25, 25)), math.rad(math.random(-30, 30)))
-	slash.Parent = workspace
-	TweenService:Create(slash, TweenInfo.new(0.15), { Transparency = 1 }):Play()
-	Debris:AddItem(slash, 0.2)
+local function effectPart(props: { [string]: any }): Part
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Material = Enum.Material.Neon
+	for k, v in props do
+		(p :: any)[k] = v
+	end
+	p.Parent = workspace
+	return p
 end
 
-local function swing(player: Player, tool: Tool)
+-- Expanding flat ring on the floor (abilities).
+local function ringEffect(center: Vector3, radius: number, color: Color3)
+	local ring = effectPart({
+		Shape = Enum.PartType.Cylinder,
+		Color = color,
+		Transparency = 0.3,
+		Size = Vector3.new(0.4, 2, 2),
+		CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)),
+	})
+	TweenService:Create(ring, TweenInfo.new(0.3), {
+		Size = Vector3.new(0.4, radius * 2, radius * 2),
+		Transparency = 1,
+	}):Play()
+	Debris:AddItem(ring, 0.35)
+end
+
+local function burstEffect(center: Vector3, radius: number, color: Color3)
+	local ball = effectPart({
+		Shape = Enum.PartType.Ball,
+		Color = color,
+		Transparency = 0.3,
+		Size = Vector3.one * 2,
+		Position = center,
+	})
+	TweenService:Create(ball, TweenInfo.new(0.3), { Size = Vector3.one * radius * 2, Transparency = 1 }):Play()
+	Debris:AddItem(ball, 0.35)
+end
+
+-- Flies a projectile from `from` to `to`, then calls onArrive. Returns nothing.
+local function fireProjectile(kind: string, from: Vector3, to: Vector3, color: Color3, onArrive: () -> ())
+	local distance = (to - from).Magnitude
+	local travel = math.max(0.05, distance / (PROJECTILE_SPEED[kind] or 120))
+	local projectile
+	if kind == "Bow" then
+		projectile = effectPart({
+			Size = Vector3.new(0.15, 0.15, 2.5),
+			Color = color,
+			Material = Enum.Material.SmoothPlastic,
+			CFrame = CFrame.lookAt(from, to),
+		})
+	else
+		projectile = effectPart({
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * (if kind == "Fireball" then 2.5 else 1.2),
+			Color = color,
+			CFrame = CFrame.lookAt(from, to),
+		})
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Range = 10
+		light.Parent = projectile
+	end
+	TweenService:Create(projectile, TweenInfo.new(travel, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.lookAt(to, to + (to - from).Unit),
+	}):Play()
+	Debris:AddItem(projectile, travel + 0.05)
+	task.delay(travel, onArrive)
+end
+
+-- The enemy closest to where you're aiming (within range and a forward cone).
+local function findAimTarget(origin: Vector3, aim: Vector3, range: number, minDot: number): EnemyService.Enemy?
+	local best, bestScore = nil, math.huge
+	for _, enemy in EnemyService.GetEnemiesNear(origin, range) do
+		local offset = enemy.Root.Position - origin
+		local flat = Vector3.new(offset.X, 0, offset.Z)
+		local dot = if flat.Magnitude > 0.01 then flat.Unit:Dot(aim) else 1
+		if dot >= minDot then
+			local score = flat.Magnitude * (2 - dot)
+			if score < bestScore then
+				best, bestScore = enemy, score
+			end
+		end
+	end
+	return best
+end
+
+-- Weapon effects -------------------------------------------------------------
+
+local function applyEffect(player: Player, enemy: EnemyService.Enemy, effect: Items.Effect?, dealt: number)
+	if not effect or dealt <= 0 then
+		return
+	end
+	if effect.Type == "Lifesteal" then
+		local humanoid = getAlive(player)
+		if humanoid then
+			humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + dealt * effect.Amount)
+		end
+	elseif effect.Type == "Frost" then
+		EnemyService.Slow(enemy, effect.Amount, effect.Duration or 2)
+	elseif effect.Type == "Burn" then
+		local tick = dealt * effect.Amount
+		task.spawn(function()
+			for _ = 1, effect.Duration or 3 do
+				task.wait(1)
+				if enemy.Dead then
+					return
+				end
+				EnemyService.Damage(enemy, tick, false, BURN_COLOR)
+			end
+		end)
+	end
+end
+
+local function hit(player: Player, enemy: EnemyService.Enemy, baseDamage: number, weapon: Items.WeaponDef)
+	local amount, isCrit = rollDamage(player, baseDamage)
+	local color = if weapon.Effect and weapon.Effect.Type == "Frost" then FROST_COLOR else nil
+	local dealt = EnemyService.Damage(enemy, amount, isCrit, if isCrit then nil else color)
+	applyEffect(player, enemy, weapon.Effect, dealt)
+end
+
+-- Attacks ----------------------------------------------------------------------
+
+local function swordAttack(player: Player, root: BasePart, aim: Vector3, weapon: Items.WeaponDef)
+	local slash = effectPart({
+		Color = weapon.Color,
+		Transparency = 0.4,
+		Size = Vector3.new(weapon.Range * 1.4, 0.2, 1.2),
+		CFrame = CFrame.lookAt(root.Position, root.Position + aim)
+			* CFrame.new(0, 0.5, -weapon.Range / 2)
+			* CFrame.Angles(0, math.rad(math.random(-25, 25)), math.rad(math.random(-30, 30))),
+	})
+	TweenService:Create(slash, TweenInfo.new(0.15), { Transparency = 1 }):Play()
+	Debris:AddItem(slash, 0.2)
+
+	for _, enemy in EnemyService.GetEnemiesNear(root.Position, weapon.Range) do
+		local offset = enemy.Root.Position - root.Position
+		local flat = Vector3.new(offset.X, 0, offset.Z)
+		-- Hit enemies in a wide arc in front of you (or ones basically on top of you).
+		if flat.Magnitude < 3 or flat.Unit:Dot(aim) > 0.25 then
+			hit(player, enemy, weapon.Damage, weapon)
+		end
+	end
+end
+
+local function rangedAttack(player: Player, root: BasePart, aim: Vector3, weapon: Items.WeaponDef)
+	local from = root.Position + aim * 2 + Vector3.new(0, 1, 0)
+	local target = findAimTarget(root.Position, aim, weapon.Range, 0.75)
+	local color = weapon.Accent
+
+	if not target then
+		fireProjectile(weapon.Type, from, from + aim * weapon.Range, color, function() end)
+		return
+	end
+
+	local to = target.Root.Position
+	fireProjectile(weapon.Type, from, to, color, function()
+		if weapon.Splash then
+			-- Staff bolts splash: everything near the impact gets hit.
+			local center = if target.Dead then to else target.Root.Position
+			burstEffect(center, weapon.Splash, color)
+			for _, enemy in EnemyService.GetEnemiesNear(center, weapon.Splash) do
+				hit(player, enemy, weapon.Damage, weapon)
+			end
+		elseif not target.Dead then
+			hit(player, target, weapon.Damage, weapon)
+		end
+	end)
+end
+
+local function onAttack(player: Player, aim: unknown)
 	local weapon = PlayerService.GetWeapon(player)
-	local now = os.clock()
-	if now - (lastSwing[player] or 0) < weapon.Cooldown then
-		return
-	end
 	local _, root = getAlive(player)
-	if not root then
+	if not weapon or not root then
 		return
 	end
-	lastSwing[player] = now
+	local now = os.clock()
+	if now - (lastAttack[player] or 0) < weapon.Cooldown * 0.9 then -- small allowance for network jitter
+		return
+	end
+
+	-- Must actually be holding the weapon.
+	local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+	if not tool or tool:GetAttribute(TOOL_ATTRIBUTE) ~= weapon.Id then
+		return
+	end
+	lastAttack[player] = now
 
 	-- The default character Animate script plays a slash animation when it sees this value.
 	local anim = Instance.new("StringValue")
 	anim.Name = "toolanim"
 	anim.Value = "Slash"
 	anim.Parent = tool
-	slashEffect(root, weapon)
 
-	local look = root.CFrame.LookVector
-	for _, enemy in EnemyService.GetEnemiesNear(root.Position, weapon.Range) do
-		local offset = enemy.Root.Position - root.Position
-		local flat = Vector3.new(offset.X, 0, offset.Z)
-		-- Hit enemies in a wide arc in front of you (or ones basically on top of you).
-		if flat.Magnitude < 3 or flat.Unit:Dot(look) > 0.25 then
-			local amount, isCrit = rollDamage(player, weapon.Damage)
-			EnemyService.Damage(enemy, amount, isCrit)
-		end
+	local direction = sanitizeAim(aim, root)
+	if weapon.Type == "Sword" then
+		swordAttack(player, root, direction, weapon)
+	else
+		rangedAttack(player, root, direction, weapon)
 	end
 end
 
-local function buildTool(weaponId: string): Tool
-	local weapon = Weapons.Defs[weaponId]
+-- Weapon models ------------------------------------------------------------------
+-- Each weapon is built from parts. The Tool's Handle is held in the right hand.
+
+local function weld(handle: BasePart, part: BasePart, offset: CFrame)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.Massless = true
+	part.CFrame = handle.CFrame * offset
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = handle
+	w.Part1 = part
+	w.Parent = part
+end
+
+local function newPart(parent: Instance, name: string, size: Vector3, color: Color3, material: Enum.Material, shape: Enum.PartType?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size
+	p.Color = color
+	p.Material = material
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = parent
+	return p
+end
+
+local function buildSword(tool: Tool, weapon: Items.WeaponDef)
+	local length = 3.4 + weapon.Tier * 0.25
+	local blade = newPart(tool, "Handle", Vector3.new(0.2, length, 0.6), weapon.Color, weapon.Material)
+	blade.CanCollide = false
+	blade.Massless = true
+	-- Shift the blade so its bottom sits in the hand.
+	tool.Grip = CFrame.new(0, -length / 2 + 0.4, 0)
+
+	local guardWidth = if weapon.Tier >= 4 then 2 else 1.4
+	weld(blade, newPart(tool, "Guard", Vector3.new(0.35, 0.3, guardWidth), weapon.Accent, Enum.Material.Metal), CFrame.new(0, -length / 2 + 0.8, 0))
+	weld(blade, newPart(tool, "Pommel", Vector3.new(0.4, 0.4, 0.4), weapon.Accent, Enum.Material.Metal, Enum.PartType.Ball), CFrame.new(0, -length / 2 - 0.1, 0))
+	if weapon.Effect then
+		-- Glowing edge on effect weapons.
+		local edgeColor = if weapon.Effect.Type == "Frost" then FROST_COLOR elseif weapon.Effect.Type == "Burn" then BURN_COLOR else Color3.fromRGB(200, 40, 40)
+		weld(blade, newPart(tool, "Edge", Vector3.new(0.22, length * 0.8, 0.1), edgeColor, Enum.Material.Neon), CFrame.new(0, 0.2, 0.3))
+	end
+end
+
+-- Staffs and bows are held upright: rotate the grip so the Handle's Y axis points up.
+local UPRIGHT = CFrame.Angles(math.rad(-90), 0, 0)
+
+local function buildStaff(tool: Tool, weapon: Items.WeaponDef)
+	local length = 5 + weapon.Tier * 0.15
+	local shaft = newPart(tool, "Handle", Vector3.new(0.3, length, 0.3), weapon.Color, weapon.Material)
+	shaft.CanCollide = false
+	shaft.Massless = true
+	-- Hold it a third of the way up.
+	tool.Grip = CFrame.new(0, -length / 6, 0) * UPRIGHT
+
+	local top = length / 2
+	local gemSize = 0.8 + weapon.Tier * 0.08
+	local gem = newPart(tool, "Gem", Vector3.one * gemSize, weapon.Accent, Enum.Material.Neon, Enum.PartType.Ball)
+	weld(shaft, gem, CFrame.new(0, top + gemSize / 2, 0))
+	local light = Instance.new("PointLight")
+	light.Color = weapon.Accent
+	light.Range = 8
+	light.Parent = gem
+	for _, side in { -1, 1 } do
+		weld(shaft, newPart(tool, "Prong", Vector3.new(0.15, gemSize * 1.1, 0.15), weapon.Color, weapon.Material), CFrame.new(side * gemSize * 0.45, top + gemSize * 0.45, 0) * CFrame.Angles(0, 0, math.rad(-side * 20)))
+	end
+end
+
+local function buildBow(tool: Tool, weapon: Items.WeaponDef)
+	local riser = newPart(tool, "Handle", Vector3.new(0.3, 1.2, 0.4), weapon.Color, weapon.Material)
+	riser.CanCollide = false
+	riser.Massless = true
+	tool.Grip = UPRIGHT
+
+	local limbLength = 2 + weapon.Tier * 0.08
+	local bend = math.rad(20)
+	local tipY = 0.6 + math.cos(bend) * limbLength
+	local tipZ = 0.15 + math.sin(bend) * limbLength
+	for _, side in { -1, 1 } do
+		-- Limbs curve back toward the archer (+Z); string joins the tips.
+		local center = CFrame.new(0, side * (0.6 + math.cos(bend) * limbLength / 2), 0.15 + math.sin(bend) * limbLength / 2)
+		weld(riser, newPart(tool, "Limb", Vector3.new(0.25, limbLength, 0.3), weapon.Color, weapon.Material), center * CFrame.Angles(side * bend, 0, 0))
+	end
+	weld(riser, newPart(tool, "String", Vector3.new(0.06, tipY * 2, 0.06), weapon.Accent, Enum.Material.Neon), CFrame.new(0, 0, tipZ))
+end
+
+local function buildTool(weapon: Items.WeaponDef): Tool
 	local tool = Instance.new("Tool")
 	tool.Name = weapon.DisplayName
 	tool.CanBeDropped = false
-	tool.ToolTip = `{weapon.Rarity} - {weapon.Damage} damage`
-	tool:SetAttribute(TOOL_TAG, weaponId)
-
-	local length = weapon.BladeLength
-	-- The Handle is the blade; Grip shifts it so the bottom of the blade sits in the hand.
-	local blade = Instance.new("Part")
-	blade.Name = "Handle"
-	blade.Size = Vector3.new(0.2, length, 0.6)
-	blade.Color = weapon.BladeColor
-	blade.Material = weapon.BladeMaterial
-	blade.CanCollide = false
-	blade.Massless = true
-	blade.Parent = tool
-	tool.Grip = CFrame.new(0, -length / 2 + 0.4, 0)
-
-	local guard = Instance.new("Part")
-	guard.Name = "Guard"
-	guard.Size = Vector3.new(0.35, 0.3, 1.6)
-	guard.Color = Color3.fromRGB(90, 70, 40)
-	guard.Material = Enum.Material.Metal
-	guard.CanCollide = false
-	guard.Massless = true
-	guard.CFrame = blade.CFrame * CFrame.new(0, -length / 2 + 0.8, 0)
-	local weld = Instance.new("WeldConstraint")
-	weld.Part0 = blade
-	weld.Part1 = guard
-	weld.Parent = guard
-	guard.Parent = tool
-
+	tool.ToolTip = `{weapon.Rarity} {weapon.Type} - {weapon.Damage} damage`
+	tool:SetAttribute(TOOL_ATTRIBUTE, weapon.Id)
+	if weapon.Type == "Sword" then
+		buildSword(tool, weapon)
+	elseif weapon.Type == "Staff" then
+		buildStaff(tool, weapon)
+	else
+		buildBow(tool, weapon)
+	end
 	return tool
 end
 
+-- Armor models -------------------------------------------------------------------
+
+local function buildArmor(character: Model, armor: Items.ArmorDef)
+	local old = character:FindFirstChild(ARMOR_FOLDER)
+	if old then
+		old:Destroy()
+	end
+	local torso: BasePart? = (character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) :: any
+	if not torso then
+		return
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = ARMOR_FOLDER
+
+	local function piece(name: string, size: Vector3, color: Color3, material: Enum.Material, offset: CFrame)
+		local p = newPart(folder, name, size, color, material)
+		p.CanTouch = false
+		weld(torso, p, offset)
+	end
+
+	local t = torso.Size
+	piece("Chest", t + Vector3.new(0.2, 0.1, 0.2), armor.Color, armor.Material, CFrame.new())
+	for _, side in { -1, 1 } do
+		piece("Shoulder", Vector3.new(1.2, 0.5, 1.3), armor.Accent, armor.Material, CFrame.new(side * (t.X / 2 + 0.35), t.Y / 2 - 0.1, 0))
+	end
+	if armor.Tier >= 3 then
+		piece("Belt", Vector3.new(t.X + 0.3, 0.3, t.Z + 0.3), armor.Accent, Enum.Material.Metal, CFrame.new(0, -t.Y / 2 + 0.1, 0))
+	end
+	if armor.Tier >= 6 then
+		-- Glowing emblem on the chest for high-tier armor.
+		piece("Emblem", Vector3.new(0.6, 0.6, 0.1), armor.Accent, Enum.Material.Neon, CFrame.new(0, 0.1, -t.Z / 2 - 0.12))
+	end
+	folder.Parent = character
+end
+
+-- Loadout ----------------------------------------------------------------------
+
 local function removeWeaponTools(player: Player)
-	local containers = { player:FindFirstChildOfClass("Backpack"), player.Character }
-	for _, container in containers do
+	for _, container in { player:FindFirstChildOfClass("Backpack"), player.Character } do
 		if container then
 			for _, child in container:GetChildren() do
-				if child:IsA("Tool") and child:GetAttribute(TOOL_TAG) then
+				if child:IsA("Tool") and child:GetAttribute(TOOL_ATTRIBUTE) then
 					child:Destroy()
 				end
 			end
@@ -136,72 +417,124 @@ local function removeWeaponTools(player: Player)
 	end
 end
 
-local function giveWeapon(player: Player)
-	local data = PlayerService.GetData(player)
+local function applyLoadout(player: Player)
 	local humanoid = getAlive(player)
-	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
-	if not data or not humanoid or not backpack then
+	local character = player.Character
+	if not humanoid or not character then
 		return
 	end
-	removeWeaponTools(player)
 
-	local tool = buildTool(data.Equipped)
-	tool.Activated:Connect(function()
-		swing(player, tool)
-	end)
-	tool.Parent = backpack
-	humanoid:EquipTool(tool)
-end
-
--- Abilities ----------------------------------------------------------------
-
-local function whirlwind(player: Player, root: BasePart)
-	local ability = Config.Abilities.Whirlwind
-	local weapon = PlayerService.GetWeapon(player)
-	for _, enemy in EnemyService.GetEnemiesNear(root.Position, ability.Radius) do
-		local amount, isCrit = rollDamage(player, weapon.Damage * ability.DamageMultiplier)
-		EnemyService.Damage(enemy, amount, isCrit)
+	local armor = PlayerService.GetArmor(player)
+	if armor then
+		buildArmor(character, armor)
+	else
+		local old = character:FindFirstChild(ARMOR_FOLDER)
+		if old then
+			old:Destroy()
+		end
 	end
 
-	local ring = Instance.new("Part")
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.CanQuery = false
-	ring.Material = Enum.Material.Neon
-	ring.Color = ability.Color
-	ring.Transparency = 0.3
-	ring.Size = Vector3.new(0.4, 2, 2)
-	ring.CFrame = CFrame.new(root.Position - Vector3.new(0, 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	ring.Parent = workspace
-	TweenService:Create(ring, TweenInfo.new(0.3), {
-		Size = Vector3.new(0.4, ability.Radius * 2, ability.Radius * 2),
-		Transparency = 1,
-	}):Play()
-	Debris:AddItem(ring, 0.35)
+	removeWeaponTools(player)
+	local weapon = PlayerService.GetWeapon(player)
+	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
+	if weapon and backpack then
+		local tool = buildTool(weapon)
+		tool.Parent = backpack
+		humanoid:EquipTool(tool)
+	end
 end
 
-local function heal(_player: Player, root: BasePart, humanoid: Humanoid)
-	local ability = Config.Abilities.Heal
-	humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + humanoid.MaxHealth * ability.HealPercent)
+-- Abilities ------------------------------------------------------------------------
 
-	local glow = Instance.new("Part")
-	glow.Shape = Enum.PartType.Ball
-	glow.Anchored = true
-	glow.CanCollide = false
-	glow.CanQuery = false
-	glow.Material = Enum.Material.Neon
-	glow.Color = ability.Color
-	glow.Transparency = 0.5
-	glow.Size = Vector3.one * 4
-	glow.Position = root.Position
-	glow.Parent = workspace
-	TweenService:Create(glow, TweenInfo.new(0.5), { Size = Vector3.one * 9, Transparency = 1 }):Play()
-	Debris:AddItem(glow, 0.55)
+local function damageAround(player: Player, center: Vector3, radius: number, multiplier: number, weapon: Items.WeaponDef)
+	for _, enemy in EnemyService.GetEnemiesNear(center, radius) do
+		hit(player, enemy, weapon.Damage * multiplier, weapon)
+	end
 end
 
-local function onUseAbility(player: Player, abilityId: unknown): (boolean, number)
-	if type(abilityId) ~= "string" or not Config.Abilities[abilityId] then
+local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.WeaponDef) -> () } = {
+	Whirlwind = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.Whirlwind
+		damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
+		ringEffect(root.Position - Vector3.new(0, 2, 0), ability.Radius, ability.Color)
+	end,
+
+	ShieldWall = function(player, _, root)
+		local ability = Config.Abilities.ShieldWall
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = ability.Color
+		highlight.FillTransparency = 0.7
+		highlight.OutlineColor = ability.Color
+		highlight.Parent = root.Parent
+		Debris:AddItem(highlight, ability.Duration)
+	end,
+
+	Fireball = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.Fireball
+		local target = findAimTarget(root.Position, aim, ability.Range, 0.6)
+		local from = root.Position + aim * 2 + Vector3.new(0, 1, 0)
+		local to = if target then target.Root.Position else from + aim * ability.Range * 0.6
+		fireProjectile("Fireball", from, to, ability.Color, function()
+			burstEffect(to, ability.Radius, ability.Color)
+			damageAround(player, to, ability.Radius, ability.DamageMultiplier, weapon)
+		end)
+	end,
+
+	HealingCircle = function(_, _, root)
+		local ability = Config.Abilities.HealingCircle
+		for _, other in Players:GetPlayers() do
+			local _, otherRoot = getAlive(other)
+			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= ability.Radius then
+				PlayerService.Heal(other, ability.HealPercent)
+			end
+		end
+		ringEffect(root.Position - Vector3.new(0, 2.5, 0), ability.Radius, ability.Color)
+	end,
+
+	Volley = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.Volley
+		local targets = {}
+		for _, enemy in EnemyService.GetEnemiesNear(root.Position, ability.Range) do
+			local offset = enemy.Root.Position - root.Position
+			local flat = Vector3.new(offset.X, 0, offset.Z)
+			if flat.Magnitude < 3 or flat.Unit:Dot(aim) >= 0.5 then
+				table.insert(targets, { Enemy = enemy, Distance = flat.Magnitude })
+			end
+		end
+		table.sort(targets, function(a, b)
+			return a.Distance < b.Distance
+		end)
+
+		local from = root.Position + aim * 2 + Vector3.new(0, 1, 0)
+		if #targets == 0 then
+			for i = -2, 2 do
+				local direction = (CFrame.Angles(0, math.rad(i * 8), 0) * aim)
+				fireProjectile("Bow", from, from + direction * ability.Range, ability.Color, function() end)
+			end
+			return
+		end
+		for i = 1, math.min(#targets, ability.MaxTargets) do
+			local enemy = targets[i].Enemy
+			fireProjectile("Bow", from, enemy.Root.Position, ability.Color, function()
+				if not enemy.Dead then
+					hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+				end
+			end)
+		end
+	end,
+
+	SwiftStep = function(player, _, root)
+		local ability = Config.Abilities.SwiftStep
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		ringEffect(root.Position - Vector3.new(0, 2.5, 0), 6, ability.Color)
+	end,
+}
+
+local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (boolean, number)
+	local class = PlayerService.GetClass(player)
+	local weapon = PlayerService.GetWeapon(player)
+	if type(abilityId) ~= "string" or not class or not weapon or not table.find(class.Abilities, abilityId) then
 		return false, 0
 	end
 	local humanoid, root = getAlive(player)
@@ -221,21 +554,22 @@ local function onUseAbility(player: Player, abilityId: unknown): (boolean, numbe
 
 	local ability = Config.Abilities[abilityId]
 	readyAt[abilityId] = now + ability.Cooldown
-	if abilityId == "Whirlwind" then
-		whirlwind(player, root)
-	elseif abilityId == "Heal" then
-		heal(player, root, humanoid)
-	end
+	abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon)
 	return true, ability.Cooldown
 end
 
 function CombatService.Start()
-	PlayerService.OnCharacterReady(giveWeapon)
-	PlayerService.OnEquipChanged(giveWeapon)
+	PlayerService.OnCharacterReady(function(player)
+		abilityReadyAt[player] = nil
+		applyLoadout(player)
+	end)
+	PlayerService.OnLoadoutChanged(applyLoadout)
+
+	Remotes.Attack.OnServerEvent:Connect(onAttack)
 	Remotes.UseAbility.OnServerInvoke = onUseAbility
 
 	Players.PlayerRemoving:Connect(function(player)
-		lastSwing[player] = nil
+		lastAttack[player] = nil
 		abilityReadyAt[player] = nil
 	end)
 end

@@ -4,24 +4,43 @@ A Roblox dungeon crawler (inspired by games like Dungeon Quest), managed as code
 
 ## How to play
 
-1. **Pick a dungeon:** stand on a glowing portal pad in the lobby. After a 10 second
-   countdown, everyone on the pad (up to 4 players) is sent in together.
-2. **Clear the rooms:** your sword is always out. **Click** to swing. Kill every enemy in a
-   room to open the door to the next one.
-3. **Use abilities:** **Q** = Whirlwind (hits everything around you), **E** = Heal.
-4. **Beat the boss:** watch for the **red circle** on the floor and get out before it slams!
-5. **Get loot:** winning gives XP, Gold, and a random weapon. Equip weapons from the
-   **Weapons** button on the left.
+1. **Pick a class** when you first join (change it any time in the lobby with the **Class** button):
+   | Class   | Weapon | Strengths                         | Q          | E              |
+   | ------- | ------ | --------------------------------- | ---------- | -------------- |
+   | Warrior | Sword  | +30% health, +10% defense         | Whirlwind  | Shield Wall    |
+   | Mage    | Staff  | +25% damage, ranged splash magic  | Fireball   | Healing Circle (heals the party) |
+   | Ranger  | Bow    | +15% speed, longest range         | Volley     | Swift Step     |
+2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **1-5**.
+3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
+   After a 10 second countdown, everyone on the pad (up to 4 players) goes in together.
+4. **Fight:** **click** to attack toward your mouse. Kill every enemy in a room to open the next door.
+   Watch for the boss's **red circle** and get out before it slams!
+5. **Loot:** winning gives XP, Gold, and an item: a weapon for your class or a piece of armor.
+   Equip gear with the **Gear** button (or **G**).
 
-If your whole party dies, the run fails and you're back in the lobby.
+### Difficulties
 
-| Dungeon         | Level | Enemies               | Boss               |
-| --------------- | ----- | --------------------- | ------------------ |
-| Crypt of Bones  | 1+    | Skeletons, Zombies    | The Bone King      |
-| Sunken Temple   | 5+    | Mummies, Scarabs      | The Cursed Pharaoh |
-| Frozen Keep     | 10+   | Yetis, Frost Wraiths  | The Frost Lord     |
+Each dungeon has Easy / Normal / Hard / Nightmare. Harder difficulties have tougher enemies,
+more XP and Gold, and drop **higher-tier loot**.
 
-Progress (level, gold, weapons) saves automatically with DataStores.
+| Dungeon        | Easy | Normal | Hard | Nightmare | Loot tiers (Easy to Nightmare) |
+| -------------- | ---- | ------ | ---- | --------- | -------------------------------- |
+| Crypt of Bones | Lv 1  | Lv 3  | Lv 6  | Lv 9  | T1-2, T2-3, T3-4, T4-5 |
+| Sunken Temple  | Lv 10 | Lv 13 | Lv 16 | Lv 19 | T3-4, T4-5, T5-6, T6-7 |
+| Frozen Keep    | Lv 20 | Lv 24 | Lv 28 | Lv 32 | T5-6, T6-7, T7-8, T7-8 |
+
+### Gear
+
+- **24 weapons:** 8 swords, 8 staffs, 8 bows across tiers 1-8 (Common to Legendary). Higher tiers
+  have special effects: **Burn** (damage over time), **Frost** (slows enemies) or **Lifesteal**.
+- **8 armor sets** that work for every class, adding health and damage reduction, and show on your character.
+
+If your whole party dies, the run fails and you're back in the lobby. Progress saves automatically.
+
+### Studio test commands
+
+When playing in Roblox Studio (never in a live game), type in chat:
+`/level 20`, `/gold 5000`, `/give Dragonfang`, `/giveall`.
 
 ## Quick start (no setup)
 
@@ -44,28 +63,35 @@ Rebuild the file after code changes with `rojo build -o dungeon-delvers.rbxl`.
 ```
 src/
   shared/                 -> ReplicatedStorage.Shared
-    Config.luau             leveling, health/damage scaling, abilities, party size
-    Weapons.luau            every weapon (damage, speed, range, look, rarity)
+    Config.luau             leveling, classes, abilities, buffs, difficulties, potions
+    Items.luau              every weapon and armor (tiers, stats, effects, colors)
     Enemies.luau            every enemy and boss
-    Dungeons.luau           dungeons: rooms, boss, rewards, loot table, colors
+    Dungeons.luau           dungeons: rooms, boss, rewards, unlock levels + loot per difficulty
     Remotes.luau            RemoteEvents/RemoteFunctions
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
     Services/
       DataService.luau      load/save player data
-      PlayerService.luau    level, XP, gold, inventory, leaderstats
-      CombatService.luau    swords, swinging, abilities
+      PlayerService.luau    level, XP, gold, class, items, buffs, stats
+      CombatService.luau    weapon/armor models, attacks, effects, class abilities
       EnemyService.luau     builds enemies, AI, boss slam attack
-      DungeonService.luau   lobby portals, parties, dungeon building and runs
+      DungeonService.luau   lobby portals, difficulty picking, parties, dungeon runs, loot
+      ShopService.luau      potion shop stall, buying and drinking potions
+      DevService.luau       Studio-only chat commands for testing
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        HUD: health/XP bars, abilities, weapons menu, messages
+    Main.client.luau        input (attack, Q/E, 1-5, G) and wiring
+    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel
 ```
 
 ### Adding content
 
-- **New weapon:** add it to `Weapons.Defs` and `Weapons.Order`, then put it in a dungeon's `Loot` table.
+- **New weapon or armor:** add a line to `WEAPON_LIST` / `ARMOR_LIST` in `Items.luau`. It drops
+  automatically from any difficulty whose loot includes its tier.
+- **New potion:** add it to `Config.Potions` and `Config.PotionOrder`.
+- **New class:** add it to `Config.Classes` / `Config.ClassOrder` with a new weapon type and abilities
+  (abilities are coded in `CombatService`).
 - **New enemy:** add it to `Enemies.luau` (add a `Boss` table to make it a boss).
-- **New dungeon:** add it to `Dungeons.Defs` and `Dungeons.Order`. A new portal appears in the lobby automatically.
+- **New dungeon:** add it to `Dungeons.Defs` and `Dungeons.Order` with its 4 difficulties. A new portal appears in the lobby automatically.
 
 All maps and enemies are built from code, so no models or assets need importing.
 The server checks every action, so players can't cheat by editing their own client.

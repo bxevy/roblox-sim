@@ -4,57 +4,219 @@ local Config = {}
 
 Config.GameName = "Dungeon Delvers"
 
-Config.DataStoreName = "DungeonData_v1"
+Config.DataStoreName = "DungeonData_v2"
 Config.AutosaveInterval = 120 -- seconds
 
 Config.DefaultData = {
 	Level = 1,
 	XP = 0,
 	Gold = 0,
-	Equipped = "WoodenSword",
-	Inventory = { WoodenSword = true }, -- set of owned weapon ids
+	-- Class = nil until the player picks one
+	Weapons = {}, -- set of owned weapon ids
+	Armors = {}, -- set of owned armor ids
+	Equipped = {}, -- { Weapon = id?, Armor = id? }
+	Potions = {}, -- potion id -> count
 }
 
--- Leveling ---------------------------------------------------------------
+-- Leveling ------------------------------------------------------------------
 
 Config.MaxLevel = 100
 
 -- XP needed to go from `level` to `level + 1`.
 function Config.XPToLevel(level: number): number
-	return math.floor(100 * level ^ 1.5)
+	return math.floor(50 * level ^ 1.5)
 end
 
-function Config.MaxHealth(level: number): number
+function Config.BaseHealth(level: number): number
 	return 100 + (level - 1) * 15
 end
 
-function Config.DamageMultiplier(level: number): number
+function Config.LevelDamageMultiplier(level: number): number
 	return 1 + (level - 1) * 0.08
 end
 
--- Combat -----------------------------------------------------------------
+Config.BaseWalkSpeed = 16
+Config.MaxDefense = 0.8 -- damage reduction can never go above 80%
+
+-- Classes -------------------------------------------------------------------
+
+export type ClassDef = {
+	DisplayName: string,
+	Description: string,
+	WeaponType: string, -- "Sword" | "Staff" | "Bow"
+	StarterWeapon: string,
+	HealthMultiplier: number,
+	DamageMultiplier: number,
+	Defense: number,
+	SpeedMultiplier: number,
+	Abilities: { string }, -- first is on Q, second on E
+	Color: Color3,
+}
+
+Config.Classes = {
+	Warrior = {
+		DisplayName = "Warrior",
+		Description = "Sword fighter. Tough, extra health and defense.",
+		WeaponType = "Sword",
+		StarterWeapon = "WoodenSword",
+		HealthMultiplier = 1.3,
+		DamageMultiplier = 1,
+		Defense = 0.1,
+		SpeedMultiplier = 1,
+		Abilities = { "Whirlwind", "ShieldWall" },
+		Color = Color3.fromRGB(220, 70, 60),
+	},
+	Mage = {
+		DisplayName = "Mage",
+		Description = "Staff caster. Ranged magic that splashes, can heal the party.",
+		WeaponType = "Staff",
+		StarterWeapon = "ApprenticeStaff",
+		HealthMultiplier = 0.85,
+		DamageMultiplier = 1.25,
+		Defense = 0,
+		SpeedMultiplier = 1,
+		Abilities = { "Fireball", "HealingCircle" },
+		Color = Color3.fromRGB(80, 120, 255),
+	},
+	Ranger = {
+		DisplayName = "Ranger",
+		Description = "Archer. Long range, fast attacks, the quickest on their feet.",
+		WeaponType = "Bow",
+		StarterWeapon = "HuntingBow",
+		HealthMultiplier = 1,
+		DamageMultiplier = 1.1,
+		Defense = 0.05,
+		SpeedMultiplier = 1.15,
+		Abilities = { "Volley", "SwiftStep" },
+		Color = Color3.fromRGB(70, 190, 90),
+	},
+} :: { [string]: ClassDef }
+
+Config.ClassOrder = { "Warrior", "Mage", "Ranger" }
+
+-- Abilities -----------------------------------------------------------------
+
+Config.Abilities = {
+	-- Warrior
+	Whirlwind = {
+		DisplayName = "Whirlwind",
+		Cooldown = 8,
+		Radius = 14,
+		DamageMultiplier = 2.5, -- x weapon damage, hits everything around you
+		Color = Color3.fromRGB(255, 170, 60),
+	},
+	ShieldWall = {
+		DisplayName = "Shield Wall",
+		Cooldown = 18,
+		Buff = "ShieldWall",
+		Duration = 4,
+		Color = Color3.fromRGB(120, 170, 255),
+	},
+	-- Mage
+	Fireball = {
+		DisplayName = "Fireball",
+		Cooldown = 7,
+		Range = 50,
+		Radius = 10,
+		DamageMultiplier = 3,
+		Color = Color3.fromRGB(255, 110, 30),
+	},
+	HealingCircle = {
+		DisplayName = "Healing Circle",
+		Cooldown = 18,
+		Radius = 22,
+		HealPercent = 0.3, -- heals you and nearby teammates
+		Color = Color3.fromRGB(90, 230, 120),
+	},
+	-- Ranger
+	Volley = {
+		DisplayName = "Volley",
+		Cooldown = 7,
+		Range = 55,
+		MaxTargets = 5,
+		DamageMultiplier = 1.8,
+		Color = Color3.fromRGB(230, 220, 120),
+	},
+	SwiftStep = {
+		DisplayName = "Swift Step",
+		Cooldown = 12,
+		Buff = "SwiftStep",
+		Duration = 4,
+		Color = Color3.fromRGB(120, 255, 200),
+	},
+}
+
+-- Buffs (from abilities and potions). Values are added together.
+--   Damage: +x damage, Speed: +x walk speed, Defense: +x damage reduction
+Config.Buffs = {
+	ShieldWall = { DisplayName = "Shield Wall", Defense = 0.6 },
+	SwiftStep = { DisplayName = "Swift Step", Speed = 0.6 },
+	Strength = { DisplayName = "Strength", Damage = 0.3 },
+	Swiftness = { DisplayName = "Swiftness", Speed = 0.3 },
+	Ironskin = { DisplayName = "Ironskin", Defense = 0.25 },
+}
 
 Config.CritChance = 0.1
 Config.CritMultiplier = 2
 
-Config.Abilities = {
-	Whirlwind = {
-		Key = Enum.KeyCode.Q,
-		DisplayName = "Whirlwind",
-		Cooldown = 8,
-		Radius = 14,
-		DamageMultiplier = 2.5, -- x your weapon damage, hits everything around you
-		Color = Color3.fromRGB(255, 170, 60),
+-- Difficulties --------------------------------------------------------------
+-- Which level unlocks each difficulty and what loot it drops is set per dungeon
+-- in Dungeons.luau. These multipliers apply to every dungeon.
+
+Config.Difficulties = {
+	Easy = { DisplayName = "Easy", Health = 0.7, Damage = 0.6, Rewards = 0.7, Color = Color3.fromRGB(110, 210, 110) },
+	Normal = { DisplayName = "Normal", Health = 1, Damage = 1, Rewards = 1, Color = Color3.fromRGB(240, 220, 90) },
+	Hard = { DisplayName = "Hard", Health = 1.6, Damage = 1.4, Rewards = 1.75, Color = Color3.fromRGB(255, 140, 50) },
+	Nightmare = { DisplayName = "Nightmare", Health = 2.6, Damage = 2, Rewards = 2.75, Color = Color3.fromRGB(200, 50, 70) },
+}
+Config.DifficultyOrder = { "Easy", "Normal", "Hard", "Nightmare" }
+
+-- Shop ----------------------------------------------------------------------
+
+Config.Potions = {
+	HealthPotion = {
+		DisplayName = "Health Potion",
+		Description = "Restores 40% health",
+		Price = 25,
+		Heal = 0.4,
+		Color = Color3.fromRGB(230, 60, 60),
 	},
-	Heal = {
-		Key = Enum.KeyCode.E,
-		DisplayName = "Heal",
-		Cooldown = 20,
-		HealPercent = 0.35, -- of max health
-		Color = Color3.fromRGB(90, 230, 120),
+	GreaterHealthPotion = {
+		DisplayName = "Greater Health Potion",
+		Description = "Restores all health",
+		Price = 120,
+		Heal = 1,
+		Color = Color3.fromRGB(255, 40, 120),
+	},
+	StrengthPotion = {
+		DisplayName = "Strength Potion",
+		Description = "+30% damage for 60s",
+		Price = 150,
+		Buff = "Strength",
+		Duration = 60,
+		Color = Color3.fromRGB(255, 150, 40),
+	},
+	SwiftnessPotion = {
+		DisplayName = "Swiftness Potion",
+		Description = "+30% speed for 60s",
+		Price = 80,
+		Buff = "Swiftness",
+		Duration = 60,
+		Color = Color3.fromRGB(80, 220, 255),
+	},
+	IronskinPotion = {
+		DisplayName = "Ironskin Potion",
+		Description = "+25% damage reduction for 60s",
+		Price = 150,
+		Buff = "Ironskin",
+		Duration = 60,
+		Color = Color3.fromRGB(170, 170, 190),
 	},
 }
-Config.AbilityOrder = { "Whirlwind", "Heal" }
+-- Hotbar order: keys 1-5
+Config.PotionOrder = { "HealthPotion", "GreaterHealthPotion", "StrengthPotion", "SwiftnessPotion", "IronskinPotion" }
+Config.MaxPotionStack = 10
+Config.HealPotionCooldown = 3 -- seconds between healing potions
 
 Config.Rarities = {
 	Common = Color3.fromRGB(200, 200, 200),
@@ -64,7 +226,7 @@ Config.Rarities = {
 	Legendary = Color3.fromRGB(255, 160, 40),
 }
 
--- Parties ----------------------------------------------------------------
+-- Parties -------------------------------------------------------------------
 
 Config.Party = {
 	MaxSize = 4,
@@ -72,7 +234,7 @@ Config.Party = {
 	PadRadius = 7,
 }
 
--- Gold given instead of a weapon you already own.
-Config.DuplicateWeaponGold = 25
+-- Gold given instead of an item you already own (x item tier).
+Config.DuplicateGoldPerTier = 20
 
 return Config

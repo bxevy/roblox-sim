@@ -1,8 +1,9 @@
 -- Lobby portals, parties, and dungeon runs.
 --
--- Stand on a portal pad -> after a countdown everyone on it is sent into a fresh copy of
--- that dungeon. Each dungeon is a line of rooms joined by corridors. Clearing a room opens
--- the next door; the last room holds the boss. Beat the boss for XP, gold and a weapon.
+-- Stand on a portal pad and pick a difficulty -> after a countdown everyone on it who has
+-- unlocked that difficulty is sent into a fresh copy of the dungeon. Each dungeon is a line of rooms joined by corridors. Clearing a room opens
+-- the next door; the last room holds the boss. Beat the boss for XP, gold and an item
+-- (a weapon for your class, or armor) from that difficulty's loot tiers.
 -- If everyone in the party dies, the run fails.
 
 local Players = game:GetService("Players")
@@ -13,7 +14,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Dungeons = require(ReplicatedStorage.Shared.Dungeons)
 local Enemies = require(ReplicatedStorage.Shared.Enemies)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local Weapons = require(ReplicatedStorage.Shared.Weapons)
+local Items = require(ReplicatedStorage.Shared.Items)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
 
@@ -44,6 +45,10 @@ type Room = {
 
 type Run = {
 	Def: Dungeons.DungeonDef,
+	DifficultyId: string,
+	HealthMultiplier: number,
+	DamageMultiplier: number,
+	RewardMultiplier: number,
 	Slot: number,
 	Folder: Folder,
 	Rooms: { Room },
@@ -244,6 +249,7 @@ local function leaveRun(run: Run, player: Player)
 		return
 	end
 	Remotes.DungeonStatus:FireClient(player, nil)
+	player:SetAttribute("InDungeon", nil)
 	run.Players[player] = nil
 	playerRun[player] = nil
 	local connection = run.Connections[player]
@@ -261,19 +267,36 @@ local function failRun(run: Run)
 	cleanupRun(run)
 end
 
-local function rollLoot(def: Dungeons.DungeonDef): string
+local function pickWeighted<T>(weights: { [T]: number }): T
 	local total = 0
-	for _, entry in def.Loot do
-		total += entry.Weight
+	for _, weight in weights do
+		total += weight
 	end
 	local roll = math.random() * total
-	for _, entry in def.Loot do
-		roll -= entry.Weight
+	local last
+	for key, weight in weights do
+		last = key
+		roll -= weight
 		if roll <= 0 then
-			return entry.Weapon
+			return key
 		end
 	end
-	return def.Loot[#def.Loot].Weapon
+	return last
+end
+
+-- Rolls one item for a player: a weapon for their class (60%) or armor (40%).
+local function rollLoot(player: Player, run: Run): (string, string)
+	local settings = run.Def.Difficulties[run.DifficultyId]
+	local tier = pickWeighted(settings.Loot)
+	local class = PlayerService.GetClass(player)
+	if class and math.random() < 0.6 then
+		local options = Items.WeaponsOfType(class.WeaponType, tier)
+		if #options > 0 then
+			return "Weapon", options[math.random(#options)].Id
+		end
+	end
+	local options = Items.ArmorsOfTier(tier)
+	return "Armor", options[math.random(#options)].Id
 end
 
 local function winRun(run: Run)
@@ -282,22 +305,23 @@ local function winRun(run: Run)
 	end
 	run.Ended = true
 	local def = run.Def
-	setStatus(run, `{def.DisplayName} - CLEARED!`)
+	setStatus(run, `{def.DisplayName} ({run.DifficultyId}) - CLEARED!`)
 	notifyRun(run, "VICTORY!", Color3.fromRGB(255, 220, 80))
 
 	for player in run.Players do
-		PlayerService.AddXP(player, def.Rewards.XP)
-		PlayerService.AddGold(player, def.Rewards.Gold)
+		PlayerService.AddXP(player, def.Rewards.XP * run.RewardMultiplier)
+		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier)
 
-		local weaponId = rollLoot(def)
-		local weapon = Weapons.Defs[weaponId]
-		local color = Config.Rarities[weapon.Rarity]
+		local kind, itemId = rollLoot(player, run)
+		local item: any = if kind == "Weapon" then Items.Weapons[itemId] else Items.Armors[itemId]
+		local color = Config.Rarities[item.Rarity]
 		task.delay(1.5, function()
-			if PlayerService.GiveWeapon(player, weaponId) then
-				PlayerService.Notify(player, `You found: {weapon.DisplayName} ({weapon.Rarity})!`, color)
+			if PlayerService.GiveItem(player, kind, itemId) then
+				PlayerService.Notify(player, `You found: {item.DisplayName} ({item.Rarity})!`, color)
 			else
-				PlayerService.AddGold(player, Config.DuplicateWeaponGold)
-				PlayerService.Notify(player, `Duplicate {weapon.DisplayName} - +{Config.DuplicateWeaponGold} Gold`, color)
+				local gold = Config.DuplicateGoldPerTier * item.Tier
+				PlayerService.AddGold(player, gold)
+				PlayerService.Notify(player, `Duplicate {item.DisplayName} - +{gold} Gold`, color)
 			end
 		end)
 	end
@@ -318,10 +342,10 @@ local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enem
 		return
 	end
 	run.Enemies[enemy] = nil
-	local power = run.Def.Power
+	local multiplier = run.Def.Power * run.RewardMultiplier
 	for player in run.Players do
-		PlayerService.AddXP(player, enemy.Def.XP * power)
-		PlayerService.AddGold(player, enemy.Def.Gold * power)
+		PlayerService.AddXP(player, enemy.Def.XP * multiplier)
+		PlayerService.AddGold(player, enemy.Def.Gold * multiplier)
 	end
 
 	run.Remaining -= 1
@@ -339,7 +363,8 @@ end
 local function spawnInRoom(run: Run, roomIndex: number, enemyId: string, position: Vector3)
 	local enemy
 	enemy = EnemyService.Spawn(enemyId, {
-		Power = run.Def.Power,
+		HealthMultiplier = run.HealthMultiplier,
+		DamageMultiplier = run.DamageMultiplier,
 		Position = position,
 		Parent = run.Folder,
 		GetTargets = function()
@@ -361,16 +386,17 @@ activateRoom = function(run: Run, index: number)
 	local def = run.Def
 	local room = run.Rooms[index]
 	local combatRooms = #def.Rooms
+	local title = `{def.DisplayName} ({run.DifficultyId})`
 	run.Remaining = 0
 
 	if index == #run.Rooms then
-		setStatus(run, `{def.DisplayName} - BOSS`)
+		setStatus(run, `{title} - BOSS`)
 		notifyRun(run, `{Enemies[def.Boss].DisplayName} awaits...`, Color3.fromRGB(255, 90, 90))
 		spawnInRoom(run, index, def.Boss, room.Center + Vector3.new(0, 0, room.Size / 4))
 		return
 	end
 
-	setStatus(run, `{def.DisplayName} - Room {index - 1}/{combatRooms}`)
+	setStatus(run, `{title} - Room {index - 1}/{combatRooms}`)
 	local spread = room.Size / 2 - 8
 	for enemyId, count in def.Rooms[index - 1] do
 		for _ = 1, count do
@@ -380,18 +406,23 @@ activateRoom = function(run: Run, index: number)
 	end
 end
 
-local function startRun(def: Dungeons.DungeonDef, party: { Player })
+local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: { Player })
 	local slot = 1
 	while runsBySlot[slot] do
 		slot += 1
 	end
 
 	local folder = Instance.new("Folder")
-	folder.Name = `{def.DisplayName} #{slot}`
+	folder.Name = `{def.DisplayName} {difficultyId} #{slot}`
 	folder.Parent = dungeonsFolder
 
+	local difficulty = Config.Difficulties[difficultyId]
 	local run: Run = {
 		Def = def,
+		DifficultyId = difficultyId,
+		HealthMultiplier = def.Power * difficulty.Health,
+		DamageMultiplier = def.Power * difficulty.Damage,
+		RewardMultiplier = difficulty.Rewards,
 		Slot = slot,
 		Folder = folder,
 		Rooms = {},
@@ -411,6 +442,7 @@ local function startRun(def: Dungeons.DungeonDef, party: { Player })
 		if humanoid and humanoid.Health > 0 then
 			run.Players[player] = true
 			playerRun[player] = run
+			player:SetAttribute("InDungeon", true)
 			run.Connections[player] = humanoid.Died:Connect(function()
 				PlayerService.Notify(player, "You were defeated!", Color3.fromRGB(255, 80, 80))
 				leaveRun(run, player)
@@ -428,8 +460,8 @@ local function startRun(def: Dungeons.DungeonDef, party: { Player })
 		return
 	end
 
-	setStatus(run, def.DisplayName)
-	notifyRun(run, `Entering {def.DisplayName}... get ready!`)
+	setStatus(run, `{def.DisplayName} ({difficultyId})`)
+	notifyRun(run, `Entering {def.DisplayName} on {difficultyId}... get ready!`, difficulty.Color)
 	task.delay(START_DELAY, function()
 		if run.Ended then
 			return
@@ -442,11 +474,14 @@ end
 -- Lobby & portals ------------------------------------------------------------
 
 type Portal = {
+	Id: string,
 	Def: Dungeons.DungeonDef,
 	Pad: BasePart,
 	Label: TextLabel,
+	DifficultyId: string,
 	Countdown: number?,
-	Warned: { [Player]: boolean },
+	OnPad: { [Player]: true },
+	Warned: { [Player]: string }, -- player -> difficulty they were last warned about
 }
 
 local portals: { Portal } = {}
@@ -481,13 +516,15 @@ local function buildLobby()
 		nameLabel.TextColor3 = color
 
 		local infoLabel = billboard(pad, UDim2.fromOffset(240, 60), Vector3.new(0, 5, 0))
-		infoLabel.Text = `Level {def.MinLevel}+`
 
 		table.insert(portals, {
+			Id = dungeonId,
 			Def = def,
 			Pad = pad,
 			Label = infoLabel,
+			DifficultyId = "Easy",
 			Countdown = nil,
+			OnPad = {},
 			Warned = {},
 		})
 	end
@@ -509,45 +546,122 @@ local function playersOnPad(pad: BasePart): { Player }
 	return found
 end
 
+local function idleText(def: Dungeons.DungeonDef): string
+	return `Level {def.Difficulties.Easy.Level}+`
+end
+
+-- What the portal panel on the client shows while you stand on a pad.
+local function portalInfo(portal: Portal, player: Player, partySize: number)
+	local level = PlayerService.GetLevel(player)
+	local difficulties = {}
+	for _, difficultyId in Config.DifficultyOrder do
+		local settings = portal.Def.Difficulties[difficultyId]
+		local tiers = {}
+		for tier in settings.Loot do
+			table.insert(tiers, tier)
+		end
+		table.sort(tiers)
+		table.insert(difficulties, {
+			Id = difficultyId,
+			Level = settings.Level,
+			Unlocked = level >= settings.Level,
+			LootTiers = tiers,
+		})
+	end
+	return {
+		DungeonId = portal.Id,
+		DisplayName = portal.Def.DisplayName,
+		Difficulty = portal.DifficultyId,
+		Difficulties = difficulties,
+		Countdown = portal.Countdown,
+		PartySize = partySize,
+	}
+end
+
 local function updatePortal(portal: Portal)
 	local def = portal.Def
+	local requiredLevel = def.Difficulties[portal.DifficultyId].Level
 	local party = {}
 	local onPad = {}
+
 	for _, player in playersOnPad(portal.Pad) do
 		onPad[player] = true
-		if PlayerService.GetLevel(player) < def.MinLevel then
-			if not portal.Warned[player] then
-				portal.Warned[player] = true
-				PlayerService.Notify(player, `You need to be level {def.MinLevel} for {def.DisplayName}`, Color3.fromRGB(255, 90, 90))
+		local reason
+		if not PlayerService.GetClass(player) then
+			reason = "Choose a class first!"
+		elseif PlayerService.GetLevel(player) < requiredLevel then
+			reason = `{def.DisplayName} on {portal.DifficultyId} needs level {requiredLevel}`
+		end
+		if reason then
+			if portal.Warned[player] ~= portal.DifficultyId then
+				portal.Warned[player] = portal.DifficultyId
+				PlayerService.Notify(player, reason, Color3.fromRGB(255, 90, 90))
 			end
 		elseif #party < Config.Party.MaxSize then
 			table.insert(party, player)
 		end
 	end
-	for player in portal.Warned do
+
+	-- Players who stepped off the pad: hide their portal panel.
+	for player in portal.OnPad do
 		if not onPad[player] then
 			portal.Warned[player] = nil
+			if player.Parent then
+				Remotes.PortalUpdate:FireClient(player, nil)
+			end
 		end
+	end
+	portal.OnPad = onPad
+
+	if next(onPad) == nil then
+		portal.DifficultyId = "Easy"
 	end
 
 	if #party == 0 then
 		portal.Countdown = nil
-		portal.Label.Text = `Level {def.MinLevel}+`
-		return
+		portal.Label.Text = idleText(def)
+	else
+		portal.Countdown = (portal.Countdown or Config.Party.Countdown + 1) - 1
+		if portal.Countdown <= 0 then
+			portal.Countdown = nil
+			portal.Label.Text = idleText(def)
+			task.spawn(startRun, def, portal.DifficultyId, party)
+			return
+		end
+		portal.Label.Text = `{portal.DifficultyId} - starting in {portal.Countdown}\n{#party}/{Config.Party.MaxSize} players`
 	end
 
-	portal.Countdown = (portal.Countdown or Config.Party.Countdown + 1) - 1
-	if portal.Countdown <= 0 then
-		portal.Countdown = nil
-		portal.Label.Text = `Level {def.MinLevel}+`
-		task.spawn(startRun, def, party)
-	else
-		portal.Label.Text = `Starting in {portal.Countdown}\n{#party}/{Config.Party.MaxSize} players`
+	for player in onPad do
+		Remotes.PortalUpdate:FireClient(player, portalInfo(portal, player, #party))
 	end
+end
+
+local function onSetDifficulty(player: Player, difficultyId: unknown): (boolean, string?)
+	if type(difficultyId) ~= "string" or not Config.Difficulties[difficultyId] then
+		return false, "Unknown difficulty"
+	end
+	for _, portal in portals do
+		if portal.OnPad[player] then
+			local required = portal.Def.Difficulties[difficultyId].Level
+			if PlayerService.GetLevel(player) < required then
+				return false, `Reach level {required} to unlock {difficultyId}`
+			end
+			if portal.DifficultyId ~= difficultyId then
+				portal.DifficultyId = difficultyId
+				portal.Countdown = nil -- restart the countdown so everyone sees the change
+				for other in portal.OnPad do
+					PlayerService.Notify(other, `{player.DisplayName} set difficulty to {difficultyId}`, Config.Difficulties[difficultyId].Color)
+				end
+			end
+			return true
+		end
+	end
+	return false, "Stand on a portal first"
 end
 
 function DungeonService.Start()
 	buildLobby()
+	Remotes.SetDifficulty.OnServerInvoke = onSetDifficulty
 
 	Players.PlayerRemoving:Connect(function(player)
 		local run = playerRun[player]

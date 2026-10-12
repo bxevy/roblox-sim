@@ -11,11 +11,15 @@ local PlayerService = require(Services.PlayerService)
 local EnemyService = require(Services.EnemyService)
 local CombatService = require(Services.CombatService)
 local DungeonService = require(Services.DungeonService)
+local ShopService = require(Services.ShopService)
+local DevService = require(Services.DevService)
 
 PlayerService.Start()
 CombatService.Start()
 EnemyService.Start()
 DungeonService.Start()
+ShopService.Start()
+DevService.Start()
 DataService.Start() -- last, so every service is listening before player data loads
 
 print("[Server] Started")

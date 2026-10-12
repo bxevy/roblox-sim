@@ -18,6 +18,7 @@ export type Enemy = {
 	Humanoid: Humanoid,
 	Def: Enemies.EnemyDef,
 	Damage: number,
+	DamageMultiplier: number,
 	Radius: number,
 	GroundOffset: number, -- distance from Root center down to the floor
 	GetTargets: () -> { Player },
@@ -26,10 +27,12 @@ export type Enemy = {
 	LastSlam: number,
 	Busy: boolean,
 	Dead: boolean,
+	SlowedUntil: number,
 }
 
 export type SpawnOptions = {
-	Power: number,
+	HealthMultiplier: number,
+	DamageMultiplier: number,
 	Position: Vector3, -- point on the floor
 	Parent: Instance,
 	GetTargets: () -> { Player },
@@ -134,7 +137,7 @@ end
 
 -- Effects ------------------------------------------------------------------
 
-local function showDamageNumber(enemy: Enemy, amount: number, isCrit: boolean)
+local function showDamageNumber(enemy: Enemy, amount: number, isCrit: boolean, color: Color3?)
 	local anchor = Instance.new("Attachment")
 	anchor.Position = Vector3.new(math.random(-10, 10) / 10, enemy.Root.Size.Y, 0)
 	anchor.Parent = enemy.Root
@@ -151,7 +154,7 @@ local function showDamageNumber(enemy: Enemy, amount: number, isCrit: boolean)
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
 	label.TextStrokeTransparency = 0.2
-	label.TextColor3 = if isCrit then Color3.fromRGB(255, 200, 40) else Color3.new(1, 1, 1)
+	label.TextColor3 = color or if isCrit then Color3.fromRGB(255, 200, 40) else Color3.new(1, 1, 1)
 	label.Text = if isCrit then `{amount}!` else tostring(amount)
 	label.Parent = gui
 
@@ -171,6 +174,16 @@ local function flash(model: Model, color: Color3)
 end
 
 -- AI -----------------------------------------------------------------------
+
+-- Hurts a player's character, reduced by their Defense (armor, class, buffs).
+local function damagePlayer(humanoid: Humanoid, amount: number)
+	local character = humanoid.Parent
+	local defense = character and character:GetAttribute("Defense") or 0
+	humanoid:TakeDamage(amount * (1 - defense))
+	if character then
+		flash(character :: Model, Color3.fromRGB(255, 60, 60))
+	end
+end
 
 local function findTarget(enemy: Enemy): (Humanoid?, BasePart?, number)
 	local bestHumanoid, bestRoot, bestDistance = nil, nil, AGGRO_RANGE
@@ -223,7 +236,7 @@ local function slam(enemy: Enemy)
 		return
 	end
 
-	local damage = boss.SlamDamage * (enemy.Damage / enemy.Def.Damage)
+	local damage = boss.SlamDamage * enemy.DamageMultiplier
 	for _, player in enemy.GetTargets() do
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -231,7 +244,7 @@ local function slam(enemy: Enemy)
 		if humanoid and root then
 			local offset = root.Position - center
 			if Vector3.new(offset.X, 0, offset.Z).Magnitude <= boss.SlamRadius then
-				humanoid:TakeDamage(damage)
+				damagePlayer(humanoid, damage)
 			end
 		end
 	end
@@ -280,10 +293,7 @@ local function think(enemy: Enemy, now: number)
 	faceTowards(enemy, targetRoot.Position)
 	if now - enemy.LastAttack >= enemy.Def.AttackCooldown then
 		enemy.LastAttack = now
-		targetHumanoid:TakeDamage(enemy.Damage)
-		if targetHumanoid.Parent then
-			flash(targetHumanoid.Parent :: Model, Color3.fromRGB(255, 60, 60))
-		end
+		damagePlayer(targetHumanoid, enemy.Damage)
 	end
 end
 
@@ -294,7 +304,7 @@ function EnemyService.Spawn(enemyId: string, options: SpawnOptions): Enemy
 	assert(def, `Unknown enemy {enemyId}`)
 
 	local model, root, head, humanoid, groundOffset = buildModel(def)
-	humanoid.MaxHealth = math.floor(def.Health * options.Power)
+	humanoid.MaxHealth = math.floor(def.Health * options.HealthMultiplier)
 	humanoid.Health = humanoid.MaxHealth
 	humanoid.WalkSpeed = def.Speed
 
@@ -303,7 +313,8 @@ function EnemyService.Spawn(enemyId: string, options: SpawnOptions): Enemy
 		Root = root,
 		Humanoid = humanoid,
 		Def = def,
-		Damage = def.Damage * options.Power,
+		Damage = def.Damage * options.DamageMultiplier,
+		DamageMultiplier = options.DamageMultiplier,
 		Radius = root.Size.X / 2,
 		GroundOffset = groundOffset,
 		GetTargets = options.GetTargets,
@@ -313,6 +324,7 @@ function EnemyService.Spawn(enemyId: string, options: SpawnOptions): Enemy
 		LastSlam = os.clock(),
 		Busy = false,
 		Dead = false,
+		SlowedUntil = 0,
 	}
 	buildHealthBar(enemy, head)
 
@@ -353,14 +365,31 @@ function EnemyService.GetEnemiesNear(position: Vector3, radius: number): { Enemy
 	return found
 end
 
-function EnemyService.Damage(enemy: Enemy, amount: number, isCrit: boolean)
+-- `color` tints the damage number (used for burn ticks etc).
+function EnemyService.Damage(enemy: Enemy, amount: number, isCrit: boolean, color: Color3?): number
 	if enemy.Dead then
-		return
+		return 0
 	end
 	amount = math.max(1, math.floor(amount))
 	enemy.Humanoid.Health = math.max(0, enemy.Humanoid.Health - amount)
-	showDamageNumber(enemy, amount, isCrit)
-	flash(enemy.Model, Color3.new(1, 1, 1))
+	showDamageNumber(enemy, amount, isCrit, color)
+	flash(enemy.Model, color or Color3.new(1, 1, 1))
+	return amount
+end
+
+-- Slows an enemy by `fraction` (0.4 = 40% slower) for `duration` seconds.
+function EnemyService.Slow(enemy: Enemy, fraction: number, duration: number)
+	if enemy.Dead then
+		return
+	end
+	local untilTime = os.clock() + duration
+	enemy.SlowedUntil = math.max(enemy.SlowedUntil, untilTime)
+	enemy.Humanoid.WalkSpeed = enemy.Def.Speed * (1 - fraction)
+	task.delay(duration, function()
+		if not enemy.Dead and os.clock() >= enemy.SlowedUntil - 0.05 then
+			enemy.Humanoid.WalkSpeed = enemy.Def.Speed
+		end
+	end)
 end
 
 function EnemyService.Start()
