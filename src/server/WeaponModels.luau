@@ -998,6 +998,72 @@ local function buildHalberd(b: Builder, length: number)
 	finish(b, main, Vector3.new(0, top - 1.2, 0), Vector3.new(0, tipY, 0))
 end
 
+-- Lanterns (Pumpkin Warlock) ---------------------------------------------------------------
+-- A staff with an arm at the top; the lantern hangs from it on a short chain.
+
+local function buildLantern(b: Builder, length: number)
+	local w, d = b.Weapon, b.Weapon.Design
+	local glow = d.Glow or w.Color
+	local top = length / 2
+	local s = 1 + w.Tier * 0.06
+	for _, y in { -top + 0.1, top - 0.2 } do
+		cylinder(b, "StaffBand", 0.36, 0.18, Vector3.new(0, y, 0), w.Color, M.Metal)
+	end
+	-- Arm reaching forward and a curl at its end
+	add(b, "LanternArm", Vector3.new(0.22, 0.22, 1.4), CFrame.new(0, top - 0.05, -0.6), w.Accent, M.Metal)
+	ball(b, "ArmCurl", 0.32, Vector3.new(0, top + 0.08, -1.3), w.Accent, M.Metal)
+	for i = 0, 2 do
+		add(b, "ChainLink", Vector3.new(0.12, 0.22, 0.06), CFrame.new(0, top - 0.25 - i * 0.2, -1.2) * CFrame.Angles(0, math.rad(i * 90), 0), rgb(60, 60, 65), M.Metal)
+	end
+	local center = Vector3.new(0, top - 0.95 - 0.35 * s, -1.2)
+	local main: BasePart
+	local head = d.Head or "Pumpkin"
+	if head == "Cage" then
+		add(b, "CageTop", Vector3.new(0.6 * s, 0.14, 0.6 * s), CFrame.new(center + Vector3.new(0, 0.45 * s, 0)), w.Color, M.Metal)
+		add(b, "CageBottom", Vector3.new(0.6 * s, 0.14, 0.6 * s), CFrame.new(center - Vector3.new(0, 0.45 * s, 0)), w.Color, M.Metal)
+		for _, corner in { Vector3.new(1, 0, 1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, -1) } do
+			add(b, "CageBar", Vector3.new(0.07, 0.9 * s, 0.07), CFrame.new(center + corner * 0.26 * s), w.Color, M.Metal)
+		end
+		main = add(b, "LanternFlame", Vector3.new(0.3, 0.5, 0.3) * s, CFrame.new(center), glow, M.Neon)
+		main.Transparency = 0.1
+		local glass = add(b, "LanternGlass", Vector3.new(0.48, 0.78, 0.48) * s, CFrame.new(center), glow, M.Glass)
+		glass.Transparency = 0.6
+	elseif head == "Skull" then
+		main = ball(b, "Skull", 0.75 * s, center, rgb(230, 225, 205), M.SmoothPlastic)
+		add(b, "SkullJaw", Vector3.new(0.45, 0.2, 0.4) * s, CFrame.new(center + Vector3.new(0, -0.35 * s, -0.05)), rgb(220, 215, 195), M.SmoothPlastic)
+		for _, side in { -1, 1 } do
+			add(b, "SkullEye", Vector3.new(0.18, 0.18, 0.08) * s, CFrame.new(center + Vector3.new(side * 0.16 * s, 0.05 * s, -0.36 * s)), glow, M.Neon)
+		end
+	elseif head == "Moon" then
+		main = ball(b, "Moon", 0.85 * s, center, glow, M.Neon)
+		curve(b, "MoonCrescent", center + Vector3.new(0, -0.6 * s, 0.1), Vector3.new(0, 0, -1), 100, -35, 5, 0.32 * s, Vector2.new(0.1, 0.18), w.Accent, M.Metal)
+		-- A tiny pumpkin sitting on the moon
+		ball(b, "TinyPumpkin", 0.35 * s, center + Vector3.new(0, 0.55 * s, 0), rgb(240, 120, 20), M.SmoothPlastic)
+	else -- Pumpkin
+		local size = 0.85 * s
+		main = ball(b, "Pumpkin", size, center, rgb(240, 120, 20), M.SmoothPlastic)
+		for i = 0, 2 do
+			add(b, "PumpkinRib", Vector3.new(0.06, size * 1.03, size * 1.03), CFrame.new(center) * CFrame.Angles(0, i / 3 * math.pi, 0), rgb(200, 90, 15), M.SmoothPlastic, Enum.PartType.Cylinder)
+		end
+		add(b, "PumpkinStem", Vector3.new(0.1, 0.22, 0.1), CFrame.new(center + Vector3.new(0, size * 0.55, 0)), rgb(70, 100, 40), M.Wood)
+		for _, side in { -1, 1 } do
+			add(b, "PumpkinEye", Vector3.new(0.16, 0.13, 0.06), CFrame.new(center + Vector3.new(side * size * 0.18, size * 0.1, -size * 0.49)) * CFrame.Angles(0, 0, math.rad(side * 15)), glow, M.Neon)
+			if d.Horns then
+				curve(b, "PumpkinHorn", center + Vector3.new(side * size * 0.35, size * 0.3, 0), Vector3.new(side, 0, 0), 40, 20, 3, 0.18 * s, Vector2.new(0.08, 0.08), rgb(25, 20, 25), M.Slate, glow)
+			end
+		end
+		add(b, "PumpkinGrin", Vector3.new(size * 0.5, 0.1, 0.06), CFrame.new(center + Vector3.new(0, -size * 0.15, -size * 0.48)), glow, M.Neon)
+	end
+	local fire = Instance.new("Fire")
+	fire.Color = glow
+	fire.SecondaryColor = glow:Lerp(rgb(0, 0, 0), 0.4)
+	fire.Size = 1.5
+	fire.Heat = 4
+	fire.Parent = main
+	light(main, glow, 12, 1.6)
+	finish(b, main, Vector3.new(0, top - 1, 0), center)
+end
+
 -- Public ----------------------------------------------------------------------------------
 
 function WeaponModels.Build(weapon: Items.WeaponDef): Tool
@@ -1023,6 +1089,11 @@ function WeaponModels.Build(weapon: Items.WeaponDef): Tool
 		-- Lying in the palm, tilted up toward your face
 		tool.Grip = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(-30), 0, 0)
 		buildTome({ Tool = tool, Handle = handle, Weapon = weapon })
+	elseif t == "Lantern" then
+		local length = 4.6 + weapon.Tier * 0.1
+		handle = newPart(tool, "Handle", Vector3.new(0.28, length, 0.28), weapon.Accent:Lerp(rgb(35, 28, 24), 0.7), M.Wood)
+		tool.Grip = CFrame.new(0, -length / 6, 0) * CFrame.Angles(STAFF_TILT, 0, 0)
+		buildLantern({ Tool = tool, Handle = handle, Weapon = weapon }, length)
 	elseif t == "Axe" then
 		handle = newPart(tool, "Handle", Vector3.new(0.32, 1, 0.32), LEATHER, M.Leather)
 		tool.Grip = CFrame.Angles(SWORD_TILT, 0, 0)

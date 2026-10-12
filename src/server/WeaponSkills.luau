@@ -27,6 +27,7 @@ export type Context = {
 	Pull: (enemy: any, toward: Vector3, step: number) -> (),
 	Stun: (enemy: any, duration: number) -> (),
 	Knockback: (enemy: any, from: Vector3, force: number) -> (),
+	Move: (motion: { [string]: any }) -> (), -- smooth client-side dash/leap of the player
 }
 
 local rayParams = RaycastParams.new()
@@ -175,8 +176,7 @@ MECHANICS.Blink = function(ctx)
 		Debris:AddItem(ghost, 0.4)
 	end
 	Effects.beam(start, finish, s.Color, 0.6, 0.3)
-	local character = ctx.Root.Parent :: Model
-	character:PivotTo(CFrame.lookAt(finish, finish + ctx.Aim))
+	ctx.Move({ Kind = "Dash", Target = finish, Duration = 0.15 })
 	hitAll(ctx, enemiesAlongLine(ctx, start, finish, 4), s.Damage)
 end
 
@@ -483,30 +483,75 @@ end
 
 MECHANICS.Summon = function(ctx)
 	local s = ctx.Skill
-	local blades = {}
+	-- The blades are welded to an invisible hub that physics keeps on the player and spins,
+	-- so the orbit is smooth on every screen.
+	local hub = Instance.new("Part")
+	hub.Name = "SummonHub"
+	hub.Size = Vector3.one * 0.5
+	hub.Transparency = 1
+	hub.CanCollide = false
+	hub.CanQuery = false
+	hub.CanTouch = false
+	hub.Massless = true
+	hub.CFrame = ctx.Root.CFrame
+	local hubAttachment = Instance.new("Attachment")
+	hubAttachment.Parent = hub
+	local rootAttachment = Instance.new("Attachment")
+	rootAttachment.Name = "SummonAnchor"
+	rootAttachment.Parent = ctx.Root
+	local follow = Instance.new("AlignPosition")
+	follow.Attachment0 = hubAttachment
+	follow.Attachment1 = rootAttachment
+	follow.RigidityEnabled = true
+	follow.Parent = hub
+	local spin = Instance.new("AngularVelocity")
+	spin.Attachment0 = hubAttachment
+	spin.AngularVelocity = Vector3.new(0, 6, 0)
+	spin.MaxTorque = math.huge
+	spin.RelativeTo = Enum.ActuatorRelativeTo.World
+	spin.Parent = hub
+	local upright = Instance.new("AlignOrientation")
+	upright.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	upright.Attachment0 = hubAttachment
+	upright.AlignType = Enum.AlignType.PrimaryAxisParallel
+	upright.PrimaryAxis = Vector3.yAxis
+	upright.RigidityEnabled = true
+	upright.Parent = hub
 	for i = 1, 3 do
-		blades[i] = Effects.part({ Size = Vector3.new(0.2, 0.5, 2.2), Color = s.Color, Transparency = 0.2, CFrame = ctx.Root.CFrame })
+		local angle = i / 3 * math.pi * 2
+		local blade = Instance.new("Part")
+		blade.Name = "SummonBlade"
+		blade.Size = Vector3.new(0.2, 0.5, 2.2)
+		blade.Color = s.Color
+		blade.Material = Enum.Material.Neon
+		blade.Transparency = 0.2
+		blade.CanCollide = false
+		blade.CanQuery = false
+		blade.CanTouch = false
+		blade.Massless = true
+		local offset = Vector3.new(math.cos(angle), 0.5, math.sin(angle)) * (s.Radius * 0.6)
+		blade.CFrame = CFrame.lookAt(hub.Position + offset, hub.Position + offset + Vector3.new(-math.sin(angle), 0, math.cos(angle)))
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = hub
+		weld.Part1 = blade
+		weld.Parent = blade
+		blade.Parent = hub
 	end
+	hub.Parent = workspace
+	pcall(function()
+		hub:SetNetworkOwner(ctx.Player)
+	end)
 	local ticks = s.Ticks or 10
 	task.spawn(function()
-		local elapsed = 0
-		local nextHit = 0
-		while elapsed < s.Duration and ctx.Root.Parent do
-			local dt = task.wait(0.05)
-			elapsed += dt
-			for i, blade in blades do
-				local angle = elapsed * 6 + i / 3 * math.pi * 2
-				local position = ctx.Root.Position + Vector3.new(math.cos(angle), 0.5, math.sin(angle)) * (s.Radius * 0.6)
-				blade.CFrame = CFrame.lookAt(position, position + Vector3.new(-math.sin(angle), 0, math.cos(angle)))
+		for _ = 1, ticks do
+			task.wait(s.Duration / ticks)
+			if not ctx.Root.Parent then
+				break
 			end
-			if elapsed >= nextHit then
-				nextHit += s.Duration / ticks
-				hitAll(ctx, ctx.EnemiesNear(ctx.Root.Position, s.Radius), s.Damage)
-			end
+			hitAll(ctx, ctx.EnemiesNear(ctx.Root.Position, s.Radius), s.Damage)
 		end
-		for _, blade in blades do
-			blade:Destroy()
-		end
+		hub:Destroy()
+		rootAttachment:Destroy()
 	end)
 end
 

@@ -133,7 +133,9 @@ local function buildModel(def: Enemies.EnemyDef)
 	elseif body == "Totem" then
 		head = limb("Head", Vector3.new(2.2, 1.4, 2.2) * s, Vector3.new(0, torsoSize.Y / 2 + 0.7 * s, 0), def.HeadColor)
 		for _, side in { -1, 1 } do
-			limb("Eye", Vector3.new(0.35, 0.3, 0.1) * s, Vector3.new(0.45 * s * side, torsoSize.Y / 2 + 0.75 * s, -1.12 * s), def.EyeColor, Enum.Material.Neon)
+			if not def.HeadShape then
+				limb("Eye", Vector3.new(0.35, 0.3, 0.1) * s, Vector3.new(0.45 * s * side, torsoSize.Y / 2 + 0.75 * s, -1.12 * s), def.EyeColor, Enum.Material.Neon)
+			end
 		end
 		for i = 1, 3 do
 			local rune = limb("Rune", Vector3.new(1.85, 0.25, 1.85) * s, Vector3.new(0, -torsoSize.Y / 2 + i * torsoSize.Y / 4, 0), def.EyeColor, Enum.Material.Neon)
@@ -147,7 +149,9 @@ local function buildModel(def: Enemies.EnemyDef)
 		local headY = torsoSize.Y / 2 + 0.6 * s
 		head = limb("Head", Vector3.one * 1.2 * s, Vector3.new(0, headY, 0), def.HeadColor)
 		for _, side in { -1, 1 } do
-			limb("Eye", Vector3.new(0.25, 0.25, 0.1) * s, Vector3.new(0.28 * s * side, headY + 0.1 * s, -0.62 * s), def.EyeColor, Enum.Material.Neon)
+			if not def.HeadShape then
+				limb("Eye", Vector3.new(0.25, 0.25, 0.1) * s, Vector3.new(0.28 * s * side, headY + 0.1 * s, -0.62 * s), def.EyeColor, Enum.Material.Neon)
+			end
 			limb("Arm", Vector3.new(0.8, 2, 0.8) * s, Vector3.new(1.4 * s * side, 0, 0), def.BodyColor)
 			if body == "Humanoid" then
 				limb("Leg", Vector3.new(0.9, 2, 0.9) * s, Vector3.new(0.5 * s * side, -torsoSize.Y / 2 - legHeight / 2, 0), def.BodyColor)
@@ -200,6 +204,38 @@ local function buildModel(def: Enemies.EnemyDef)
 				light.Parent = orb
 			end
 		end
+	end
+
+	-- Special heads
+	if def.HeadShape == "Pumpkin" then
+		local size = math.max(head.Size.X, head.Size.Y) * 1.15
+		local center = head.CFrame.Position
+		head.Shape = Enum.PartType.Ball
+		head.Size = Vector3.one * size
+		head.Material = Enum.Material.SmoothPlastic
+		head.CFrame = CFrame.new(center)
+		for i = 0, 2 do
+			local rib = limb("PumpkinRib", Vector3.new(0.08 * s, size * 1.03, size * 1.03), CFrame.new(center) * CFrame.Angles(0, i / 3 * math.pi, 0), def.HeadColor:Lerp(Color3.fromRGB(150, 60, 10), 0.35), Enum.Material.SmoothPlastic)
+			rib.Shape = Enum.PartType.Cylinder
+		end
+		limb("PumpkinStem", Vector3.new(0.2, 0.4, 0.2) * s, center + Vector3.new(0, size * 0.55, 0), Color3.fromRGB(70, 100, 40), Enum.Material.Wood)
+		for _, side in { -1, 1 } do
+			limb("Eye", Vector3.new(0.3, 0.25, 0.08) * s, CFrame.new(center + Vector3.new(side * size * 0.2, size * 0.1, -size * 0.48)) * CFrame.Angles(0, 0, math.rad(side * 15)), def.EyeColor, Enum.Material.Neon)
+		end
+		limb("Grin", Vector3.new(size * 0.55, 0.14 * s, 0.08 * s), center + Vector3.new(0, -size * 0.17, -size * 0.47), def.EyeColor, Enum.Material.Neon)
+		local glow = Instance.new("PointLight")
+		glow.Color = def.EyeColor
+		glow.Range = 10 * s
+		glow.Parent = head
+	elseif def.HeadShape == "Headless" then
+		head.Transparency = 1
+		local neck = limb("Neck", Vector3.new(0.8, 0.3, 0.8) * s, head.CFrame.Position - Vector3.new(0, head.Size.Y / 2, 0), def.BodyColor)
+		local fire = Instance.new("Fire")
+		fire.Color = def.EyeColor
+		fire.SecondaryColor = Color3.fromRGB(120, 20, 10)
+		fire.Size = 3 * s
+		fire.Heat = 8
+		fire.Parent = neck
 	end
 
 	-- Crowns and horns
@@ -552,13 +588,13 @@ MECHANICS.Charge = function(enemy, attack, targetRoot)
 	if enemy.Dead then
 		return
 	end
-	-- Rush down the lane
-	local startCF = enemy.Root.CFrame
-	local steps = 8
-	for i = 1, steps do
-		enemy.Root.CFrame = startCF + direction * length * (i / steps)
-		task.wait(0.03)
-	end
+	-- Rush down the lane (the humanoid runs it, so it moves smoothly)
+	local rushTime = 0.4
+	enemy.Humanoid.WalkSpeed = math.max(length / rushTime, enemy.Def.Speed)
+	enemy.Humanoid:MoveTo(finish + Vector3.new(0, enemy.GroundOffset, 0))
+	task.wait(rushTime)
+	enemy.Humanoid.WalkSpeed = enemy.Def.Speed * enemy.SpeedMultiplier
+	enemy.Humanoid:MoveTo(enemy.Root.Position)
 	Effects.sparks(enemy.Root.Position, (enemy.Def.Boss :: Enemies.BossDef).Color, "Smoke", 20)
 	Sfx.play("Slam", enemy.Root, 0.8)
 	hurtWhere(enemy, attackDamage(enemy, attack), function(p)

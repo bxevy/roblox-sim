@@ -30,6 +30,10 @@ Config.DefaultData = {
 	Skills = {}, -- skill id -> rank
 	Quests = {}, -- managed by QuestService
 	Receipts = {}, -- Robux purchase ids already granted
+	Candies = 0, -- Halloween event currency
+	Pets = {}, -- set of owned pet ids
+	-- EquippedPet = nil
+	LimitedClasses = {}, -- limited-time classes you own (switch to them any time)
 	Card = {
 		Background = "Parchment",
 		Title = "Adventurer",
@@ -104,6 +108,8 @@ export type ClassDef = {
 	LifeSteal: number?, -- heals you by this share of damage dealt
 	Reach: number?, -- melee range multiplier
 	Revive: boolean?, -- once per life, survive a killing blow
+	Limited: boolean?, -- event class: never rolled, only won from event crates
+	CandyBonus: number?, -- extra event candies
 	StarterWeapon: string,
 	HealthMultiplier: number,
 	DamageMultiplier: number,
@@ -307,6 +313,24 @@ Config.Classes = {
 		LootLuck = 0.1,
 		Revive = true,
 	},
+	-- Limited (Halloween event crate only - never rolled)
+	PumpkinWarlock = {
+		DisplayName = "Pumpkin Warlock",
+		Description = "LIMITED. A cursed warlock who hurls flaming jack-o'-lanterns and calls bat swarms.",
+		WeaponType = "Lantern",
+		StarterWeapon = "CarvedLantern",
+		HealthMultiplier = 1.25,
+		DamageMultiplier = 1.4,
+		Defense = 0.1,
+		SpeedMultiplier = 1.15,
+		Abilities = { "PumpkinBomb", "WitchingHour" },
+		Color = Color3.fromRGB(255, 130, 30),
+		Rarity = "Limited",
+		Weight = 0,
+		Passive = "+40% damage, +15% speed, ghostfire splash, +50% event candies",
+		Limited = true,
+		CandyBonus = 0.5,
+	},
 } :: { [string]: ClassDef }
 
 Config.ClassOrder = {
@@ -315,6 +339,8 @@ Config.ClassOrder = {
 	"Assassin", "Necromancer", "Dragoon",
 	"Treasurer", "Ronin", "Seraph",
 }
+-- Limited classes: shown separately, won from event crates
+Config.LimitedClassOrder = { "PumpkinWarlock" }
 
 -- Classes are rolled, not chosen. New players get one free roll.
 Config.ClassRoll = {
@@ -511,6 +537,24 @@ Config.Abilities = {
 		DamageMultiplier = 0.6,
 		Color = Color3.fromRGB(255, 150, 170),
 	},
+	-- Pumpkin Warlock (limited)
+	PumpkinBomb = {
+		DisplayName = "Pumpkin Bomb",
+		Cooldown = 8,
+		Range = 55,
+		Radius = 14,
+		DamageMultiplier = 4.5,
+		Color = Color3.fromRGB(255, 130, 30),
+	},
+	WitchingHour = {
+		DisplayName = "Witching Hour",
+		Cooldown = 20,
+		Radius = 15,
+		Duration = 6,
+		DamageMultiplier = 0.6, -- per half second
+		Buff = "WitchingHour",
+		Color = Color3.fromRGB(150, 70, 220),
+	},
 	-- Seraph (Godly)
 	HeavensWrath = {
 		DisplayName = "Heaven's Wrath",
@@ -544,6 +588,7 @@ Config.Buffs = {
 	Vanish = { DisplayName = "Vanish", Crit = 0.4, Speed = 0.3 },
 	Midas = { DisplayName = "Midas Touch", Damage = 0.2, Gold = 0.5 },
 	Bloodlust = { DisplayName = "Bloodlust", Damage = 0.35, Speed = 0.2 },
+	WitchingHour = { DisplayName = "Witching Hour", Speed = 0.3, Damage = 0.15 },
 }
 
 Config.CritChance = 0.1
@@ -616,6 +661,7 @@ Config.Rarities = {
 	Legendary = Color3.fromRGB(255, 160, 40),
 	Mythic = Color3.fromRGB(130, 150, 255),
 	Godly = Color3.fromRGB(255, 60, 120),
+	Limited = Color3.fromRGB(255, 120, 20), -- limited-time event items
 }
 
 -- Crates (Crate Shrine in town). Godly armor only comes from these. Each roll picks a
@@ -698,6 +744,52 @@ Config.OwnerUserIds = {
 }
 Config.CreatorRank = { Level = 999, Prestige = 999 }
 
+-- Events -------------------------------------------------------------------------------
+-- Limited-time events. Each runs between StartsAt and EndsAt (Unix time, UTC); set
+-- Enabled = false to switch one off early. Items won stay with players after it ends.
+
+Config.Events = {
+	Halloween = {
+		DisplayName = "Halloween Event",
+		Enabled = true,
+		StartsAt = 1790812800, -- 2026-10-01 00:00 UTC
+		EndsAt = 1794182400, -- 2026-11-09 00:00 UTC
+		Dungeon = "Haunted", -- event dungeon (only has a portal while the event runs)
+		CandiesPerClear = 100, -- candies for clearing the event dungeon (pets/class add more)
+		Crate = {
+			DisplayName = "Halloween Crate",
+			CandyCost = 1000,
+			-- Robux: create a Developer Product (Creator Dashboard > your experience >
+			-- Monetization > Developer Products) priced at 100 Robux and paste its id here.
+			RobuxProductId = 0,
+			RobuxPriceLabel = "R$ 100",
+			DuplicateRefund = 150, -- candies back for an item you already own
+			-- What a crate can give. Chances add up to 1 (100%); shown to players in the crate window.
+			Odds = {
+				{ Kind = "Class", Id = "PumpkinWarlock", Chance = 0.005 },
+				{ Kind = "Armor", Id = "VampireLord", Chance = 0.04 },
+				{ Kind = "Armor", Id = "PumpkinReaper", Chance = 0.1 },
+				{ Kind = "Pet", Id = "PumpkinSpirit", Chance = 0.035 },
+				{ Kind = "Pet", Id = "SkeletonPup", Chance = 0.08 },
+				{ Kind = "Pet", Id = "Ghostie", Chance = 0.14 },
+				{ Kind = "Pet", Id = "CandyCornSlime", Chance = 0.15 },
+				{ Kind = "Pet", Id = "MiniBat", Chance = 0.22 },
+				{ Kind = "Pet", Id = "BlackCat", Chance = 0.23 },
+			},
+		},
+	},
+}
+
+-- Is an event running right now? (`now` defaults to the current Unix time)
+function Config.IsEventActive(eventId: string, now: number?): boolean
+	local event = Config.Events[eventId]
+	if not event or not event.Enabled then
+		return false
+	end
+	local t = now or os.time()
+	return t >= event.StartsAt and t < event.EndsAt
+end
+
 -- Audio -------------------------------------------------------------------------------
 -- Music uses Creator Store audio ids. Roblox only lets public or owned audio play, so if a
 -- track is silent, find one in Studio (Toolbox > Audio, or the Creator Store website),
@@ -715,6 +807,7 @@ Config.Audio = {
 		Forest = "rbxassetid://139743346356072",
 		Volcano = "rbxassetid://139743346356072",
 		Void = "rbxassetid://139743346356072",
+		Halloween = "rbxassetid://139743346356072",
 		Boss = "rbxassetid://101000446004472",
 	},
 	-- { Id, Volume, PlaybackSpeed }
@@ -757,6 +850,8 @@ Config.StatNames = {
 	{ "BossesKilled", "Bosses defeated" },
 	{ "MiniBossesKilled", "Mini-bosses defeated" },
 	{ "TotemsDestroyed", "Boss totems destroyed" },
+	{ "CandiesEarned", "Candies collected" },
+	{ "EventCratesOpened", "Event crates opened" },
 	{ "GoldEarned", "Gold earned" },
 	{ "CratesOpened", "Crates opened" },
 	{ "Deaths", "Deaths in dungeons" },

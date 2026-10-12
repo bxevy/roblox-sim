@@ -207,6 +207,12 @@ WeaponMoves.Animations = {
 		{ T = 0.4, Pose = { RS = v(30, 0, 60), LS = v(30, 0, -60), W = v(-15, 0, 0), N = v(25, 0, 0) } },
 		{ T = 1, Pose = { RS = v(20, 0, 40), LS = v(20, 0, -40), W = v(-8, 0, 0), N = v(10, 0, 0) } },
 	} },
+	-- Movement
+	Dodge = { Duration = 0.32, Keys = {
+		{ T = 0, Pose = { W = v(-10, 0, 0), RS = v(-20, 0, 0), LS = v(-20, 0, 0), RP = v(0, -0.3, 0) } },
+		{ T = 0.45, Pose = { W = v(-28, 0, 0), RS = v(-45, 0, 15), LS = v(-45, 0, -15), N = v(-10, 0, 0), RP = v(0, -0.9, 0) } },
+		{ T = 1, Pose = { W = v(-8, 0, 0), RS = v(-10, 0, 0), LS = v(-10, 0, 0), RP = v(0, -0.2, 0) } },
+	} },
 	-- Weapon skills (longer, showier)
 	Channel = { Duration = 0.8, Keys = {
 		{ T = 0, Pose = { RS = v(0, 0, 0), LS = v(0, 0, 0) } },
@@ -384,6 +390,17 @@ WeaponMoves.Combos = {
 		{ Anim = "Upheaval", Hit = "Arc", Damage = 1.2, Range = 10, Cooldown = 0.6 },
 		{ Anim = "GroundPound", Hit = "Slam", Damage = 3, Radius = 15, Cooldown = 1.1 },
 	} },
+	-- Lanterns (Pumpkin Warlock)
+	Hex = { DisplayName = "Hex", Steps = {
+		{ Anim = "CastSweep", Hit = "Shot", Damage = 0.95, Cooldown = 0.5 },
+		{ Anim = "CastForward", Hit = "Shot", Damage = 0.95, Cooldown = 0.5 },
+		{ Anim = "CastHigh", Hit = "Burst", Damage = 2.1, Radius = 12, Cooldown = 1 },
+	} },
+	Haunt = { DisplayName = "Haunt", Steps = {
+		{ Anim = "CastForward", Hit = "Multishot", Damage = 0.6, Count = 3, Spread = 12, Cooldown = 0.55 },
+		{ Anim = "CastSweep", Hit = "Multishot", Damage = 0.6, Count = 3, Spread = 12, Cooldown = 0.55 },
+		{ Anim = "Proclaim", Hit = "Nova", Damage = 1.8, Radius = 14, Cooldown = 1 },
+	} },
 } :: { [string]: { DisplayName: string, Steps: { Step } } }
 
 -- Which animation each weapon-skill mechanic plays.
@@ -441,6 +458,8 @@ WeaponMoves.AbilityAnims = {
 	ThousandCuts = "SkillSpin",
 	HeavensWrath = "CastHigh",
 	Ascension = "Proclaim",
+	PumpkinBomb = "CastHigh",
+	WitchingHour = "Proclaim",
 }
 
 return WeaponMoves

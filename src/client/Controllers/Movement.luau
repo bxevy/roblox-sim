@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Animator = require(script.Parent.Animator)
 
 local player = Players.LocalPlayer
 
@@ -34,6 +35,7 @@ function Movement.Dodge()
 	lastDodge = now
 	Remotes.Dodge:FireServer()
 	playSfx("Dodge")
+	Animator.Play(character, "Dodge")
 
 	-- Dash in the direction you're moving, or hop backwards if standing still.
 	local direction = humanoid.MoveDirection * Vector3.new(1, 0, 1)

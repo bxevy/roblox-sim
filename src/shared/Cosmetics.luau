@@ -75,6 +75,7 @@ Cosmetics.Backgrounds = {
 	{ Id = "GoldenGlory", Name = "Golden Glory", Colors = { rgb(255, 230, 130), rgb(210, 150, 30) }, Rotation = 90, Pattern = "Rays", PatternColor = rgb(255, 255, 220), TextDark = true, Unlock = { Prestige = 1 } },
 	{ Id = "Starfield", Name = "Starfield", Colors = { rgb(60, 20, 120), rgb(10, 10, 40), rgb(0, 0, 0) }, Rotation = 90, Pattern = "Stars", PatternColor = rgb(255, 230, 255), Unlock = { Prestige = 5 } },
 	{ Id = "Godslayer", Name = "Godslayer", Colors = { rgb(255, 60, 120), rgb(120, 20, 160), rgb(255, 200, 60) }, Rotation = 45, Pattern = "Rays", PatternColor = rgb(255, 255, 255), Unlock = { Prestige = 10 } },
+	{ Id = "HallowsEve", Name = "Hallow's Eve", Colors = { rgb(255, 130, 30), rgb(90, 30, 120), rgb(15, 5, 20) }, Rotation = 90, Pattern = "Stars", PatternColor = rgb(255, 200, 80), Unlock = { Stat = "Clears_Haunted", Value = 1 } },
 	{ Id = "CreatorRealm", Name = "Creator's Realm", Colors = { rgb(255, 120, 230), rgb(90, 40, 200), rgb(10, 0, 30) }, Rotation = 60, Pattern = "Stars", PatternColor = rgb(255, 255, 255), Unlock = { Prestige = 999 } },
 }
 
@@ -98,6 +99,8 @@ Cosmetics.Titles = {
 	{ Id = "Ascendant", Name = "Ascendant", Color = rgb(255, 230, 140), Unlock = { Prestige = 1 } },
 	{ Id = "Paragon", Name = "Paragon", Color = rgb(190, 140, 255), Unlock = { Prestige = 5 } },
 	{ Id = "Godslayer", Name = "Godslayer", Color = rgb(255, 60, 120), Unlock = { Prestige = 10 } },
+	{ Id = "PumpkinSlayer", Name = "Pumpkin King Slayer", Color = rgb(255, 130, 30), Unlock = { Stat = "Kills_PumpkinKing", Value = 1 } },
+	{ Id = "TrickOrTreat", Name = "Trick or Treater", Color = rgb(200, 120, 255), Unlock = { Stat = "EventCratesOpened", Value = 10 } },
 	{ Id = "Creator", Name = "The Creator", Color = rgb(255, 120, 230), Unlock = { Prestige = 999 } },
 }
 

@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove", "BossBar" }
-local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove", "BossBar", "PartyInvite", "PartyChanged", "OpenEvent", "HalloweenCrateResult" }
+local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill", "PartyAction", "GetParty", "OpenHalloweenCrate", "EquipLimitedClass", "EquipPet" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -37,6 +37,15 @@ return {
 	Notify = get("Notify") :: RemoteEvent, -- (message: string, color: Color3?)
 	StateChanged = get("StateChanged") :: RemoteEvent, -- (state)
 	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?, info: { Style: string, Boss: boolean }?)
+	PartyInvite = get("PartyInvite") :: RemoteEvent, -- (inviterUserId, inviterName)
+	PartyChanged = get("PartyChanged") :: RemoteEvent, -- (party info or nil)
+	PartyAction = get("PartyAction") :: RemoteFunction, -- (action, arg) -> (ok, message?)
+	GetParty = get("GetParty") :: RemoteFunction,
+	OpenEvent = get("OpenEvent") :: RemoteEvent, -- open the event window (event plaza prompt)
+	HalloweenCrateResult = get("HalloweenCrateResult") :: RemoteEvent, -- (result) after a Robux crate
+	OpenHalloweenCrate = get("OpenHalloweenCrate") :: RemoteFunction, -- ("Candies" | "Robux") -> (ok, result | message)
+	EquipLimitedClass = get("EquipLimitedClass") :: RemoteFunction,
+	EquipPet = get("EquipPet") :: RemoteFunction, -- (petId?) -> (ok, message?)
 	BossBar = get("BossBar") :: RemoteEvent, -- (info: { Name, Health, MaxHealth, Shielded, Enraged, Mini }?)
 	PortalUpdate = get("PortalUpdate") :: RemoteEvent, -- (info?) while standing on a portal pad
 	OpenShop = get("OpenShop") :: RemoteEvent, -- ()

@@ -505,7 +505,7 @@ local function buildDecor()
 	tree(Vector3.new(20, 0, 47), 1)
 	for _, position in {
 		Vector3.new(-40, 0, -46), Vector3.new(40, 0, -60), Vector3.new(100, 0, -28),
-		Vector3.new(-52, 0, 18), Vector3.new(50, 0, -14), Vector3.new(-110, 0, 32), Vector3.new(110, 0, 34),
+		Vector3.new(-52, 0, 18), Vector3.new(-110, 0, 32), Vector3.new(110, 0, 34),
 	} do
 		tree(position, 0.9 + (math.abs(position.X) % 3) * 0.1)
 	end
@@ -753,27 +753,35 @@ local function buildWindmill()
 		Build.cylinder(hub, "WindmillRoof", 13.5 - i * 2, 1.6, CFrame.new(base + Vector3.new(0, 18.8 + i * 1.6, 0)), rgb(140, 60, 45), M.Slate)
 	end
 	Build.block(hub, "WindmillDoor", Vector3.new(3, 5, 0.5), CFrame.new(base + Vector3.new(6, 2.5, 0)) * CFrame.Angles(0, math.rad(90), 0), WOOD, M.WoodPlanks)
+	-- The sails turn on a motorised hinge, so physics spins them smoothly for everyone.
 	local hubCenter = base + Vector3.new(6.6, 15, 0)
-	local hubPart = Build.cylinder(hub, "WindmillHub", 2, 1.4, CFrame.new(hubCenter) * CFrame.Angles(0, 0, math.rad(90)), WOOD_DARK, M.Wood)
-	local sails = {}
+	local axle = Build.cylinder(hub, "WindmillAxle", 1.2, 1, CFrame.new(hubCenter - Vector3.new(0.6, 0, 0)) * CFrame.Angles(0, 0, math.rad(90)), WOOD_DARK, M.Wood)
+	local rotor = Build.cylinder(hub, "WindmillHub", 2, 1.4, CFrame.new(hubCenter) * CFrame.Angles(0, 0, math.rad(90)), WOOD_DARK, M.Wood)
+	rotor.Anchored = false
+	rotor.CanCollide = false
 	for i = 0, 3 do
 		local angle = i * math.pi / 2
 		local sail = Build.block(hub, "WindmillSail", Vector3.new(0.3, 11, 2.6), CFrame.new(hubCenter + Vector3.new(0.5, 0, 0)) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, 6, 0), rgb(235, 225, 200), M.Fabric)
+		sail.Anchored = false
 		sail.CanCollide = false
-		table.insert(sails, { Part = sail, Offset = (CFrame.new(hubCenter)):ToObjectSpace(sail.CFrame) })
+		sail.Massless = true
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = rotor
+		weld.Part1 = sail
+		weld.Parent = sail
 	end
-	-- Turn the sails slowly
-	task.spawn(function()
-		local angle = 0
-		while hubPart.Parent do
-			angle += 0.03
-			local spin = CFrame.new(hubCenter) * CFrame.Angles(angle, 0, 0)
-			for _, sail in sails do
-				sail.Part.CFrame = spin * sail.Offset
-			end
-			task.wait(0.05)
-		end
-	end)
+	local a0 = Instance.new("Attachment")
+	a0.CFrame = CFrame.new(-0.6, 0, 0) -- the axle's end, where the rotor sits
+	a0.Parent = axle
+	local a1 = Instance.new("Attachment")
+	a1.Parent = rotor
+	local hinge = Instance.new("HingeConstraint")
+	hinge.Attachment0 = a0
+	hinge.Attachment1 = a1
+	hinge.ActuatorType = Enum.ActuatorType.Motor
+	hinge.AngularVelocity = 0.6
+	hinge.MotorMaxTorque = 1e7
+	hinge.Parent = rotor
 	-- Crop rows
 	local field = Vector3.new(-62, 0, 44)
 	Build.block(hub, "Field", Vector3.new(22, 0.3, 12), CFrame.new(field + Vector3.new(0, 0.3, 0)), rgb(95, 70, 45), M.Ground)

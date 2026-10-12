@@ -42,7 +42,8 @@ pieces with hand-built models in Studio.
    `RobuxPriceLabel`. Purchases are recorded per receipt so a roll is never granted twice.
 2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **2-6**.
 3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
-   After a 10 second countdown, everyone on the pad (up to 4 players) goes in together.
+   After a 10 second countdown, everyone on the pad (up to 4 players) goes in together, and so
+   does **your whole party** (even if they're elsewhere in town).
 4. **Fight:** press **1** to draw / put away your weapon, **click** to attack toward your mouse.
    Keep clicking to chain your weapon's **combo** (the last hit is a big finisher), and press
    **R** for your weapon's own ability.
@@ -68,6 +69,51 @@ more XP and Gold, and drop **higher-tier loot**.
 
 Every dungeon has 6 rooms of enemies (melee, fast beasts, and **ranged casters whose shots you can
 sidestep**), a **mini-boss** in room 4, and a boss.
+
+### Parties
+
+Press **O** (or the **Party** button) to open the party window:
+- **Invite** anyone in the server (your Roblox friends are listed first). They get a Join / Decline popup.
+- **Invite Friends to the Game** opens Roblox's friend invite. Friends who join from it land
+  straight in your party.
+- Up to 4 players. The leader can kick; anyone can leave. Party members get a green outline.
+- When any party member starts a dungeon from a portal, everyone in the party who's in town and
+  has the level for that difficulty goes in with them.
+
+### Halloween event (limited time)
+
+Runs from `Config.Events.Halloween.StartsAt` to `EndsAt` (Oct 1 - Nov 9, 2026 by default). While
+it runs there's a **Halloween Event [K]** button, a spooky **event plaza** with a giant
+jack-o'-lantern east of the fountain, and a 7th portal.
+
+- **Haunted Manor** (event dungeon, SUPER HARD: Power 50, levels 35 / 42 / 47 / 50): jack-o'-lantern
+  knights, phantoms, vampire bats, banshees, **The Headless Horseman** mini-boss and **The Pumpkin
+  King**, who uses every boss mechanic, summons twice, shields himself **twice** behind cursed
+  pumpkins and enrages at 15%. Every clear gives **100 Candies** (pets and the Pumpkin Warlock add more).
+- **Halloween Crate:** **1,000 Candies** or **100 Robux**. Odds (also shown in the crate window):
+
+  | Prize | Chance |
+  | ----- | ------ |
+  | **Pumpkin Warlock** (limited class) | **0.5%** |
+  | Vampire Lord armor piece (limited) | 4% |
+  | Pumpkin Reaper armor piece (limited) | 10% |
+  | Pumpkin Spirit pet (Legendary) | 3.5% |
+  | Skeleton Pup pet (Epic) | 8% |
+  | Ghostie pet (Rare) | 14% |
+  | Candy Corn Slime pet (Rare) | 15% |
+  | Mini Bat pet (Common) | 22% |
+  | Black Cat pet (Common) | 23% |
+
+  Duplicates refund 150 candies. **Robux crates:** create a 100 Robux Developer Product and put its
+  id in `Config.Events.Halloween.Crate.RobuxProductId`. (Roblox requires the odds of paid random
+  items to be shown to players; the crate window lists them.)
+- **Pumpkin Warlock (limited class):** hurls flaming jack-o'-lanterns with lantern staffs (8 of
+  them), +40% damage, +15% speed, +50% candies. Q: Pumpkin Bomb, E: Witching Hour (bat swarm).
+  It's never rolled; once you win it you keep it and can switch back to it any time from the event window.
+- **Pets** float beside you and give bonuses (coins, XP, damage, candies). Equip them in the
+  event window. Pets are defined in `shared/Pets.luau`.
+- **Limited armor:** Pumpkin Reaper (jack-o'-lantern helm, cape, embers) and Vampire Lord
+  (high collar, bat wings, blood mist).
 
 ### Boss mechanics
 
@@ -101,8 +147,10 @@ can mix and tune mechanics there.
     triple shot; *Juggernaut*: overhead, backswing, ground pound). Each step has its own hit shape,
     damage and **animation**.
   - Animations are code-driven (they bend the character's joints), so they need no uploaded
-    animation assets and everyone in the server sees them. Combos and animations live in
-    `shared/WeaponMoves.luau`. Assassins also hold a second dagger in their left hand.
+    animation assets and everyone in the server sees them. Keyframes are joined with smooth
+    splines and moves cross-fade into each other; leaps and dashes are played by your own client
+    so they glide instead of stutter. Combos and animations live in `shared/WeaponMoves.luau`.
+    Assassins also hold a second dagger in their left hand.
 - **Mythic: Voidlight Greatsword.** A 0.05% (1 in 2,000) bonus drop from any dungeon victory.
   The whole server is told when someone finds it. Change the odds in `Config.MythicDrop`.
 - **10 armor sets**, each with 4 pieces (helmet, chestplate, leggings, boots) that work for every
@@ -215,6 +263,7 @@ src/
     Cosmetics.luau          card backgrounds, titles, frames, prestige emblems, unlock rules
     CardUI.luau             draws emblems and player cards (client + server nameplates)
     WeaponMoves.luau        combo styles + keyframed weapon animations
+    Pets.luau               pets and their bonuses
     Remotes.luau            RemoteEvents/RemoteFunctions
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
@@ -222,6 +271,7 @@ src/
     DungeonDecor.luau       themed decorations for each dungeon style
     ArmorVisuals.luau       builds every armor piece's look and effects on the character
     Sfx.luau                plays sound effects in the world
+    Receipts.luau           Robux purchases (one ProcessReceipt for every product)
     Effects.luau            VFX: projectiles, rings, beams, lightning, meteors...
     WeaponModels.luau       builds every weapon's model, glow, aura and swing trail
     WeaponSkills.luau       weapon abilities (R)
@@ -243,10 +293,13 @@ src/
       ProgressionService.luau  prestige, skills, Skill Sanctum
       CardService.luau      player card customization, nameplates
       ClassService.luau     class rolling (coins / Robux developer product)
+      PartyService.luau     parties, invites, friend invites
+      PetService.luau       pet models that follow you
+      HalloweenService.luau Halloween event: candies, Halloween Crate, event plaza
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, 1, Q/E, R, 2-6, G, T, J, H, P) and wiring
+    Main.client.luau        input (attack, 1, Q/E, R, 2-6, G, T, J, H, O, K, P) and wiring
     Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting),
-                            Animator (plays weapon animations)
+                            Animator (smooth weapon animations, leaps and dashes), Pets
     UI/                     Hud, Inventory, Shop, PortalPanel, AdminPanel,
                             CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow,
                             ClassRoller

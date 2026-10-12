@@ -383,6 +383,51 @@ HELMETS.Dragon = function(ctx, head)
 	return shell
 end
 
+-- A carved jack-o'-lantern with a flickering glow inside.
+HELMETS.Pumpkin = function(ctx, head)
+	local s, H = ctx.Style, head.Size
+	local size = H.X * 1.55
+	local shell = ball(ctx, head, "Helmet", size, Vector3.new(0, H.Y * 0.08, 0), s.Secondary, M.SmoothPlastic)
+	-- Ribs around the pumpkin
+	for i = 0, 5 do
+		local angle = i / 6 * math.pi
+		add(ctx, head, "PumpkinRib", Vector3.new(0.12, size * 1.03, size * 1.03), CFrame.new(0, H.Y * 0.08, 0) * CFrame.Angles(0, angle, 0), s.Secondary:Lerp(rgb(150, 60, 10), 0.35), M.SmoothPlastic, Enum.PartType.Cylinder)
+	end
+	add(ctx, head, "Stem", Vector3.new(0.22, 0.45, 0.22), CFrame.new(0.05, H.Y * 0.08 + size * 0.52, 0.05) * CFrame.Angles(0, 0, math.rad(12)), rgb(70, 100, 40), M.Wood)
+	local front = -size / 2 + 0.02
+	local glow = s.Accent
+	-- Triangle eyes, a nose and a jagged grin
+	for _, side in { -1, 1 } do
+		add(ctx, head, "PumpkinEye", Vector3.new(0.32, 0.26, 0.08), CFrame.new(side * size * 0.2, H.Y * 0.3, front) * CFrame.Angles(0, 0, math.rad(side * 15)), glow, M.Neon)
+	end
+	add(ctx, head, "PumpkinNose", Vector3.new(0.16, 0.16, 0.08), CFrame.new(0, H.Y * 0.1, front - 0.02) * CFrame.Angles(0, 0, math.rad(45)), glow, M.Neon)
+	add(ctx, head, "PumpkinMouth", Vector3.new(size * 0.55, 0.14, 0.08), CFrame.new(0, -H.Y * 0.18, front + 0.03), glow, M.Neon)
+	for i = -2, 2 do
+		add(ctx, head, "PumpkinTooth", Vector3.new(0.12, 0.12, 0.09), CFrame.new(i * size * 0.11, -H.Y * 0.1 + (i % 2) * 0.05, front + 0.02) * CFrame.Angles(0, 0, math.rad(45)), glow, M.Neon)
+	end
+	light(shell, glow, 10, 1.4)
+	emitter(shell, "Embers", glow, 4)
+	return shell
+end
+
+-- A vampire's high collar and a circlet with a blood-red gem.
+HELMETS.Vampire = function(ctx, head)
+	local s, H = ctx.Style, head.Size
+	local circlet = cylinder(ctx, head, "Circlet", H.X * 1.08, 0.14, Vector3.new(0, H.Y * 0.32, 0), s.Secondary, s.TrimMaterial)
+	local gem = add(ctx, head, "CircletGem", Vector3.new(0.2, 0.2, 0.08), CFrame.new(0, H.Y * 0.32, -H.Z * 0.55) * CFrame.Angles(0, 0, math.rad(45)), s.Accent, M.Neon)
+	light(gem, s.Accent, 6, 0.8)
+	-- Slicked hair
+	add(ctx, head, "Hair", Vector3.new(H.X * 1.04, H.Y * 0.3, H.Z * 1.04), CFrame.new(0, H.Y * 0.4, 0.04), rgb(15, 12, 15), M.SmoothPlastic)
+	add(ctx, head, "WidowsPeak", Vector3.new(0.25, 0.25, 0.06), CFrame.new(0, H.Y * 0.28, -H.Z * 0.52) * CFrame.Angles(0, 0, math.rad(45)), rgb(15, 12, 15), M.SmoothPlastic)
+	-- The famous standing collar, lined in red
+	for _, side in { -1, 1 } do
+		add(ctx, head, "Collar", Vector3.new(H.X * 0.75, H.Y * 1.3, 0.1), CFrame.new(side * H.X * 0.45, -H.Y * 0.05, H.Z * 0.35) * CFrame.Angles(math.rad(-12), math.rad(side * 35), math.rad(side * -10)), s.Primary, s.Material)
+		add(ctx, head, "CollarLining", Vector3.new(H.X * 0.7, H.Y * 1.22, 0.04), CFrame.new(side * H.X * 0.43, -H.Y * 0.05, H.Z * 0.3) * CFrame.Angles(math.rad(-12), math.rad(side * 35), math.rad(side * -10)), s.Secondary, M.Fabric)
+		add(ctx, head, "Eye", Vector3.new(0.14, 0.06, 0.04), CFrame.new(side * H.X * 0.18, H.Y * 0.08, -H.Z * 0.51), s.Accent, M.Neon)
+	end
+	return circlet
+end
+
 HELMETS.Kabuto = function(ctx, head)
 	local s, H = ctx.Style, head.Size
 	local bowlY = H.Y * 0.2

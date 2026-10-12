@@ -9,9 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local DataService = require(script.Parent.DataService)
 local PlayerService = require(script.Parent.PlayerService)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Receipts = require(script.Parent.Parent.Receipts)
 
 local ClassService = {}
 
@@ -99,26 +99,6 @@ local function onRollClass(player: Player, currency: unknown): (boolean, string?
 	return false, "Unknown currency"
 end
 
--- Robux purchases: grant the roll exactly once per receipt, and save immediately.
-local function processReceipt(receipt)
-	if receipt.ProductId ~= Config.ClassRoll.RobuxProductId then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-	local player = Players:GetPlayerByUserId(receipt.PlayerId)
-	local data = player and PlayerService.GetData(player)
-	if not player or not data then
-		-- They left before it was processed; Roblox will retry next time they join.
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-	if not data.Receipts[receipt.PurchaseId] then
-		data.Receipts[receipt.PurchaseId] = true
-		rolling[player] = true
-		grantRoll(player)
-		DataService.Save(player)
-	end
-	return Enum.ProductPurchaseDecision.PurchaseGranted
-end
-
 -- Admin/testing helper: roll without paying.
 function ClassService.FreeRoll(player: Player)
 	if not rolling[player] then
@@ -129,7 +109,12 @@ end
 
 function ClassService.Start()
 	Remotes.RollClass.OnServerInvoke = onRollClass
-	MarketplaceService.ProcessReceipt = processReceipt
+	Receipts.Register(function()
+		return Config.ClassRoll.RobuxProductId
+	end, function(player)
+		rolling[player] = true
+		grantRoll(player)
+	end)
 	Players.PlayerRemoving:Connect(function(player)
 		rolling[player] = nil
 	end)

@@ -124,7 +124,7 @@ end
 
 -- Projectiles ---------------------------------------------------------------------------
 
-local SPEED = { Arrow = 150, Bolt = 90, Fireball = 70, Coin = 110, Gem = 100, Star = 90, Holy = 90, Phoenix = 80, Knives = 120, Orb = 25 }
+local SPEED = { Arrow = 150, Bolt = 90, Fireball = 70, Coin = 110, Gem = 100, Star = 90, Holy = 90, Phoenix = 80, Knives = 120, Orb = 25, Pumpkin = 70 }
 
 local function makeProjectile(kind: string, from: Vector3, to: Vector3, color: Color3): BasePart
 	local facing = CFrame.lookAt(from, to)
@@ -142,6 +142,30 @@ local function makeProjectile(kind: string, from: Vector3, to: Vector3, color: C
 	elseif kind == "Knives" then
 		p = Effects.part({ Size = Vector3.new(0.1, 0.25, 1.4), Color = color, Material = M.Metal, CFrame = facing })
 		trail(p, color, 0.2, 0.12)
+	elseif kind == "Pumpkin" then
+		-- A flaming jack-o'-lantern
+		p = Effects.part({ Shape = Enum.PartType.Ball, Size = Vector3.one * 2, Color = Color3.fromRGB(240, 120, 20), Material = M.SmoothPlastic, CFrame = facing })
+		local function attach(size: Vector3, offset: CFrame, partColor: Color3, material: Enum.Material)
+			local piece = Effects.part({ Size = size, Color = partColor, Material = material, CFrame = facing * offset })
+			piece.Anchored = false
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = p
+			weld.Part1 = piece
+			weld.Parent = piece
+			Debris:AddItem(piece, 5)
+		end
+		attach(Vector3.new(0.25, 0.5, 0.25), CFrame.new(0, 1.1, 0), Color3.fromRGB(70, 100, 40), M.Wood)
+		attach(Vector3.new(1.1, 0.25, 0.1), CFrame.new(0, -0.3, -0.98), color, M.Neon)
+		for _, side in { -1, 1 } do
+			attach(Vector3.new(0.3, 0.3, 0.1), CFrame.new(side * 0.35, 0.25, -0.95) * CFrame.Angles(0, 0, math.rad(45)), color, M.Neon)
+		end
+		local fire = Instance.new("Fire")
+		fire.Color = color
+		fire.SecondaryColor = Color3.fromRGB(255, 60, 10)
+		fire.Size = 3
+		fire.Parent = p
+		trail(p, color, 1.2, 0.3)
+		light(p, color, 14)
 	elseif kind == "Phoenix" then
 		p = Effects.part({ Shape = Enum.PartType.Ball, Size = Vector3.one * 2.2, Color = color, CFrame = facing })
 		for _, side in { -1, 1 } do

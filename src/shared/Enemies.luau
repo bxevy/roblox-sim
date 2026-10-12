@@ -65,6 +65,7 @@ export type EnemyDef = {
 	XP: number,
 	Gold: number,
 	Body: string?,
+	HeadShape: string?, -- "Pumpkin" (glowing jack-o'-lantern) | "Headless"
 	Ranged: { Projectile: string, Color: Color3 }?,
 	Static: boolean?,
 	Crown: Color3?,
@@ -384,6 +385,69 @@ local Enemies = {
 				{ At = 0.75, Type = "Summon", Adds = { Shade = 3, VoidStalker = 2 }, Message = "\"Kneel before the void.\"" },
 				{ At = 0.5, Type = "Shield", Adds = { VoidRift = 4 }, Message = "The Emperor feeds on the rifts - close them!" },
 				{ At = 0.25, Type = "Enrage", Speed = 1.4, Damage = 1.4, Message = "THE VOID EMPEROR UNLEASHES HIS TRUE POWER!" },
+			},
+		},
+	},
+
+	-- Haunted Manor (Halloween event) ------------------------------------------------------
+	JackOLantern = {
+		DisplayName = "Jack-o'-Lantern", Health = 140, Damage = 16, Speed = 13, AttackRange = 4.5, AttackCooldown = 1.2, Scale = 1.2,
+		BodyColor = rgb(40, 35, 45), HeadColor = rgb(240, 120, 20), EyeColor = rgb(255, 200, 60), Material = M.Fabric, XP = 30, Gold = 6,
+		HeadShape = "Pumpkin", Weapon = { Kind = "Scythe", Color = rgb(255, 140, 30) },
+	},
+	Phantom = {
+		DisplayName = "Phantom", Health = 90, Damage = 15, Speed = 20, AttackRange = 4, AttackCooldown = 0.9, Scale = 1.1,
+		BodyColor = rgb(220, 225, 240), HeadColor = rgb(240, 245, 255), EyeColor = rgb(20, 20, 30), Material = M.Glass, XP = 26, Gold = 5,
+		Body = "Floating",
+	},
+	VampireBat = {
+		DisplayName = "Vampire Bat", Health = 60, Damage = 12, Speed = 24, AttackRange = 3.5, AttackCooldown = 0.7, Scale = 0.75,
+		BodyColor = rgb(35, 25, 40), HeadColor = rgb(50, 35, 55), EyeColor = rgb(255, 40, 60), Material = M.Fabric, XP = 18, Gold = 4,
+		Body = "Beast",
+	},
+	Banshee = {
+		DisplayName = "Banshee", Health = 85, Damage = 17, Speed = 14, AttackRange = 36, AttackCooldown = 1.8, Scale = 1.1,
+		BodyColor = rgb(120, 90, 160), HeadColor = rgb(200, 190, 220), EyeColor = rgb(150, 255, 200), Material = M.Glass, XP = 28, Gold = 5,
+		Body = "Floating", Ranged = { Projectile = "Orb", Color = rgb(150, 255, 200) },
+	},
+	CursedPumpkin = {
+		DisplayName = "Cursed Pumpkin", Health = 320, Damage = 14, Speed = 0, AttackRange = 42, AttackCooldown = 2, Scale = 1.4,
+		BodyColor = rgb(50, 40, 40), HeadColor = rgb(240, 120, 20), EyeColor = rgb(160, 80, 255), Material = M.Wood, XP = 15, Gold = 4,
+		Body = "Totem", Static = true, HeadShape = "Pumpkin", Ranged = { Projectile = "Pumpkin", Color = rgb(255, 140, 30) },
+	},
+	HeadlessHorseman = {
+		DisplayName = "The Headless Horseman", Health = 900, Damage = 24, Speed = 16, AttackRange = 6, AttackCooldown = 1.2, Scale = 2.1,
+		BodyColor = rgb(30, 25, 35), HeadColor = rgb(30, 25, 35), EyeColor = rgb(255, 120, 20), Material = M.Fabric, XP = 140, Gold = 35,
+		HeadShape = "Headless", Weapon = { Kind = "Sword", Color = rgb(255, 120, 30) }, MiniBoss = true,
+		Boss = {
+			Color = rgb(255, 120, 30), Gap = 2.4,
+			Attacks = {
+				{ Type = "Charge", Range = 45, Width = 7, Windup = 0.8, Damage = 40, Cooldown = 6, Message = "The Horseman charges!" },
+				{ Type = "Barrage", Radius = 6, Windup = 0.9, Damage = 32, Cooldown = 8, Message = "Flaming pumpkins rain down - MOVE!" },
+				{ Type = "Slam", Radius = 14, Windup = 0.9, Damage = 38, Cooldown = 6 },
+			},
+		},
+	},
+	PumpkinKing = {
+		DisplayName = "The Pumpkin King", Health = 3200, Damage = 30, Speed = 14, AttackRange = 6.5, AttackCooldown = 1.1, Scale = 3,
+		BodyColor = rgb(30, 20, 35), HeadColor = rgb(240, 120, 20), EyeColor = rgb(170, 90, 255), Material = M.Fabric, XP = 300, Gold = 80,
+		HeadShape = "Pumpkin", Crown = rgb(150, 70, 220), Weapon = { Kind = "Scythe", Color = rgb(170, 90, 255) },
+		Boss = {
+			Color = rgb(255, 130, 30), Gap = 2,
+			Attacks = {
+				{ Type = "Meteors", Count = 14, Radius = 6, Windup = 1.1, Damage = 45, Cooldown = 8, Message = "Jack-o'-lanterns fall from the sky!" },
+				{ Type = "Cross", Range = 55, Width = 7, Windup = 1.1, Damage = 55, Cooldown = 9, Message = "The King's scythes sweep the hall!" },
+				{ Type = "Donut", Radius = 10, Range = 50, Windup = 1.4, Damage = 60, Cooldown = 11, Message = "Thorny vines erupt - get CLOSE!" },
+				{ Type = "Wave", Range = 50, Windup = 0.8, Damage = 50, Cooldown = 9, Message = "A wave of ghostfire - DODGE [C] through it!" },
+				{ Type = "Charge", Range = 55, Width = 9, Windup = 0.8, Damage = 55, Cooldown = 8 },
+				{ Type = "Barrage", Radius = 6, Windup = 0.8, Damage = 45, Cooldown = 7, Phase = 2 },
+				{ Type = "Summon", Adds = { VampireBat = 3, Phantom = 2 }, Cooldown = 18, Phase = 2 },
+			},
+			Phases = {
+				{ At = 0.75, Type = "Summon", Adds = { JackOLantern = 3, Banshee = 2 }, Message = "\"RISE, MY PUMPKIN PATCH!\"" },
+				{ At = 0.5, Type = "Shield", Adds = { CursedPumpkin = 4 }, Message = "The Pumpkin King draws power from the cursed pumpkins - smash them!" },
+				{ At = 0.3, Type = "Shield", Adds = { CursedPumpkin = 5, Phantom = 2 }, Message = "He shields himself AGAIN! Smash the pumpkins!" },
+				{ At = 0.15, Type = "Enrage", Speed = 1.5, Damage = 1.5, Message = "THE PUMPKIN KING IS ENRAGED!" },
 			},
 		},
 	},

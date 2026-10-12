@@ -27,6 +27,8 @@ export type Actions = {
 	ToggleQuests: () -> (),
 	ToggleSkills: () -> (),
 	ToggleCard: () -> (),
+	ToggleParty: () -> (),
+	ToggleEvent: () -> (),
 	ToggleMusic: () -> boolean, -- returns whether music is now on
 	SetSprint: (on: boolean) -> (),
 	Dodge: () -> (),
@@ -106,10 +108,37 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	})
 	local shownPrestige = -1
 
+	-- Third row: party and the limited-time event
+	local partyButton = Util.button(gui, {
+		Position = UDim2.fromOffset(16, 210),
+		Size = UDim2.fromOffset(100, 36),
+		BackgroundColor3 = Color3.fromRGB(50, 140, 80),
+		TextScaled = false,
+		TextSize = 17,
+		Text = "Party [O]",
+	})
+	partyButton.Activated:Connect(actions.ToggleParty)
+	local eventButton = Util.button(gui, {
+		Position = UDim2.fromOffset(124, 210),
+		Size = UDim2.fromOffset(208, 36),
+		BackgroundColor3 = Color3.fromRGB(230, 110, 20),
+		TextScaled = false,
+		TextSize = 17,
+		Text = "Halloween Event [K]",
+		Visible = false,
+	})
+	eventButton.Activated:Connect(actions.ToggleEvent)
+	function self.SetEventButton(visible: boolean, text: string?)
+		eventButton.Visible = visible
+		if text then
+			eventButton.Text = text
+		end
+	end
+
 	-- Admin button, only for admins
 	local player = Players.LocalPlayer
 	local adminButton = Util.button(gui, {
-		Position = UDim2.fromOffset(16, 214),
+		Position = UDim2.fromOffset(16, 254),
 		Size = UDim2.fromOffset(220, 34),
 		BackgroundColor3 = Color3.fromRGB(170, 40, 40),
 		Text = "Admin Menu [P]",
@@ -133,7 +162,7 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 
 	-- Buff list (under the buttons)
 	local buffList = Util.make("Frame", gui, {
-		Position = UDim2.fromOffset(16, 256),
+		Position = UDim2.fromOffset(16, 296),
 		Size = UDim2.fromOffset(220, 200),
 		BackgroundTransparency = 1,
 	})
@@ -388,7 +417,9 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		local class = state.Class and Config.Classes[state.Class]
 		classLabel.Text = if class then `Lv {state.Level} {class.DisplayName}` else `Level {state.Level}`
 		classLabel.TextColor3 = if class then class.Color else Color3.new(1, 1, 1)
-		goldLabel.Text = `Gold: {state.Gold}`
+		goldLabel.Text = if (state.Candies or 0) > 0 or workspace:GetAttribute("HalloweenActive")
+			then `Gold: {state.Gold}  Candy: {state.Candies}`
+			else `Gold: {state.Gold}`
 		defenseLabel.Text = `Defense {math.floor(state.Stats.Defense * 100)}%  |  Dmg x{string.format("%.2f", state.Stats.Damage)}`
 		xpFill.Size = UDim2.fromScale(math.clamp(state.XP / state.XPNeeded, 0, 1), 1)
 		xpLabel.Text = if state.Level >= Config.MaxLevel

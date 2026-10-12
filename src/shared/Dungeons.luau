@@ -17,9 +17,10 @@ export type DungeonDef = {
 	Boss: string,
 	Rewards: { XP: number, Gold: number },
 	MythicMultiplier: number?, -- multiplies the ultra-rare Mythic drop chance
+	Event: string?, -- limited-time event dungeon (Config.Events): only open while it runs
 	Difficulties: { [string]: DifficultySettings }, -- keyed by Config.DifficultyOrder ids
 	Theme: {
-		Style: string, -- "Crypt" | "Forest" | "Temple" | "Ice" | "Volcano" | "Void": decor, music, mood
+		Style: string, -- "Crypt" | "Forest" | "Temple" | "Ice" | "Volcano" | "Void" | "Halloween"
 		Floor: Color3,
 		FloorMaterial: Enum.Material,
 		Wall: Color3,
@@ -161,9 +162,34 @@ Dungeons.Defs = {
 		},
 		Theme = { Style = "Void", Floor = rgb(25, 20, 35), FloorMaterial = M.Glass, Wall = rgb(35, 25, 50), WallMaterial = M.Slate, Torch = rgb(190, 110, 255) },
 	},
+	-- Halloween event: SUPER HARD. Every clear gives event candies (Config.Events.Halloween).
+	Haunted = {
+		DisplayName = "Haunted Manor",
+		Power = 50,
+		Rooms = {
+			{ JackOLantern = 3, VampireBat = 4 },
+			{ Phantom = 4, Banshee = 2, VampireBat = 2 },
+			{ JackOLantern = 4, Banshee = 3 },
+			{ HeadlessHorseman = 1, VampireBat = 4 },
+			{ Phantom = 5, JackOLantern = 3, Banshee = 2 },
+			{ JackOLantern = 5, Phantom = 4, Banshee = 3, VampireBat = 4 },
+		},
+		Boss = "PumpkinKing",
+		Rewards = { XP = 25000, Gold = 9000 },
+		MythicMultiplier = 2,
+		Event = "Halloween",
+		Difficulties = {
+			Easy = { Level = 35, Loot = { [7] = 60, [8] = 40 } },
+			Normal = { Level = 42, Loot = { [8] = 100 } },
+			Hard = { Level = 47, Loot = { [8] = 100 } },
+			Nightmare = { Level = 50, Loot = { [8] = 100 } },
+		},
+		Theme = { Style = "Halloween", Floor = rgb(45, 35, 40), FloorMaterial = M.WoodPlanks, Wall = rgb(55, 40, 60), WallMaterial = M.Brick, Torch = rgb(255, 130, 30) },
+	},
 } :: { [string]: DungeonDef }
 
--- Order the portals appear in the lobby (left to right).
-Dungeons.Order = { "Crypt", "Witchwood", "Temple", "Keep", "Forge", "Abyss" }
+-- Order the portals appear in the lobby (left to right). Event dungeons only get a portal
+-- while their event runs.
+Dungeons.Order = { "Crypt", "Witchwood", "Temple", "Keep", "Forge", "Abyss", "Haunted" }
 
 return Dungeons

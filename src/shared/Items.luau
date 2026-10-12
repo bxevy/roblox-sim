@@ -57,7 +57,7 @@ export type ArmorSetDef = {
 	DisplayName: string,
 	Rarity: string,
 	Tier: number,
-	Source: string, -- "Loot" (dungeon drops by tier) | "Crate"
+	Source: string, -- "Loot" (dungeon drops by tier) | "Crate" | "Event"
 	Health: number, -- full-set totals, split across the pieces
 	Defense: number,
 	SetBonus: SetBonus,
@@ -83,6 +83,7 @@ local WEAPON_TYPES = {
 	Spear = { DamageMultiplier = 1.05, Cooldown = 0.5, Range = 10 },
 	Katana = { DamageMultiplier = 1, Cooldown = 0.4, Range = 7.5 },
 	Halberd = { DamageMultiplier = 1.5, Cooldown = 0.6, Range = 10 },
+	Lantern = { DamageMultiplier = 1.3, Cooldown = 0.6, Range = 45, Splash = 6 },
 }
 
 local rgb = Color3.fromRGB
@@ -417,6 +418,32 @@ local WEAPON_LIST = {
 		Design = { Head = "Axe", Wings = true, Halo = true, Runes = rgb(255, 210, 80), Aura = { Kind = "Holy", Color = rgb(255, 235, 150) }, Trail = rgb(255, 235, 150), Glow = rgb(255, 220, 100) },
 		Skill = { Name = "Divine Intervention", Mechanic = "Nova", Damage = 6, Radius = 22, HealPercent = 0.5, Cooldown = 18, Color = rgb(255, 235, 150), Style = "Holy", Description = "Heaven answers: massive damage and heal allies 50%" } },
 
+	-- Lanterns (Pumpkin Warlock, limited Halloween class) -------------------------------------
+	{ Id = "CarvedLantern", Name = "Carved Lantern", Type = "Lantern", Tier = 1, Color = rgb(240, 120, 20), Accent = rgb(70, 50, 35), Material = M.SmoothPlastic, Effect = burn(0.1), Combo = "Hex",
+		Design = { Head = "Pumpkin", Glow = rgb(255, 190, 60), Trail = rgb(255, 150, 40) },
+		Skill = { Name = "Jack's Toss", Mechanic = "Bomb", Projectile = "Pumpkin", Damage = 3, Radius = 10, Range = 50, Cooldown = 10, Color = rgb(255, 140, 30), Style = "Fire", Description = "Lob a pumpkin that bursts into flame" } },
+	{ Id = "CandleLantern", Name = "Candle Lantern", Type = "Lantern", Tier = 2, Color = rgb(60, 55, 60), Accent = rgb(250, 240, 210), Material = M.Metal, Effect = burn(0.12), Combo = "Haunt",
+		Design = { Head = "Cage", Glow = rgb(255, 220, 140), Trail = rgb(255, 220, 140) },
+		Skill = { Name = "Candlelight", Mechanic = "Missiles", Projectile = "Pumpkin", Damage = 1, Count = 5, Range = 45, Cooldown = 9, Color = rgb(255, 210, 120), Style = "Fire", Description = "5 little pumpkins seek enemies" } },
+	{ Id = "WitchLantern", Name = "Witch's Lantern", Type = "Lantern", Tier = 3, Color = rgb(60, 30, 80), Accent = rgb(140, 220, 90), Material = M.Metal, Effect = burn(0.15), Combo = "Hex",
+		Design = { Head = "Cage", Glow = rgb(150, 255, 90), Aura = { Kind = "Smoke", Color = rgb(120, 220, 80) }, Trail = rgb(150, 255, 90) },
+		Skill = { Name = "Cauldron Cloud", Mechanic = "Cloud", Damage = 0.6, Radius = 11, Ticks = 8, Duration = 4, Cooldown = 12, Color = rgb(140, 230, 80), Style = "Poison", Description = "A bubbling cloud of witch's brew" } },
+	{ Id = "GhostLantern", Name = "Ghostlight Lantern", Type = "Lantern", Tier = 4, Color = rgb(200, 220, 255), Accent = rgb(50, 60, 90), Material = M.Glass, Effect = frost(0.3), Combo = "Haunt",
+		Design = { Head = "Skull", Glow = rgb(150, 220, 255), Aura = { Kind = "Spirit", Color = rgb(170, 220, 255) }, Trail = rgb(170, 220, 255) },
+		Skill = { Name = "Poltergeist", Mechanic = "Ricochet", Damage = 2.3, Count = 6, Range = 30, Cooldown = 13, Color = rgb(170, 220, 255), Style = "Spirit", Description = "A ghost bounces between 6 enemies" } },
+	{ Id = "SoulfireLantern", Name = "Soulfire Lantern", Type = "Lantern", Tier = 5, Color = rgb(30, 30, 40), Accent = rgb(80, 255, 200), Material = M.Metal, Effect = lifesteal(0.06), Combo = "Hex",
+		Design = { Head = "Skull", Glow = rgb(80, 255, 200), Aura = { Kind = "Spirit", Color = rgb(80, 255, 200) }, Trail = rgb(80, 255, 200) },
+		Skill = { Name = "Soul Harvest", Mechanic = "Chain", Damage = 1.5, Count = 6, Range = 35, Heal = 0.3, Cooldown = 11, Color = rgb(80, 255, 200), Style = "Spirit", Description = "Rip souls from 6 enemies, healing you" } },
+	{ Id = "NightshadeLantern", Name = "Nightshade Lantern", Type = "Lantern", Tier = 6, Color = rgb(90, 30, 130), Accent = rgb(255, 140, 30), Material = M.Metal, Effect = burn(0.2), Combo = "Haunt",
+		Design = { Head = "Pumpkin", Glow = rgb(200, 90, 255), Aura = { Kind = "Void", Color = rgb(200, 90, 255) }, Trail = rgb(200, 100, 255) },
+		Skill = { Name = "Bat Swarm", Mechanic = "Summon", Damage = 0.8, Radius = 8, Ticks = 12, Duration = 5, Cooldown = 15, Color = rgb(150, 70, 220), Style = "Shadow", Description = "A swarm of bats circles you, biting everything nearby" } },
+	{ Id = "HarvestMoon", Name = "Harvest Moon", Type = "Lantern", Tier = 7, Color = rgb(255, 170, 40), Accent = rgb(40, 30, 30), Material = M.Neon, Effect = burn(0.25), Combo = "Hex",
+		Design = { Head = "Moon", Glow = rgb(255, 200, 80), Aura = { Kind = "Embers", Color = rgb(255, 160, 50) }, Trail = rgb(255, 180, 60) },
+		Skill = { Name = "Pumpkin Rain", Mechanic = "Rain", Projectile = "Pumpkin", Damage = 1.1, Radius = 13, Count = 16, Duration = 2.5, Cooldown = 14, Color = rgb(255, 140, 30), Style = "Fire", Description = "Pumpkins rain from the harvest moon" } },
+	{ Id = "HeadlessLantern", Name = "Lantern of the Headless", Type = "Lantern", Tier = 8, Color = rgb(255, 110, 20), Accent = rgb(20, 15, 20), Material = M.Neon, Effect = burn(0.3), Combo = "Haunt",
+		Design = { Head = "Pumpkin", Horns = true, Glow = rgb(255, 80, 20), Aura = { Kind = "Embers", Color = rgb(255, 90, 20) }, Trail = rgb(255, 100, 30) },
+		Skill = { Name = "Headless Inferno", Mechanic = "Meteor", Projectile = "Pumpkin", Damage = 6, Radius = 15, Range = 55, Cooldown = 12, Color = rgb(255, 100, 20), Style = "Fire", Description = "A giant burning jack-o'-lantern crashes onto your target" } },
+
 	-- Mythic: never in normal loot tables, only from the ultra-rare drop (Config.MythicDrop)
 	{ Id = "VoidlightGreatsword", Name = "Voidlight Greatsword", Type = "Sword", Tier = 9, Color = rgb(236, 240, 252), Accent = rgb(28, 34, 92), Material = M.Metal, Effect = frost(0.5), Combo = "Executioner", Model = "Voidlight",
 		Design = { Aura = { Kind = "Void", Color = rgb(110, 140, 255) }, Trail = rgb(110, 140, 255) },
@@ -592,6 +619,41 @@ local ARMOR_SETS = {
 			Material = M.SmoothPlastic, TrimMaterial = M.Metal,
 			Helmet = "Kabuto", Pauldron = "Sode", Emblem = "Lamellar", Skirt = "Kusazuri", Boots = "Tabi",
 			Vfx = { Kind = "Petals", Color = rgb(255, 175, 205), Rate = 8 },
+		},
+	},
+	-- Limited (Halloween event crate)
+	{
+		Id = "PumpkinReaper",
+		DisplayName = "Pumpkin Reaper",
+		Rarity = "Limited",
+		Tier = 10,
+		Source = "Event",
+		Health = 680,
+		Defense = 0.3,
+		SetBonus = { Health = 120, Damage = 0.15, Description = "+120 health, +15% damage, jack-o'-lantern flames" },
+		Names = { "Pumpkin Reaper Head", "Pumpkin Reaper Shroud", "Pumpkin Reaper Greaves", "Pumpkin Reaper Boots" },
+		Style = {
+			Primary = rgb(45, 35, 40), Secondary = rgb(235, 115, 20), Accent = rgb(255, 190, 50), Cloth = rgb(70, 25, 90),
+			Material = M.Slate, TrimMaterial = M.Metal,
+			Helmet = "Pumpkin", Pauldron = "Spiked", Emblem = "Skull", Cape = true, Skirt = "Tassets", Boots = "Plate",
+			Vfx = { Kind = "Embers", Color = rgb(255, 140, 30), Rate = 10, Light = true },
+		},
+	},
+	{
+		Id = "VampireLord",
+		DisplayName = "Vampire Lord",
+		Rarity = "Limited",
+		Tier = 10,
+		Source = "Event",
+		Health = 720,
+		Defense = 0.32,
+		SetBonus = { Health = 150, Damage = 0.2, Speed = 0.1, Description = "+150 health, +20% damage, +10% speed, blood mist" },
+		Names = { "Vampire Lord's Circlet", "Vampire Lord's Coat", "Vampire Lord's Breeches", "Vampire Lord's Boots" },
+		Style = {
+			Primary = rgb(25, 20, 28), Secondary = rgb(150, 15, 35), Accent = rgb(255, 40, 60), Cloth = rgb(120, 0, 20),
+			Material = M.Fabric, TrimMaterial = M.Metal,
+			Helmet = "Vampire", Pauldron = "Spiked", Emblem = "Core", Cape = true, Wings = "Dragon", Skirt = "Tassets", Boots = "Plate",
+			Vfx = { Kind = "Smoke", Color = rgb(160, 10, 30), Rate = 6, Light = true },
 		},
 	},
 }

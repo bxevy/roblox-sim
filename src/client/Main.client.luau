@@ -24,6 +24,8 @@ local StatsWindow = require(UI.StatsWindow)
 local QuestWindow = require(UI.QuestWindow)
 local SkillsWindow = require(UI.SkillsWindow)
 local CardWindow = require(UI.CardWindow)
+local PartyWindow = require(UI.PartyWindow)
+local EventWindow = require(UI.EventWindow)
 local CardUI = require(ReplicatedStorage.Shared.CardUI)
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
@@ -31,6 +33,7 @@ local Controllers = script.Parent:WaitForChild("Controllers")
 local Movement = require(Controllers.Movement)
 local Audio = require(Controllers.Audio)
 local Animator = require(Controllers.Animator)
+local PetsController = require(Controllers.Pets)
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -51,7 +54,7 @@ local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 })
 
 local state = nil
-local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow, questWindow, skillsWindow, cardWindow
+local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow, questWindow, skillsWindow, cardWindow, partyWindow, eventWindow
 
 -- Direction from your character toward the mouse (flat on the ground).
 local function getAim(): Vector3?
@@ -82,9 +85,10 @@ local function useAbility(abilityId: string)
 	if hud.IsOnCooldown(abilityId) then
 		return
 	end
-	local ok, cooldown = Remotes.UseAbility:InvokeServer(abilityId, getAim())
+	local ok, cooldown, motion = Remotes.UseAbility:InvokeServer(abilityId, getAim())
 	if ok then
 		Animator.Play(player.Character, WeaponMoves.AbilityAnims[abilityId])
+		Animator.Move(motion)
 	end
 	if cooldown and cooldown > 0 then
 		hud.StartCooldown(abilityId, cooldown)
@@ -104,9 +108,10 @@ local function useWeaponSkill()
 	if hud.IsOnCooldown("WeaponSkill") then
 		return
 	end
-	local ok, cooldown = Remotes.UseWeaponSkill:InvokeServer(getAim())
+	local ok, cooldown, motion = Remotes.UseWeaponSkill:InvokeServer(getAim())
 	if ok then
 		Animator.Play(player.Character, WeaponMoves.SkillAnims[weapon.Skill.Mechanic])
+		Animator.Move(motion)
 	end
 	if cooldown and cooldown > 0 then
 		hud.StartCooldown("WeaponSkill", cooldown)
@@ -166,6 +171,12 @@ hud = Hud.new(gui, {
 	ToggleCard = function()
 		cardWindow.Toggle()
 	end,
+	ToggleParty = function()
+		partyWindow.Toggle()
+	end,
+	ToggleEvent = function()
+		eventWindow.Toggle()
+	end,
 	ToggleWeapon = toggleWeapon,
 	ToggleMusic = Audio.ToggleMusic,
 	SetSprint = Movement.SetSprint,
@@ -212,6 +223,36 @@ cardWindow = CardWindow.new(gui, {
 	end,
 })
 
+partyWindow = PartyWindow.new(gui, function(message, isError)
+	hud.Toast(message, if isError then ERROR_COLOR else Color3.fromRGB(150, 255, 150))
+end)
+
+eventWindow = EventWindow.new(gui, {
+	Open = function(currency)
+		return Remotes.OpenHalloweenCrate:InvokeServer(currency)
+	end,
+	EquipPet = function(petId)
+		request(Remotes.EquipPet, petId)
+	end,
+	EquipClass = function(classId)
+		local ok, message = Remotes.EquipLimitedClass:InvokeServer(classId)
+		if message then
+			hud.Toast(message, if ok then Config.Rarities.Limited else ERROR_COLOR)
+		end
+	end,
+}, function(message, isError)
+	hud.Toast(message, if isError then ERROR_COLOR else Config.Rarities.Limited)
+end)
+Remotes.OpenEvent.OnClientEvent:Connect(eventWindow.Open)
+
+-- The event button shows while the event runs (or if you still have candies to spend)
+local function updateEventButton()
+	local active = workspace:GetAttribute("HalloweenActive") == true
+	hud.SetEventButton(active, "Halloween Event [K]")
+end
+workspace:GetAttributeChangedSignal("HalloweenActive"):Connect(updateEventButton)
+updateEventButton()
+
 statsWindow = StatsWindow.new(gui, function()
 	return Remotes.GetLeaderboards:InvokeServer()
 end)
@@ -245,6 +286,7 @@ local function render(newState)
 	inventory.Render(state)
 	shop.Render(state)
 	crateWindow.Render(state)
+	eventWindow.Render(state)
 	statsWindow.Render(state)
 	skillsWindow.Render(state)
 	cardWindow.Render(state)
@@ -347,6 +389,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		questWindow.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.H then
 		cardWindow.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.O then
+		partyWindow.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.K then
+		eventWindow.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.P and player:GetAttribute("IsAdmin") then
 		adminPanel.Toggle()
 	end
@@ -359,6 +405,7 @@ end)
 Movement.Start(Util.playSfx)
 Audio.Start()
 Animator.Start()
+PetsController.Start()
 
 -- Data may have loaded before this script started listening.
 task.spawn(function()

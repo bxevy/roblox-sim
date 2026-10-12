@@ -12,7 +12,7 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 	local self = {}
 
 	local window, body
-	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 680), function()
+	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 726), function()
 		window.Visible = false
 	end)
 
@@ -27,7 +27,7 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 
 	local grid = Util.make("Frame", body, {
 		Position = UDim2.fromOffset(0, 66),
-		Size = UDim2.new(1, 0, 0, 5 * 46),
+		Size = UDim2.new(1, 0, 0, 6 * 46),
 		BackgroundTransparency = 1,
 	})
 	Util.make("UIGridLayout", grid, {
@@ -46,6 +46,8 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 		{ "+10 Skill Points", "SkillPoints" },
 		{ "Max Level (Prestige)", "SetLevel", 50 },
 		{ "Free Class Roll", "FreeRoll" },
+		{ "+5,000 Candies", "AddCandies", 5000 },
+		{ "+1,000 Candies (1 crate)", "AddCandies", 1000 },
 	}
 	for order, entry in buttons do
 		local button = Util.button(grid, { LayoutOrder = order, TextScaled = false, TextSize = 18, Text = entry[1] })
@@ -83,14 +85,14 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 			end
 		end)
 	end
-	inputRow(66 + 5 * 46 + 8, "Level (1-50)", "Set Level", "SetLevel")
-	inputRow(66 + 5 * 46 + 56, "Item id, e.g. Dragonfang", "Give Item", "GiveItem")
-	inputRow(66 + 5 * 46 + 104, "Prestige (0-10)", "Set Prestige", "SetPrestige")
-	inputRow(66 + 5 * 46 + 152, "Class, e.g. Assassin", "Set Class", "SetClass")
+	inputRow(66 + 6 * 46 + 8, "Level (1-50)", "Set Level", "SetLevel")
+	inputRow(66 + 6 * 46 + 56, "Item id, e.g. Dragonfang", "Give Item", "GiveItem")
+	inputRow(66 + 6 * 46 + 104, "Prestige (0-10)", "Set Prestige", "SetPrestige")
+	inputRow(66 + 6 * 46 + 152, "Class, e.g. Assassin", "Set Class", "SetClass")
 
 	-- Owner only: Creator Rank (level 999 / prestige 999)
 	local creator = Util.button(body, {
-		Position = UDim2.fromOffset(0, 66 + 5 * 46 + 200),
+		Position = UDim2.fromOffset(0, 66 + 6 * 46 + 200),
 		Size = UDim2.new(1, 0, 0, 44),
 		BackgroundColor3 = Color3.fromRGB(170, 50, 160),
 		Text = "CREATOR RANK (Lv 999 / Prestige 999)",

@@ -181,6 +181,12 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 		return true, "Creator Rank OFF"
 	end,
 
+	AddCandies = function(player, amount)
+		amount = tonumber(amount) or 5000
+		PlayerService.AddCandies(player, amount)
+		return true, `+{amount} candies`
+	end,
+
 	FreeRoll = function(player)
 		if player:GetAttribute("InDungeon") then
 			return false, "Leave the dungeon first"
@@ -197,7 +203,14 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 			end
 		end
 		if not match then
-			return false, `Class: {table.concat(Config.ClassOrder, ", ")}`
+			return false, `Class: {table.concat(Config.ClassOrder, ", ")}, {table.concat(Config.LimitedClassOrder, ", ")}`
+		end
+		if Config.Classes[match].Limited then
+			-- Admins can hand themselves limited classes for testing
+			local data = PlayerService.GetData(player)
+			if data then
+				data.LimitedClasses[match] = true
+			end
 		end
 		PlayerService.SetClass(player, match)
 		return true, `Class set to {match}`

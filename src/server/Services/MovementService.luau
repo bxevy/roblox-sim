@@ -60,6 +60,11 @@ local function onDodge(player: Player)
 	player:SetAttribute("Stamina", math.floor(state.Stamina))
 	character:SetAttribute("InvulnerableUntil", now + movement.InvulnerableTime)
 	PlayerService.AddStat(player, "Dodges")
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			Remotes.PlayMove:FireClient(other, character, "Dodge")
+		end
+	end
 end
 
 local function update()

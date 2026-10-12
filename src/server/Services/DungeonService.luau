@@ -18,6 +18,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
 local CombatService = require(script.Parent.CombatService)
+local PartyService = require(script.Parent.PartyService)
 local DungeonDecor = require(script.Parent.Parent.DungeonDecor)
 local Sfx = require(script.Parent.Parent.Sfx)
 
@@ -34,7 +35,7 @@ local RUN_SPACING = 600
 
 local LOBBY_SPAWN = Vector3.new(0, 4, 0)
 local PORTAL_Z = -92 -- on HubService's portal terrace
-local PORTAL_SPACING = 32
+local PORTAL_SPACING = 28
 
 local START_DELAY = 3
 local RETURN_DELAY = 8
@@ -258,6 +259,7 @@ local function leaveRun(run: Run, player: Player)
 	Remotes.DungeonStatus:FireClient(player, nil)
 	Remotes.BossBar:FireClient(player, nil)
 	player:SetAttribute("InDungeon", nil)
+	PartyService.Refresh(player)
 	run.Players[player] = nil
 	playerRun[player] = nil
 	local connection = run.Connections[player]
@@ -332,6 +334,12 @@ local function winRun(run: Run)
 		end
 		PlayerService.AddXP(player, def.Rewards.XP * run.RewardMultiplier)
 		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier, true)
+
+		-- Event dungeons pay out event currency
+		if def.Event and Config.IsEventActive(def.Event) then
+			local candies = PlayerService.AddCandies(player, Config.Events[def.Event].CandiesPerClear, true)
+			PlayerService.Notify(player, `+{candies} Candies!`, Config.Rarities.Limited)
+		end
 
 		-- Ultra-rare Mythic drop, rolled separately from the normal item.
 		local playerClass = PlayerService.GetClass(player)
@@ -540,10 +548,12 @@ local function startRun(dungeonId: string, difficultyId: string, party: { Player
 	local entry = run.Rooms[1]
 	for i, player in party do
 		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		if humanoid and humanoid.Health > 0 then
+		-- (skip anyone a different portal already sent into a dungeon this second)
+		if humanoid and humanoid.Health > 0 and not playerRun[player] then
 			run.Players[player] = true
 			playerRun[player] = run
 			player:SetAttribute("InDungeon", true)
+			PartyService.Refresh(player)
 			run.Connections[player] = humanoid.Died:Connect(function()
 				PlayerService.Notify(player, "You were defeated!", Color3.fromRGB(255, 80, 80))
 				PlayerService.AddStat(player, "Deaths")
@@ -595,8 +605,16 @@ local function buildLobby()
 	lobby.Name = "Portals"
 	lobby.Parent = workspace
 
-	local count = #Dungeons.Order
-	for i, dungeonId in Dungeons.Order do
+	-- Event dungeons only get a portal while their event runs
+	local order = {}
+	for _, dungeonId in Dungeons.Order do
+		local eventId = Dungeons.Defs[dungeonId].Event
+		if not eventId or Config.IsEventActive(eventId) then
+			table.insert(order, dungeonId)
+		end
+	end
+	local count = #order
+	for i, dungeonId in order do
 		local def = Dungeons.Defs[dungeonId]
 		local x = (i - (count + 1) / 2) * PORTAL_SPACING
 		local color = def.Theme.Torch
@@ -608,6 +626,18 @@ local function buildLobby()
 		end
 		local beam = block(lobby, "Arch", Vector3.new(18, 2, 2), CFrame.new(x, 17, PORTAL_Z - 7), def.Theme.Wall, def.Theme.WallMaterial)
 		torch(lobby, Vector3.new(x, 15.5, PORTAL_Z - 5.8), color)
+		if def.Event then
+			-- Jack-o'-lanterns around the event portal
+			for _, corner in { Vector3.new(-6.5, 0, 6.5), Vector3.new(6.5, 0, 6.5), Vector3.new(-9.5, 0, -6), Vector3.new(9.5, 0, -6) } do
+				local pumpkin = block(lobby, "EventPumpkin", Vector3.one * 2.2, CFrame.new(x + corner.X, 1.1, PORTAL_Z + corner.Z), Color3.fromRGB(240, 120, 20), Enum.Material.SmoothPlastic)
+				pumpkin.Shape = Enum.PartType.Ball
+				local face = block(lobby, "EventPumpkinFace", Vector3.new(1.1, 0.25, 0.1), CFrame.new(x + corner.X, 0.9, PORTAL_Z + corner.Z + 1.08), Color3.fromRGB(255, 200, 60), Enum.Material.Neon)
+				face.CanCollide = false
+			end
+			local eventLabel = billboard(pad, UDim2.fromOffset(240, 30), Vector3.new(0, 9, 0))
+			eventLabel.Text = "LIMITED EVENT - earns Candies!"
+			eventLabel.TextColor3 = Config.Rarities.Limited
+		end
 
 		local nameLabel = billboard(beam, UDim2.fromOffset(260, 50), Vector3.new(0, 4.5, 0))
 		nameLabel.Text = def.DisplayName
@@ -700,6 +730,18 @@ local function updatePortal(portal: Portal)
 		end
 	end
 
+	-- Party members in town come along, even if they aren't standing on the pad.
+	for _, player in table.clone(party) do
+		for _, member in PartyService.GetPartyMembers(player) do
+			local humanoid = member.Character and member.Character:FindFirstChildOfClass("Humanoid")
+			local eligible = humanoid and humanoid.Health > 0 and not playerRun[member]
+				and PlayerService.GetClass(member) and PlayerService.GetLevel(member) >= requiredLevel
+			if eligible and not table.find(party, member) and #party < Config.Party.MaxSize then
+				table.insert(party, member)
+			end
+		end
+	end
+
 	-- Players who stepped off the pad: hide their portal panel.
 	for player in portal.OnPad do
 		if not onPad[player] then
@@ -723,6 +765,11 @@ local function updatePortal(portal: Portal)
 		if portal.Countdown <= 0 then
 			portal.Countdown = nil
 			portal.Label.Text = idleText(def)
+			for _, member in party do
+				if not onPad[member] then
+					PlayerService.Notify(member, `Your party is entering {def.DisplayName} ({portal.DifficultyId})!`, Color3.fromRGB(120, 230, 140))
+				end
+			end
 			task.spawn(startRun, portal.Id, portal.DifficultyId, party)
 			return
 		end

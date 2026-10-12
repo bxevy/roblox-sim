@@ -493,7 +493,119 @@ local function void(parent: Instance, room: Room, isBoss: boolean, rng: Random)
 	end
 end
 
-local DECORATORS = { Crypt = crypt, Temple = temple, Ice = ice, Forest = forest, Volcano = volcano, Void = void }
+-- Halloween (Haunted Manor) -------------------------------------------------------------
+
+local function jackOLantern(parent: Instance, position: Vector3, size: number, glow: Color3)
+	local body = Build.ball(parent, "Pumpkin", size, position + Vector3.new(0, size * 0.42, 0), rgb(240, 120, 20), M.SmoothPlastic)
+	noCollide(Build.block(parent, "PumpkinStem", Vector3.new(0.2, 0.4, 0.2) * size, CFrame.new(body.CFrame.Position + Vector3.new(0, size * 0.55, 0)), rgb(70, 100, 40), M.Wood))
+	noCollide(Build.block(parent, "PumpkinGrin", Vector3.new(size * 0.5, size * 0.1, 0.1), CFrame.new(body.CFrame.Position + Vector3.new(0, -size * 0.12, -size * 0.49)), glow, M.Neon))
+	for _, side in { -1, 1 } do
+		noCollide(Build.block(parent, "PumpkinEye", Vector3.new(size * 0.16, size * 0.14, 0.1), CFrame.new(body.CFrame.Position + Vector3.new(side * size * 0.18, size * 0.1, -size * 0.48)) * CFrame.Angles(0, 0, math.rad(side * 15)), glow, M.Neon))
+	end
+	Build.light(body, glow, size * 6, 1.2)
+end
+
+local function halloween(parent: Instance, room: Room, isBoss: boolean, rng: Random)
+	local orange = rgb(255, 130, 30)
+	local purple = rgb(150, 70, 220)
+	local wood = rgb(60, 40, 35)
+	local half = room.Size / 2
+
+	-- Wainscoting along the walls
+	for _, side in { -1, 1 } do
+		Build.block(parent, "Wainscot", Vector3.new(0.4, 5, room.Size - 2), CFrame.new(room.Center + Vector3.new(side * (half - 0.2), 2.5, 0)), wood, M.WoodPlanks)
+		noCollide(Build.block(parent, "WainscotTrim", Vector3.new(0.5, 0.3, room.Size - 2), CFrame.new(room.Center + Vector3.new(side * (half - 0.25), 5, 0)), rgb(110, 80, 40), M.Wood))
+	end
+
+	-- Haunted portraits whose eyes glow
+	for _, spot in sideSpots(room, 0.5, 2) do
+		local p = spot.Position + Vector3.new(0, 10, 0)
+		local facing = CFrame.lookAt(p, p - Vector3.new(spot.Side, 0, 0))
+		Build.block(parent, "PortraitFrame", Vector3.new(4.6, 6, 0.3), facing, rgb(150, 110, 40), M.Metal)
+		Build.block(parent, "Portrait", Vector3.new(4, 5.4, 0.35), facing, rgb(30, 25, 35), M.Fabric)
+		noCollide(Build.block(parent, "PortraitFace", Vector3.new(1.6, 2, 0.4), facing * CFrame.new(0, 0.6, 0), rgb(120, 105, 95), M.Fabric))
+		for _, x in { -0.35, 0.35 } do
+			noCollide(Build.block(parent, "PortraitEye", Vector3.new(0.25, 0.15, 0.45), facing * CFrame.new(x, 0.9, 0), rgb(255, 60, 60), M.Neon))
+		end
+	end
+
+	-- Candelabras with purple flames
+	for _, spot in sideSpots(room, 5, 2) do
+		local p = spot.Position + Vector3.new(0, 0, if rng:NextNumber() < 0.5 then -6 else 6)
+		Build.cylinder(parent, "CandelabraBase", 1.2, 0.4, CFrame.new(p + Vector3.new(0, 0.2, 0)), rgb(40, 35, 40), M.Metal)
+		Build.cylinder(parent, "CandelabraStem", 0.3, 5, CFrame.new(p + Vector3.new(0, 2.7, 0)), rgb(40, 35, 40), M.Metal)
+		for _, x in { -0.7, 0, 0.7 } do
+			local candle = noCollide(Build.cylinder(parent, "Candle", 0.3, 0.8, CFrame.new(p + Vector3.new(x, 5.6, 0)), rgb(230, 225, 205), M.SmoothPlastic))
+			fire(candle, purple, rgb(80, 20, 120), 0.8)
+		end
+		local lamp = noCollide(Build.block(parent, "CandleLight", Vector3.one, CFrame.new(p + Vector3.new(0, 6, 0)), purple, M.SmoothPlastic))
+		lamp.Transparency = 1
+		Build.light(lamp, purple, 18, 1.2)
+	end
+
+	-- Jack-o'-lanterns and cobwebs in the corners
+	for _, corner in corners(room, 4) do
+		for _ = 1, 3 do
+			jackOLantern(parent, corner + Vector3.new(rng:NextNumber(-2.5, 2.5), 0, rng:NextNumber(-2.5, 2.5)), rng:NextNumber(1.4, 2.6), orange)
+		end
+		local web = noCollide(Build.block(parent, "Cobweb", Vector3.new(8, 8, 0.05), CFrame.new(corner + Vector3.new(0, 19, 0)), rgb(230, 230, 235), M.Fabric))
+		web.Transparency = 0.7
+		local toCenter = (room.Center - corner) * Vector3.new(1, 0, 1)
+		web.CFrame = CFrame.lookAt(corner + Vector3.new(0, 19, 0), corner + Vector3.new(0, 19, 0) + toCenter) * CFrame.Angles(0, 0, math.rad(45))
+	end
+
+	-- A chandelier
+	local chandelier = room.Center + Vector3.new(0, 17, 0)
+	noCollide(Build.block(parent, "ChandelierChain", Vector3.new(0.3, 5, 0.3), CFrame.new(chandelier + Vector3.new(0, 2.5, 0)), rgb(40, 35, 40), M.Metal))
+	noCollide(Build.cylinder(parent, "Chandelier", 6, 0.4, CFrame.new(chandelier), rgb(40, 35, 40), M.Metal))
+	for i = 0, 5 do
+		local angle = i / 6 * math.pi * 2
+		local candle = noCollide(Build.cylinder(parent, "Candle", 0.3, 0.8, CFrame.new(chandelier + Vector3.new(math.cos(angle) * 2.6, 0.6, math.sin(angle) * 2.6)), rgb(230, 225, 205), M.SmoothPlastic))
+		fire(candle, orange, rgb(200, 60, 10), 0.8)
+	end
+	local chandelierLight = noCollide(Build.block(parent, "ChandelierLight", Vector3.one, CFrame.new(chandelier - Vector3.new(0, 1, 0)), orange, M.SmoothPlastic))
+	chandelierLight.Transparency = 1
+	Build.light(chandelierLight, orange, 30, 1.6)
+
+	-- Creeping fog
+	local fog = noCollide(Build.block(parent, "Fog", Vector3.new(room.Size - 6, 0.2, room.Size - 6), CFrame.new(room.Center + Vector3.new(0, 0.3, 0)), rgb(0, 0, 0), M.SmoothPlastic))
+	fog.Transparency = 1
+	local e = Instance.new("ParticleEmitter")
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.Color = ColorSequence.new(rgb(160, 140, 190))
+	e.Size = NumberSequence.new(4, 7)
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.86), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(5, 8)
+	e.Rate = 7
+	e.Speed = NumberRange.new(0.5, 1)
+	e.SpreadAngle = Vector2.new(180, 0)
+	e.Parent = fog
+
+	if isBoss then
+		-- The Pumpkin King's throne: a giant jack-o'-lantern
+		local back = room.Center + Vector3.new(0, 0, half - 8)
+		Build.block(parent, "ThroneStep", Vector3.new(20, 1, 10), CFrame.new(back + Vector3.new(0, 0.5, 0)), rgb(40, 30, 45), M.Slate)
+		jackOLantern(parent, back + Vector3.new(0, 1, 2), 10, purple)
+		for _, x in { -14, 14 } do
+			local base = back + Vector3.new(x, 0, 0)
+			Build.cylinder(parent, "DeadTrunk", 2, 18, CFrame.new(base + Vector3.new(0, 9, 0)), rgb(45, 35, 35), M.Wood)
+			for i = 1, 4 do
+				noCollide(Build.block(parent, "DeadBranch", Vector3.new(0.6, 6, 0.6), CFrame.new(base + Vector3.new(0, 12 + i, 0)) * CFrame.Angles(0, i * 1.6, math.rad(45)) * CFrame.new(0, 2.8, 0), rgb(45, 35, 35), M.Wood))
+			end
+		end
+		-- Hanging cages
+		for _, x in { -24, 24 } do
+			local cage = room.Center + Vector3.new(x, 12, 0)
+			noCollide(Build.block(parent, "CageChain", Vector3.new(0.3, 8, 0.3), CFrame.new(cage + Vector3.new(0, 6, 0)), rgb(40, 35, 40), M.Metal))
+			for _, offset in { Vector3.new(1, 0, 1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, -1) } do
+				noCollide(Build.block(parent, "CageBar", Vector3.new(0.2, 4, 0.2), CFrame.new(cage + offset * 1.2), rgb(40, 35, 40), M.Metal))
+			end
+			noCollide(Build.ball(parent, "CageSkull", 1, cage - Vector3.new(0, 1.5, 0), rgb(230, 225, 205), M.SmoothPlastic))
+		end
+	end
+end
+
+local DECORATORS = { Crypt = crypt, Temple = temple, Ice = ice, Forest = forest, Volcano = volcano, Void = void, Halloween = halloween }
 
 function DungeonDecor.decorate(style: string, parent: Instance, room: Room, isBoss: boolean, seed: number)
 	local decorator = DECORATORS[style]
@@ -516,6 +628,8 @@ function DungeonDecor.doorLook(style: string): (Color3, Enum.Material, number)
 		return rgb(60, 45, 40), M.CrackedLava, 0
 	elseif style == "Void" then
 		return rgb(120, 60, 200), M.ForceField, 0.1
+	elseif style == "Halloween" then
+		return rgb(70, 45, 35), M.WoodPlanks, 0
 	end
 	return rgb(70, 45, 30), M.WoodPlanks, 0
 end

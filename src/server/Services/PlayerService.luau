@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Items = require(ReplicatedStorage.Shared.Items)
+local Pets = require(ReplicatedStorage.Shared.Pets)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local DataService = require(script.Parent.DataService)
 local Sfx = require(script.Parent.Parent.Sfx)
@@ -33,6 +34,12 @@ local function buffTotal(player: Player, stat: string): number
 		end
 	end
 	return total
+end
+
+-- Bonus from the equipped pet ("Gold", "XP", "Damage" or "Candy").
+local function petBonus(data, key: string): number
+	local pet = data.EquippedPet and Pets.Defs[data.EquippedPet]
+	return if pet then pet.Bonus[key] or 0 else 0
 end
 
 local function skillBonus(data, skillId: string): number
@@ -105,6 +112,7 @@ function PlayerService.GetDamageMultiplier(player: Player): number
 		* (1 + buffTotal(player, "Damage"))
 		* (1 + armorStat(data, "Damage"))
 		* (1 + skillBonus(data, "Strength"))
+		* (1 + petBonus(data, "Damage"))
 end
 
 function PlayerService.GetCritChance(player: Player): number
@@ -175,6 +183,10 @@ local function buildState(player: Player, data)
 		SkillPoints = data.SkillPoints,
 		Skills = data.Skills,
 		Card = data.Card,
+		Candies = data.Candies,
+		Pets = data.Pets,
+		EquippedPet = data.EquippedPet,
+		LimitedClasses = data.LimitedClasses,
 		MaxStamina = PlayerService.GetMaxStamina(player),
 		Buffs = activeBuffs, -- buff id -> seconds remaining
 		Stats = {
@@ -265,7 +277,7 @@ function PlayerService.AddGold(player: Player, amount: number, isReward: boolean
 		return
 	end
 	if isReward then
-		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune") + buffTotal(player, "Gold")
+		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune") + buffTotal(player, "Gold") + petBonus(data, "Gold")
 	end
 	amount = math.floor(amount)
 	data.Gold += amount
@@ -292,6 +304,35 @@ function PlayerService.OnStatChanged(callback: (Player, string) -> ())
 	table.insert(statCallbacks, callback)
 end
 
+-- Event candies. `isReward` applies the pet and class candy bonuses.
+function PlayerService.AddCandies(player: Player, amount: number, isReward: boolean?): number
+	local data = DataService.Get(player)
+	if not data then
+		return 0
+	end
+	if isReward then
+		local class = getClass(data)
+		amount *= 1 + petBonus(data, "Candy") + (if class then class.CandyBonus or 0 else 0)
+	end
+	amount = math.floor(amount)
+	data.Candies += amount
+	if amount > 0 and isReward then
+		PlayerService.AddStat(player, "CandiesEarned", amount)
+	end
+	PlayerService.Push(player)
+	return amount
+end
+
+function PlayerService.SpendCandies(player: Player, amount: number): boolean
+	local data = DataService.Get(player)
+	if not data or data.Candies < amount then
+		return false
+	end
+	data.Candies -= amount
+	PlayerService.Push(player)
+	return true
+end
+
 -- Returns false (and charges nothing) if the player can't afford it.
 function PlayerService.SpendGold(player: Player, amount: number): boolean
 	local data = DataService.Get(player)
@@ -308,7 +349,7 @@ function PlayerService.AddXP(player: Player, amount: number)
 	if not data then
 		return
 	end
-	amount *= 1 + data.Prestige * Config.Prestige.XPBonus + skillBonus(data, "Wisdom")
+	amount *= 1 + data.Prestige * Config.Prestige.XPBonus + skillBonus(data, "Wisdom") + petBonus(data, "XP")
 	data.XP += math.floor(amount)
 	local leveledUp = false
 	while data.Level < Config.MaxLevel and data.XP >= Config.XPToLevel(data.Level) do
@@ -505,6 +546,18 @@ local function sanitize(data)
 	end
 	if data.Class and not Config.Classes[data.Class] then
 		data.Class = nil
+	end
+	-- A limited class only stays equipped while you own it
+	if data.Class and Config.Classes[data.Class].Limited and not data.LimitedClasses[data.Class] then
+		data.Class = nil
+	end
+	for petId in data.Pets do
+		if not Pets.Defs[petId] then
+			data.Pets[petId] = nil
+		end
+	end
+	if data.EquippedPet and not data.Pets[data.EquippedPet] then
+		data.EquippedPet = nil
 	end
 	data.Equipped.Armor = nil -- old single-slot armor from before armor sets
 	if not data.SkillPointsGranted then

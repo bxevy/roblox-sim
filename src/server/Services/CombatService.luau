@@ -30,8 +30,9 @@ local FROST_COLOR = Color3.fromRGB(140, 220, 255)
 local DEFAULT_COMBO = {
 	Sword = "Blademaster", Dagger = "Flurry", Mace = "Crusher", Staff = "Arcanist", Bow = "Marksman", Tome = "Psalm",
 	Axe = "Ravager", Greatsword = "Crusader", Scythe = "Reaper", Spear = "Impaler", Katana = "Iaijutsu", Halberd = "Seraphic",
+	Lantern = "Hex",
 }
-local PROJECTILE = { Bow = "Arrow", Staff = "Bolt", Tome = "Holy" }
+local PROJECTILE = { Bow = "Arrow", Staff = "Bolt", Tome = "Holy", Lantern = "Pumpkin" }
 local HEAVY = { Mace = true, Axe = true, Greatsword = true, Halberd = true }
 
 local CombatService = {}
@@ -39,6 +40,8 @@ local CombatService = {}
 type AttackState = { Step: number, Time: number, ReadyAt: number }
 local attackState: { [Player]: AttackState } = {}
 local abilityReadyAt: { [Player]: { [string]: number } } = {}
+-- Leaps/dashes to hand back to the client with an ability's result (see `leap`)
+local pendingMotion: { [Player]: { [string]: any } } = {}
 
 -- Helpers --------------------------------------------------------------------------
 
@@ -378,7 +381,7 @@ end
 
 -- Weapon ability (R) -------------------------------------------------------------------
 
-local function onUseWeaponSkill(player: Player, aim: unknown): (boolean, number)
+local function onUseWeaponSkill(player: Player, aim: unknown): (boolean, number, any)
 	local weapon = PlayerService.GetWeapon(player)
 	local humanoid, root = getAlive(player)
 	if not weapon or not humanoid or not root then
@@ -424,7 +427,11 @@ local function onUseWeaponSkill(player: Player, aim: unknown): (boolean, number)
 		Pull = EnemyService.Pull,
 		Stun = EnemyService.Stun,
 		Knockback = EnemyService.Knockback,
+		Move = function(motion)
+			pendingMotion[player] = motion
+		end,
 	}
+	pendingMotion[player] = nil
 	if not WeaponSkills.Run(ctx) then
 		return false, 0
 	end
@@ -434,7 +441,9 @@ local function onUseWeaponSkill(player: Player, aim: unknown): (boolean, number)
 	broadcastMove(player, WeaponMoves.SkillAnims[skill.Mechanic])
 	showTrail(player, 0.8)
 	Sfx.play(if skill.Style == "Holy" then "Heal" elseif skill.Style == "Gold" then "Coins" else "Lunge", root, 1.5)
-	return true, cooldown
+	local motion = pendingMotion[player]
+	pendingMotion[player] = nil
+	return true, cooldown, motion
 end
 
 -- Loadout -----------------------------------------------------------------------------
@@ -736,24 +745,20 @@ local function clearDistance(root: BasePart, direction: Vector3, distance: numbe
 	return distance
 end
 
--- Moves a character along an arc to `target` (leaps, dives). Runs in the background.
-local function leap(character: Model, root: BasePart, target: Vector3, height: number, duration: number, onLand: () -> ())
-	task.spawn(function()
-		local start = root.Position
-		local flat = (target - start) * Vector3.new(1, 0, 1)
-		local steps = math.max(6, math.floor(duration * 30))
-		for i = 1, steps do
-			if not character.Parent then
-				return
-			end
-			local t = i / steps
-			local p = start:Lerp(Vector3.new(target.X, start.Y, target.Z), t) + Vector3.new(0, math.sin(t * math.pi) * height, 0)
-			character:PivotTo(if flat.Magnitude > 0.1 then CFrame.lookAt(p, p + flat) else CFrame.new(p) * root.CFrame.Rotation)
-			task.wait(duration / steps)
+-- Leaps and dashes: the player's own client moves the character (it owns the physics,
+-- so the motion is smooth for everyone). The ability's result tells the client where to go.
+-- Leaps to `target`, then calls onLand with the landing point (character height).
+local function leap(player: Player, target: Vector3, height: number, duration: number, onLand: (Vector3) -> ())
+	pendingMotion[player] = { Kind = "Leap", Target = target, Height = height, Duration = duration }
+	task.delay(duration, function()
+		if player.Parent then
+			onLand(target)
 		end
-		root.AssemblyLinearVelocity = Vector3.zero
-		onLand()
 	end)
+end
+
+local function dash(player: Player, target: Vector3)
+	pendingMotion[player] = { Kind = "Dash", Target = target, Duration = 0.15 }
 end
 
 -- Where a leap should land: next to the aimed enemy, or partway along your aim.
@@ -906,8 +911,8 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 
 	LeapSmash = function(player, _, root, aim, weapon)
 		local ability = Config.Abilities.LeapSmash
-		leap(root.Parent :: Model, root, landingPoint(root, aim, ability.Range), 10, 0.5, function()
-			local ground = root.Position - Vector3.new(0, 2.5, 0)
+		leap(player, landingPoint(root, aim, ability.Range), 10, 0.5, function(at)
+			local ground = at - Vector3.new(0, 2.5, 0)
 			Effects.ring(ground, ability.Radius, ability.Color, 0.4)
 			Effects.burst(ground, ability.Radius * 0.6, ability.Color, 0.3)
 			Effects.sparks(ground, Color3.fromRGB(140, 120, 100), "Smoke", 30)
@@ -915,9 +920,9 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 				local angle = i / 6 * math.pi * 2
 				Effects.spike(ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * ability.Radius * 0.6, 3, Color3.fromRGB(120, 100, 85), Enum.Material.Rock)
 			end
-			Sfx.play("Slam", root, 1.2)
-			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
-			stunAround(root.Position, ability.Radius, ability.Stun)
+			Sfx.play("Slam", ground, 1.2)
+			damageAround(player, at, ability.Radius, ability.DamageMultiplier, weapon)
+			stunAround(at, ability.Radius, ability.Stun)
 		end)
 	end,
 
@@ -1027,13 +1032,13 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 	DragonDive = function(player, _, root, aim, weapon)
 		local ability = Config.Abilities.DragonDive
 		Effects.burst(root.Position, 5, ability.Color, 0.3)
-		leap(root.Parent :: Model, root, landingPoint(root, aim, ability.Range), 15, 0.8, function()
-			local ground = root.Position - Vector3.new(0, 2.5, 0)
+		leap(player, landingPoint(root, aim, ability.Range), 15, 0.8, function(at)
+			local ground = at - Vector3.new(0, 2.5, 0)
 			Effects.pillar(ground, ability.Radius * 0.5, ability.Color, 0.6)
 			Effects.ring(ground, ability.Radius, ability.Color, 0.45)
 			Effects.sparks(ground, Color3.fromRGB(255, 150, 60), "Fire", 40)
-			Sfx.play("Slam", root, 1.3)
-			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
+			Sfx.play("Slam", ground, 1.3)
+			damageAround(player, at, ability.Radius, ability.DamageMultiplier, weapon)
 		end)
 	end,
 
@@ -1053,8 +1058,7 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 				EnemyService.Knockback(enemy, start, 30)
 			end
 		end
-		local character = root.Parent :: Model
-		character:PivotTo(CFrame.lookAt(finish, finish + aim))
+		dash(player, finish)
 		Effects.sparks(finish, ability.Color, nil, 20)
 		return true
 	end,
@@ -1076,8 +1080,7 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 				EnemyService.Stun(enemy, 0.7)
 			end
 		end
-		local character = root.Parent :: Model
-		character:PivotTo(CFrame.lookAt(finish, finish + aim))
+		dash(player, finish)
 		local length = distance
 		local slash = Effects.part({ Size = Vector3.new(0.2, 0.2, length), Color = ability.Color, CFrame = CFrame.lookAt((start + finish) / 2, finish + aim * 0.01) })
 		TweenService:Create(slash, TweenInfo.new(0.6), { Transparency = 1, Size = Vector3.new(0.05, 3, length) }):Play()
@@ -1118,6 +1121,41 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 		end)
 	end,
 
+	-- Pumpkin Warlock (limited)
+	PumpkinBomb = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.PumpkinBomb
+		local target = findAimTarget(root.Position, aim, ability.Range, 0.6)
+		local from = root.Position + aim * 2 + Vector3.new(0, 2, 0)
+		local to = if target then target.Root.Position else from + aim * ability.Range * 0.5
+		Effects.projectile("Pumpkin", from, to, ability.Color, function()
+			Effects.burst(to, ability.Radius, ability.Color, 0.4)
+			Effects.ring(to - Vector3.new(0, 2.5, 0), ability.Radius * 1.2, Color3.fromRGB(150, 70, 220), 0.45)
+			Effects.sparks(to, ability.Color, "Fire", 40)
+			Sfx.play("Slam", to, 1.2)
+			damageAround(player, to, ability.Radius, ability.DamageMultiplier, weapon)
+		end, 55)
+	end,
+
+	WitchingHour = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.WitchingHour
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		highlight(root.Parent, ability.Color, 0.7, ability.Duration)
+		task.spawn(function()
+			for _ = 1, ability.Duration * 2 do
+				local _, liveRoot = getAlive(player)
+				if not liveRoot then
+					return
+				end
+				-- Bats dart out to nearby enemies
+				for _, enemy in EnemyService.GetEnemiesNear(liveRoot.Position, ability.Radius) do
+					Effects.projectile("Bolt", liveRoot.Position + Vector3.new(math.random(-3, 3), 3, math.random(-3, 3)), enemy.Root.Position, Color3.fromRGB(60, 30, 80), function() end, 120)
+				end
+				damageAround(player, liveRoot.Position, ability.Radius, ability.DamageMultiplier, weapon)
+				task.wait(0.5)
+			end
+		end)
+	end,
+
 	-- Seraph (Godly)
 	HeavensWrath = function(player, _, root, aim, weapon)
 		local ability = Config.Abilities.HeavensWrath
@@ -1146,13 +1184,13 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 		character:SetAttribute("InvulnerableUntil", os.clock() + ability.Duration + 0.5)
 		highlight(character, ability.Color, 0.4, ability.Duration + 0.5)
 		Effects.pillar(root.Position - Vector3.new(0, 2.5, 0), 4, ability.Color, ability.Duration)
-		leap(character, root, root.Position, 14, ability.Duration, function()
-			local ground = root.Position - Vector3.new(0, 2.5, 0)
-			Effects.burst(root.Position, ability.Radius, ability.Color, 0.5)
+		leap(player, root.Position, 14, ability.Duration, function(at)
+			local ground = at - Vector3.new(0, 2.5, 0)
+			Effects.burst(at, ability.Radius, ability.Color, 0.5)
 			Effects.ring(ground, ability.Radius * 1.2, ability.Color, 0.5)
-			Sfx.play("Heal", root, 1.5)
-			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
-			healPlayersNear(root.Position, ability.Radius + 8, ability.HealPercent)
+			Sfx.play("Heal", ground, 1.5)
+			damageAround(player, at, ability.Radius, ability.DamageMultiplier, weapon)
+			healPlayersNear(at, ability.Radius + 8, ability.HealPercent)
 		end)
 	end,
 }
@@ -1181,10 +1219,12 @@ local ABILITY_SOUNDS = {
 	Iaido = "Unsheath",
 	ThousandCuts = "Swing",
 	HeavensWrath = "Cast",
+	PumpkinBomb = "Cast",
+	WitchingHour = "Cast",
 	Ascension = "Heal",
 }
 
-local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (boolean, number)
+local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (boolean, number, any)
 	local class = PlayerService.GetClass(player)
 	local weapon = PlayerService.GetWeapon(player)
 	if type(abilityId) ~= "string" or not class or not weapon or not table.find(class.Abilities, abilityId) then
@@ -1208,6 +1248,7 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 	local ability = Config.Abilities[abilityId]
 	local cooldown = ability.Cooldown * PlayerService.GetCooldownMultiplier(player)
 	readyAt[abilityId] = now + cooldown
+	pendingMotion[player] = nil
 	if abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon) == false then
 		readyAt[abilityId] = 0 -- nothing happened (e.g. no target): don't use the cooldown
 		return false, 0
@@ -1215,7 +1256,9 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 	PlayerService.AddStat(player, "AbilitiesUsed")
 	broadcastMove(player, WeaponMoves.AbilityAnims[abilityId])
 	Sfx.play(ABILITY_SOUNDS[abilityId] or "Lunge", root, 1.3)
-	return true, cooldown
+	local motion = pendingMotion[player]
+	pendingMotion[player] = nil
+	return true, cooldown, motion
 end
 
 function CombatService.Start()
@@ -1238,6 +1281,7 @@ function CombatService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		attackState[player] = nil
 		abilityReadyAt[player] = nil
+		pendingMotion[player] = nil
 	end)
 
 	-- Paladin passive: health regeneration
