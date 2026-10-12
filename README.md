@@ -1,61 +1,71 @@
-# roblox-sim
+# Dungeon Delvers
 
-A Roblox simulator game, managed as code with [Rojo](https://rojo.space).
+A Roblox dungeon crawler (inspired by games like Dungeon Quest), managed as code with [Rojo](https://rojo.space).
 
-## Gameplay loop
+## How to play
 
-1. **Train**: click the TRAIN button (or press **E**) to gain Power.
-2. **Sell**: step on the green **SELL** pad to turn your Power into Coins.
-3. **Upgrade**: spend Coins in the shop:
-   - **Strength**: more Power per click
-   - **Backpack**: hold more Power before you have to sell
-   - **Sell Value**: more Coins for each Power you sell
+1. **Pick a dungeon:** stand on a glowing portal pad in the lobby. After a 10 second
+   countdown, everyone on the pad (up to 4 players) is sent in together.
+2. **Clear the rooms:** your sword is always out. **Click** to swing. Kill every enemy in a
+   room to open the door to the next one.
+3. **Use abilities:** **Q** = Whirlwind (hits everything around you), **E** = Heal.
+4. **Beat the boss:** watch for the **red circle** on the floor and get out before it slams!
+5. **Get loot:** winning gives XP, Gold, and a random weapon. Equip weapons from the
+   **Weapons** button on the left.
 
-Progress saves automatically with DataStores.
+If your whole party dies, the run fails and you're back in the lobby.
+
+| Dungeon         | Level | Enemies               | Boss               |
+| --------------- | ----- | --------------------- | ------------------ |
+| Crypt of Bones  | 1+    | Skeletons, Zombies    | The Bone King      |
+| Sunken Temple   | 5+    | Mummies, Scarabs      | The Cursed Pharaoh |
+| Frozen Keep     | 10+   | Yetis, Frost Wraiths  | The Frost Lord     |
+
+Progress (level, gold, weapons) saves automatically with DataStores.
 
 ## Quick start (no setup)
 
-Download **`roblox-sim.rbxl`** and double-click it (or *File → Open from File* in Roblox Studio),
-then press **Play**. Rebuild it after code changes with `rojo build -o roblox-sim.rbxl`.
+Download **`dungeon-delvers.rbxl`** and double-click it (or *File → Open from File* in Roblox Studio),
+then press **Play**. To test parties, use *Test → Clients and Servers* with 2+ players.
 
-## Getting started (live sync while developing)
+> To keep progress between test sessions in Studio: publish the place, then turn on
+> *Game Settings → Security → Enable Studio Access to API Services*.
 
-1. Install [Rokit](https://github.com/rojo-rbx/rokit), then run `rokit install` in this folder (installs Rojo, Selene, StyLua).
-2. In Roblox Studio, install the **Rojo** plugin (from the Creator Store, or run `rojo plugin install`).
-3. Open a new **Baseplate** place in Studio.
-4. In this folder run:
-   ```sh
-   rojo serve
-   ```
-5. In Studio, open the Rojo plugin and click **Connect**. Your code now syncs live.
-6. Press **Play** to test.
+Rebuild the file after code changes with `rojo build -o dungeon-delvers.rbxl`.
 
-> To test saving in Studio: *Game Settings → Security → Enable Studio Access to API Services*
-> (the place must be published first). Without it, the game still runs but won't save.
+## Developing with live sync
 
-To build a place file without Studio: `rojo build -o game.rbxlx`
+1. Install [Rokit](https://github.com/rojo-rbx/rokit), then run `rokit install` in this folder.
+2. Install the **Rojo** plugin in Studio (`rojo plugin install`).
+3. Run `rojo serve`, then click **Connect** in the Rojo plugin.
 
 ## Project layout
 
 ```
 src/
-  shared/              -> ReplicatedStorage.Shared   (used by server and client)
-    Config.luau          all tunable numbers: upgrade costs, capacity formulas, etc.
-    Remotes.luau         RemoteEvents/RemoteFunctions
-  server/              -> ServerScriptService.Server
-    Main.server.luau     starts the services
+  shared/                 -> ReplicatedStorage.Shared
+    Config.luau             leveling, health/damage scaling, abilities, party size
+    Weapons.luau            every weapon (damage, speed, range, look, rarity)
+    Enemies.luau            every enemy and boss
+    Dungeons.luau           dungeons: rooms, boss, rewards, loot table, colors
+    Remotes.luau            RemoteEvents/RemoteFunctions
+  server/                 -> ServerScriptService.Server
+    Main.server.luau        starts the services
     Services/
-      DataService.luau   load/save player data (DataStores)
-      GameService.luau   train / sell / upgrade logic + leaderstats
-      WorldService.luau  builds the Sell pad
-  client/              -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau     HUD: stats, Train button, upgrade shop
+      DataService.luau      load/save player data
+      PlayerService.luau    level, XP, gold, inventory, leaderstats
+      CombatService.luau    swords, swinging, abilities
+      EnemyService.luau     builds enemies, AI, boss slam attack
+      DungeonService.luau   lobby portals, parties, dungeon building and runs
+  client/                 -> StarterPlayer.StarterPlayerScripts.Client
+    Main.client.luau        HUD: health/XP bars, abilities, weapons menu, messages
 ```
 
-**Balancing the game:** most changes happen in `src/shared/Config.luau`.
+### Adding content
 
-**Adding an upgrade:** add it to `Config.Upgrades`, `Config.UpgradeOrder` and
-`Config.DefaultData.Upgrades`, then use its level in `GameService`. Existing players
-pick up the new default automatically.
+- **New weapon:** add it to `Weapons.Defs` and `Weapons.Order`, then put it in a dungeon's `Loot` table.
+- **New enemy:** add it to `Enemies.luau` (add a `Boss` table to make it a boss).
+- **New dungeon:** add it to `Dungeons.Defs` and `Dungeons.Order`. A new portal appears in the lobby automatically.
 
+All maps and enemies are built from code, so no models or assets need importing.
 The server checks every action, so players can't cheat by editing their own client.

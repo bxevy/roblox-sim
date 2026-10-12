@@ -1,4 +1,3 @@
---!strict
 -- Creates (on the server) or waits for (on the client) all RemoteEvents/Functions.
 -- Both sides require this module and get the same named instances.
 
@@ -7,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Train", "DataChanged", "Notify" }
-local FUNCTIONS = { "BuyUpgrade", "GetData" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus" }
+local FUNCTIONS = { "GetState", "EquipWeapon", "UseAbility" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -34,9 +33,13 @@ local function get(name: string): any
 end
 
 return {
-	Train = get("Train") :: RemoteEvent,
-	DataChanged = get("DataChanged") :: RemoteEvent,
-	Notify = get("Notify") :: RemoteEvent,
-	BuyUpgrade = get("BuyUpgrade") :: RemoteFunction,
-	GetData = get("GetData") :: RemoteFunction,
+	-- Server -> client
+	Notify = get("Notify") :: RemoteEvent, -- (message: string, color: Color3?)
+	StateChanged = get("StateChanged") :: RemoteEvent, -- (state)
+	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?)
+
+	-- Client -> server
+	GetState = get("GetState") :: RemoteFunction,
+	EquipWeapon = get("EquipWeapon") :: RemoteFunction, -- (weaponId) -> (ok, err?)
+	UseAbility = get("UseAbility") :: RemoteFunction, -- (abilityId) -> (ok, cooldownRemaining)
 }
