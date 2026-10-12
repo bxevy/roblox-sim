@@ -137,6 +137,7 @@ local function onUsePotion(player: Player, potionId: unknown): (boolean, string?
 	if root then
 		Sfx.play("Drink", root)
 	end
+	PlayerService.AddStat(player, "PotionsUsed")
 	data.Potions[potionId] -= 1
 	if data.Potions[potionId] <= 0 then
 		data.Potions[potionId] = nil

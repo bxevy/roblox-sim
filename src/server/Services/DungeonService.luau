@@ -48,6 +48,7 @@ type Room = {
 
 type Run = {
 	Def: Dungeons.DungeonDef,
+	DungeonId: string,
 	Phase: string, -- "Rooms" | "Boss" | "Done": tells the client which music to play
 	DifficultyId: string,
 	HealthMultiplier: number,
@@ -317,8 +318,14 @@ local function winRun(run: Run)
 
 	for player in run.Players do
 		PlayerService.AddStat(player, "DungeonsCleared")
+		PlayerService.AddStat(player, `Clears_{run.DungeonId}`)
+		PlayerService.AddStat(player, `Clears_{run.DifficultyId}`)
+		PlayerService.AddStat(player, `Clears_{run.DungeonId}_{run.DifficultyId}`)
+		if run.DifficultyId == "Hard" or run.DifficultyId == "Nightmare" then
+			PlayerService.AddStat(player, "Clears_HardPlus")
+		end
 		PlayerService.AddXP(player, def.Rewards.XP * run.RewardMultiplier)
-		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier)
+		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier, true)
 
 		-- Ultra-rare Mythic drop, rolled separately from the normal item.
 		if math.random() < Config.MythicDrop.Chance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
@@ -353,7 +360,7 @@ end
 
 local activateRoom: (run: Run, index: number) -> ()
 
-local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enemy)
+local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enemy, enemyId: string)
 	if run.Ended then
 		return
 	end
@@ -361,11 +368,12 @@ local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enem
 	local multiplier = run.Def.Power * run.RewardMultiplier
 	for player in run.Players do
 		PlayerService.AddStat(player, "EnemiesKilled")
+		PlayerService.AddStat(player, `Kills_{enemyId}`)
 		if enemy.Def.Boss then
 			PlayerService.AddStat(player, "BossesKilled")
 		end
 		PlayerService.AddXP(player, enemy.Def.XP * multiplier)
-		PlayerService.AddGold(player, enemy.Def.Gold * multiplier)
+		PlayerService.AddGold(player, enemy.Def.Gold * multiplier, true)
 	end
 
 	run.Remaining -= 1
@@ -391,7 +399,7 @@ local function spawnInRoom(run: Run, roomIndex: number, enemyId: string, positio
 			return partyList(run)
 		end,
 		OnDied = function()
-			onEnemyDied(run, roomIndex, enemy)
+			onEnemyDied(run, roomIndex, enemy, enemyId)
 		end,
 	})
 	run.Enemies[enemy] = true
@@ -427,7 +435,8 @@ activateRoom = function(run: Run, index: number)
 	end
 end
 
-local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: { Player })
+local function startRun(dungeonId: string, difficultyId: string, party: { Player })
+	local def = Dungeons.Defs[dungeonId]
 	local slot = 1
 	while runsBySlot[slot] do
 		slot += 1
@@ -440,6 +449,7 @@ local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: {
 	local difficulty = Config.Difficulties[difficultyId]
 	local run: Run = {
 		Def = def,
+		DungeonId = dungeonId,
 		Phase = "Rooms",
 		DifficultyId = difficultyId,
 		HealthMultiplier = def.Power * difficulty.Health,
@@ -644,7 +654,7 @@ local function updatePortal(portal: Portal)
 		if portal.Countdown <= 0 then
 			portal.Countdown = nil
 			portal.Label.Text = idleText(def)
-			task.spawn(startRun, def, portal.DifficultyId, party)
+			task.spawn(startRun, portal.Id, portal.DifficultyId, party)
 			return
 		end
 		portal.Label.Text = `{portal.DifficultyId} - starting in {portal.Countdown}\n{#party}/{Config.Party.MaxSize} players`

@@ -10,7 +10,7 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 	local self = {}
 
 	local window, body
-	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 470), function()
+	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 570), function()
 		window.Visible = false
 	end)
 
@@ -25,7 +25,7 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 
 	local grid = Util.make("Frame", body, {
 		Position = UDim2.fromOffset(0, 66),
-		Size = UDim2.new(1, 0, 0, 4 * 46),
+		Size = UDim2.new(1, 0, 0, 5 * 46),
 		BackgroundTransparency = 1,
 	})
 	Util.make("UIGridLayout", grid, {
@@ -39,9 +39,10 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 		{ "Full Heal", "Heal" },
 		{ "God Mode", "God" },
 		{ "Clear Room", "KillRoom" },
-		{ "Max Level", "SetLevel", 100 },
 		{ "Go to Town", "TeleportTown" },
 		{ "Go to Training", "TeleportTraining" },
+		{ "+10 Skill Points", "SkillPoints" },
+		{ "Max Level (Prestige)", "SetLevel", 50 },
 	}
 	for order, entry in buttons do
 		local button = Util.button(grid, { LayoutOrder = order, TextScaled = false, TextSize = 18, Text = entry[1] })
@@ -79,8 +80,9 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 			end
 		end)
 	end
-	inputRow(66 + 4 * 46 + 8, "Level (1-100)", "Set Level", "SetLevel")
-	inputRow(66 + 4 * 46 + 56, "Item id, e.g. Dragonfang", "Give Item", "GiveItem")
+	inputRow(66 + 5 * 46 + 8, "Level (1-50)", "Set Level", "SetLevel")
+	inputRow(66 + 5 * 46 + 56, "Item id, e.g. Dragonfang", "Give Item", "GiveItem")
+	inputRow(66 + 5 * 46 + 104, "Prestige (0-10)", "Set Prestige", "SetPrestige")
 
 	Util.text(body, {
 		AnchorPoint = Vector2.new(0, 1),

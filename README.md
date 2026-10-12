@@ -66,12 +66,39 @@ more XP and Gold, and drop **higher-tier loot**.
 
 If your whole party dies, the run fails and you're back in the lobby. Progress saves automatically.
 
+### Quests
+
+Open the quest log with **J** (or the Quest Board next to the spawn). A 10-step **story** chain
+walks you through every dungeon (XP, coins and skill points), and **3 daily quests** refresh every
+day with rewards that scale with your level. Quests are defined in `Config.StoryQuests` and
+`Config.DailyQuests`; any tracked stat can drive a quest.
+
+### Prestige
+
+Max level is **50**. At 50, open your Player Card (**H**) > Prestige to reset to level 1 and keep
+your gear, coins and skills. Each prestige gives +10% XP, +10% coins, 5 skill points and a new
+emblem (10 ranks: Bronze, Silver, Gold, Emerald, Sapphire, Ruby, Amethyst, Obsidian, Celestial,
+Godslayer), shown on your card, your HUD and above your head.
+
+### Player cards
+
+Press **H** to customize your card: background, title, frame and 3 showcased stats. Most options
+unlock by playing (clearing dungeons, kill counts, owning Godly or Mythic gear, prestige ranks).
+You can also view other players' cards. Your title, level and emblem float over your head.
+Cosmetics live in `src/shared/Cosmetics.luau`.
+
+### Skills
+
+Earn 1 skill point per level (plus story quests and prestige) and spend them at the **Skill
+Sanctum** in the training grounds: Vitality, Strength, Toughness, Agility, Endurance, Precision,
+Focus, Fortune and Wisdom. Skills are kept through prestige. See `Config.Skills`.
+
 ### Leaderboards & stats
 
 Lifetime stats are saved per player: enemies slain, dungeons cleared, bosses defeated, gold
-earned, crates opened, deaths and minutes played. The **Hall of Heroes** boards by the south gate
-show the global top 10 (all servers) for Highest Level, Enemies Slain, Dungeons Cleared and Gold
-Earned. Press **T** for your own stats and the boards. (Global boards need a published place with
+earned, crates opened, potions, deaths and minutes played. The **Hall of Heroes**, right in front of
+the spawn, shows the global top 10 (all servers) for Highest Level (prestige first), Enemies
+Slain, Dungeons Cleared and Gold Earned. Press **T** for your own stats and the boards. (Global boards need a published place with
 API access; otherwise they rank the players in the current server.)
 
 ### Dungeon themes
@@ -120,6 +147,8 @@ src/
     Items.luau              every weapon and armor (tiers, stats, effects, colors)
     Enemies.luau            every enemy and boss
     Dungeons.luau           dungeons: rooms, boss, rewards, unlock levels + loot per difficulty
+    Cosmetics.luau          card backgrounds, titles, frames, prestige emblems, unlock rules
+    CardUI.luau             draws emblems and player cards (client + server nameplates)
     Remotes.luau            RemoteEvents/RemoteFunctions
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
@@ -141,11 +170,14 @@ src/
       AdminService.luau     admin menu actions and chat commands
       CrateService.luau     Crate Shrine, crate odds and opening
       LeaderboardService.luau  lifetime stats -> global leaderboards (Hall of Heroes)
+      QuestService.luau     story + daily quests, Quest Board
+      ProgressionService.luau  prestige, skills, Skill Sanctum
+      CardService.luau      player card customization, nameplates
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, 1, Q/E, 2-6, G, T, P) and wiring
+    Main.client.luau        input (attack, 1, Q/E, 2-6, G, T, J, H, P) and wiring
     Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting)
     UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel, AdminPanel,
-                            CrateWindow, StatsWindow
+                            CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow
 ```
 
 ### Adding content

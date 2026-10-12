@@ -14,6 +14,8 @@ local PlayerService = {}
 
 local characterReadyCallbacks: { (Player, Model) -> () } = {}
 local loadoutChangedCallbacks: { (Player) -> () } = {}
+local pushCallbacks: { (Player) -> () } = {}
+local statCallbacks: { (Player, string) -> () } = {}
 local buffs: { [Player]: { [string]: number } } = {} -- buff id -> expires at (os.clock)
 
 -- Stats --------------------------------------------------------------------
@@ -31,6 +33,11 @@ local function buffTotal(player: Player, stat: string): number
 		end
 	end
 	return total
+end
+
+local function skillBonus(data, skillId: string): number
+	local rank = data.Skills[skillId] or 0
+	return rank * Config.Skills[skillId].PerRank
 end
 
 -- Equipped armor pieces by slot, and the set id if all 4 slots are from one set.
@@ -74,7 +81,7 @@ function PlayerService.GetMaxHealth(player: Player): number
 	end
 	local class = getClass(data)
 	local health = Config.BaseHealth(data.Level) * (if class then class.HealthMultiplier else 1)
-	return math.floor(health + armorStat(data, "Health"))
+	return math.floor((health + armorStat(data, "Health")) * (1 + skillBonus(data, "Vitality")))
 end
 
 function PlayerService.GetDefense(player: Player): number
@@ -83,7 +90,7 @@ function PlayerService.GetDefense(player: Player): number
 		return 0
 	end
 	local class = getClass(data)
-	local defense = (if class then class.Defense else 0) + armorStat(data, "Defense") + buffTotal(player, "Defense")
+	local defense = (if class then class.Defense else 0) + armorStat(data, "Defense") + buffTotal(player, "Defense") + skillBonus(data, "Toughness")
 	return math.min(defense, Config.MaxDefense)
 end
 
@@ -97,13 +104,30 @@ function PlayerService.GetDamageMultiplier(player: Player): number
 		* (if class then class.DamageMultiplier else 1)
 		* (1 + buffTotal(player, "Damage"))
 		* (1 + armorStat(data, "Damage"))
+		* (1 + skillBonus(data, "Strength"))
+end
+
+function PlayerService.GetCritChance(player: Player): number
+	local data = DataService.Get(player)
+	return Config.CritChance + (if data then skillBonus(data, "Precision") else 0)
+end
+
+-- Multiplier on ability cooldowns (Focus skill).
+function PlayerService.GetCooldownMultiplier(player: Player): number
+	local data = DataService.Get(player)
+	return 1 - (if data then skillBonus(data, "Focus") else 0)
+end
+
+function PlayerService.GetMaxStamina(player: Player): number
+	local data = DataService.Get(player)
+	return Config.Movement.MaxStamina + (if data then skillBonus(data, "Endurance") else 0)
 end
 
 function PlayerService.GetWalkSpeed(player: Player): number
 	local data = DataService.Get(player)
 	local class = data and getClass(data)
 	local sprint = if player:GetAttribute("Sprinting") then Config.Movement.SprintMultiplier else 1
-	local armorSpeed = if data then armorStat(data, "Speed") else 0
+	local armorSpeed = if data then armorStat(data, "Speed") + skillBonus(data, "Agility") else 0
 	return Config.BaseWalkSpeed * (if class then class.SpeedMultiplier else 1) * (1 + buffTotal(player, "Speed") + armorSpeed) * sprint
 end
 
@@ -143,6 +167,11 @@ local function buildState(player: Player, data)
 		Equipped = data.Equipped,
 		Potions = data.Potions,
 		Lifetime = data.Stats, -- lifetime stats for the Stats window
+		Prestige = data.Prestige,
+		SkillPoints = data.SkillPoints,
+		Skills = data.Skills,
+		Card = data.Card,
+		MaxStamina = PlayerService.GetMaxStamina(player),
 		Buffs = activeBuffs, -- buff id -> seconds remaining
 		Stats = {
 			MaxHealth = PlayerService.GetMaxHealth(player),
@@ -163,6 +192,14 @@ function PlayerService.Push(player: Player)
 		(leaderstats:FindFirstChild("Gold") :: IntValue).Value = data.Gold
 	end
 	Remotes.StateChanged:FireClient(player, buildState(player, data))
+	for _, callback in pushCallbacks do
+		task.spawn(callback, player)
+	end
+end
+
+-- Runs after the player's state changes (used for nameplates).
+function PlayerService.OnPush(callback: (Player) -> ())
+	table.insert(pushCallbacks, callback)
 end
 
 local function setupLeaderstats(player: Player, data)
@@ -217,24 +254,38 @@ function PlayerService.GetArmor(player: Player): ({ [string]: Items.ArmorDef }, 
 	return getArmor(data)
 end
 
-function PlayerService.AddGold(player: Player, amount: number)
+-- `isReward` applies prestige and Fortune bonuses (dungeon and quest rewards, not refunds).
+function PlayerService.AddGold(player: Player, amount: number, isReward: boolean?)
 	local data = DataService.Get(player)
 	if not data then
 		return
 	end
-	data.Gold += math.floor(amount)
-	if amount > 0 then
-		data.Stats.GoldEarned += math.floor(amount)
+	if isReward then
+		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune")
+	end
+	amount = math.floor(amount)
+	data.Gold += amount
+	if amount > 0 and isReward then
+		PlayerService.AddStat(player, "GoldEarned", amount)
 	end
 	PlayerService.Push(player)
 end
 
--- Adds to a lifetime stat (see Config.DefaultData.Stats).
+-- Adds to a lifetime stat. Any stat name works (e.g. "Kills_Skeleton"); quests and
+-- leaderboards read these.
 function PlayerService.AddStat(player: Player, stat: string, amount: number?)
 	local data = DataService.Get(player)
-	if data and data.Stats[stat] ~= nil then
-		data.Stats[stat] += amount or 1
+	if not data then
+		return
 	end
+	data.Stats[stat] = (data.Stats[stat] or 0) + (amount or 1)
+	for _, callback in statCallbacks do
+		task.spawn(callback, player, stat)
+	end
+end
+
+function PlayerService.OnStatChanged(callback: (Player, string) -> ())
+	table.insert(statCallbacks, callback)
 end
 
 -- Returns false (and charges nothing) if the player can't afford it.
@@ -253,16 +304,24 @@ function PlayerService.AddXP(player: Player, amount: number)
 	if not data then
 		return
 	end
+	amount *= 1 + data.Prestige * Config.Prestige.XPBonus + skillBonus(data, "Wisdom")
 	data.XP += math.floor(amount)
 	local leveledUp = false
 	while data.Level < Config.MaxLevel and data.XP >= Config.XPToLevel(data.Level) do
 		data.XP -= Config.XPToLevel(data.Level)
 		data.Level += 1
+		data.SkillPoints += 1
 		leveledUp = true
+	end
+	if data.Level >= Config.MaxLevel then
+		data.XP = math.min(data.XP, Config.XPToLevel(data.Level))
 	end
 	if leveledUp then
 		PlayerService.RefreshStats(player, true)
-		PlayerService.Notify(player, `LEVEL UP! You are now level {data.Level}`, Color3.fromRGB(255, 220, 80))
+		local message = if data.Level >= Config.MaxLevel
+			then `MAX LEVEL! You can now Prestige (Player Card [H])`
+			else `LEVEL UP! You are now level {data.Level} (+1 skill point)`
+		PlayerService.Notify(player, message, Color3.fromRGB(255, 220, 80))
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root then
 			Sfx.play("LevelUp", root)
@@ -454,6 +513,12 @@ local function sanitize(data)
 		data.Class = nil
 	end
 	data.Equipped.Armor = nil -- old single-slot armor from before armor sets
+	if not data.SkillPointsGranted then
+		-- Players from before skills existed get points for the levels they already have.
+		data.SkillPoints += math.max(0, data.Level - 1)
+		data.SkillPointsGranted = true
+	end
+	data.Level = math.min(data.Level, Config.MaxLevel)
 	for _, slot in Items.ArmorSlots do
 		local pieceId = data.Equipped[slot]
 		if pieceId and (not data.Armors[pieceId] or Items.Armors[pieceId].Slot ~= slot) then

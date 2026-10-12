@@ -25,11 +25,49 @@ Config.DefaultData = {
 		Deaths = 0,
 		MinutesPlayed = 0,
 	},
+	Prestige = 0,
+	SkillPoints = 0,
+	Skills = {}, -- skill id -> rank
+	Quests = {}, -- managed by QuestService
+	Card = {
+		Background = "Parchment",
+		Title = "Adventurer",
+		Frame = "Wood",
+		Showcase = { "EnemiesKilled", "DungeonsCleared", "BossesKilled" },
+	},
 }
 
 -- Leveling ------------------------------------------------------------------
 
-Config.MaxLevel = 100
+Config.MaxLevel = 50
+
+-- Prestige: at max level you can reset to level 1 for a permanent bonus and a new emblem.
+Config.Prestige = {
+	Max = 10,
+	XPBonus = 0.1, -- +10% XP per prestige
+	GoldBonus = 0.1, -- +10% coins per prestige
+	SkillPoints = 5, -- bonus skill points each time you prestige
+}
+
+-- Skills: 1 point per level gained (plus quest and prestige bonuses). Spent at the
+-- Skill Sanctum in the training grounds. Skills are kept when you prestige.
+Config.Skills = {
+	Vitality = { DisplayName = "Vitality", Description = "+4% max health", MaxRank = 10, PerRank = 0.04, Color = Color3.fromRGB(230, 80, 80) },
+	Strength = { DisplayName = "Strength", Description = "+3% damage", MaxRank = 10, PerRank = 0.03, Color = Color3.fromRGB(255, 140, 50) },
+	Toughness = { DisplayName = "Toughness", Description = "+1.5% defense", MaxRank = 10, PerRank = 0.015, Color = Color3.fromRGB(150, 160, 180) },
+	Agility = { DisplayName = "Agility", Description = "+2% move speed", MaxRank = 5, PerRank = 0.02, Color = Color3.fromRGB(120, 230, 160) },
+	Endurance = { DisplayName = "Endurance", Description = "+10 max stamina", MaxRank = 5, PerRank = 10, Color = Color3.fromRGB(240, 200, 60) },
+	Precision = { DisplayName = "Precision", Description = "+1.5% critical hit chance", MaxRank = 10, PerRank = 0.015, Color = Color3.fromRGB(255, 220, 120) },
+	Focus = { DisplayName = "Focus", Description = "-4% ability cooldowns", MaxRank = 5, PerRank = 0.04, Color = Color3.fromRGB(120, 170, 255) },
+	Fortune = { DisplayName = "Fortune", Description = "+5% coins earned", MaxRank = 10, PerRank = 0.05, Color = Color3.fromRGB(255, 200, 60) },
+	Wisdom = { DisplayName = "Wisdom", Description = "+5% XP earned", MaxRank = 10, PerRank = 0.05, Color = Color3.fromRGB(180, 120, 255) },
+}
+Config.SkillOrder = { "Vitality", "Strength", "Toughness", "Agility", "Endurance", "Precision", "Focus", "Fortune", "Wisdom" }
+
+-- Skill points needed to buy the next rank (ranks start at 0).
+function Config.SkillCost(currentRank: number): number
+	return 1 + math.floor(currentRank / 4)
+end
 
 -- XP needed to go from `level` to `level + 1`.
 function Config.XPToLevel(level: number): number
@@ -359,6 +397,7 @@ Config.LeaderboardRefresh = 120 -- seconds between saving scores and refreshing 
 
 -- Every tracked stat, in the order the Stats window lists them.
 Config.StatNames = {
+	{ "PotionsUsed", "Potions drunk" },
 	{ "EnemiesKilled", "Enemies slain" },
 	{ "DungeonsCleared", "Dungeons cleared" },
 	{ "BossesKilled", "Bosses defeated" },
@@ -367,6 +406,51 @@ Config.StatNames = {
 	{ "Deaths", "Deaths in dungeons" },
 	{ "MinutesPlayed", "Minutes played" },
 }
+
+-- Quests -----------------------------------------------------------------------------
+-- Progress is counted from a lifetime stat (see PlayerService.AddStat) starting when the
+-- quest is given. Stats include: EnemiesKilled, Kills_<EnemyId>, DungeonsCleared,
+-- Clears_<DungeonId>, Clears_<Difficulty>, Clears_<DungeonId>_<Difficulty>,
+-- Clears_HardPlus, BossesKilled, GoldEarned, CratesOpened, PotionsUsed, Dodges,
+-- AbilitiesUsed, PrestigeCount.
+
+-- Story quests: one at a time, in order.
+Config.StoryQuests = {
+	{ Title = "First Steps", Description = "Clear the Crypt of Bones", Stat = "Clears_Crypt", Target = 1, Reward = { XP = 300, Gold = 200, SkillPoints = 1 } },
+	{ Title = "Monster Hunter", Description = "Defeat 60 enemies", Stat = "EnemiesKilled", Target = 60, Reward = { XP = 600, Gold = 400, SkillPoints = 1 } },
+	{ Title = "Seasoned Delver", Description = "Clear the Crypt of Bones on Hard", Stat = "Clears_Crypt_Hard", Target = 1, Reward = { XP = 1500, Gold = 800, SkillPoints = 1 } },
+	{ Title = "Into the Sands", Description = "Clear the Sunken Temple", Stat = "Clears_Temple", Target = 1, Reward = { XP = 3000, Gold = 1500, SkillPoints = 2 } },
+	{ Title = "Treasure Seeker", Description = "Open a crate at the Crate Shrine", Stat = "CratesOpened", Target = 1, Reward = { XP = 2000, Gold = 2500, SkillPoints = 1 } },
+	{ Title = "Pharaoh's Bane", Description = "Clear the Sunken Temple on Hard", Stat = "Clears_Temple_Hard", Target = 1, Reward = { XP = 6000, Gold = 3000, SkillPoints = 2 } },
+	{ Title = "Into the Cold", Description = "Clear the Frozen Keep", Stat = "Clears_Keep", Target = 1, Reward = { XP = 10000, Gold = 5000, SkillPoints = 2 } },
+	{ Title = "Waking Nightmare", Description = "Clear any dungeon on Nightmare", Stat = "Clears_Nightmare", Target = 1, Reward = { XP = 15000, Gold = 7500, SkillPoints = 2 } },
+	{ Title = "Frost Lord's End", Description = "Clear the Frozen Keep on Nightmare", Stat = "Clears_Keep_Nightmare", Target = 1, Reward = { XP = 25000, Gold = 12000, SkillPoints = 3 } },
+	{ Title = "Ascension", Description = "Prestige for the first time", Stat = "PrestigeCount", Target = 1, Reward = { XP = 5000, Gold = 25000, SkillPoints = 5 } },
+}
+
+-- Daily quests: 3 are picked each day from those your level allows. Rewards scale with
+-- your level (see Config.DailyReward).
+Config.DailyQuests = {
+	{ Id = "Slay", Title = "Thin the Herd", Description = "Defeat 40 enemies", Stat = "EnemiesKilled", Target = 40 },
+	{ Id = "Clear", Title = "Delver's Duty", Description = "Clear 3 dungeons", Stat = "DungeonsCleared", Target = 3 },
+	{ Id = "Bosses", Title = "Boss Slayer", Description = "Defeat 2 bosses", Stat = "BossesKilled", Target = 2 },
+	{ Id = "Gold", Title = "Gold Rush", Description = "Earn 2,000 coins", Stat = "GoldEarned", Target = 2000 },
+	{ Id = "Potions", Title = "Alchemist", Description = "Drink 5 potions", Stat = "PotionsUsed", Target = 5 },
+	{ Id = "Dodge", Title = "Light on Your Feet", Description = "Dodge 30 times", Stat = "Dodges", Target = 30 },
+	{ Id = "Abilities", Title = "Spellslinger", Description = "Use abilities 25 times", Stat = "AbilitiesUsed", Target = 25 },
+	{ Id = "Skeletons", Title = "Bonebreaker", Description = "Defeat 25 Skeletons", Stat = "Kills_Skeleton", Target = 25, MaxLevel = 15 },
+	{ Id = "Zombies", Title = "Grave Duty", Description = "Defeat 10 Zombies", Stat = "Kills_Zombie", Target = 10, MaxLevel = 15 },
+	{ Id = "Mummies", Title = "Unwrapped", Description = "Defeat 20 Mummies", Stat = "Kills_Mummy", Target = 20, MinLevel = 10 },
+	{ Id = "Scarabs", Title = "Bug Hunt", Description = "Defeat 25 Scarabs", Stat = "Kills_Scarab", Target = 25, MinLevel = 10 },
+	{ Id = "Yetis", Title = "Yeti Hunter", Description = "Defeat 12 Yetis", Stat = "Kills_Yeti", Target = 12, MinLevel = 20 },
+	{ Id = "Wraiths", Title = "Ghostbuster", Description = "Defeat 20 Frost Wraiths", Stat = "Kills_FrostWraith", Target = 20, MinLevel = 20 },
+	{ Id = "Hard", Title = "Hardened", Description = "Clear a dungeon on Hard or Nightmare", Stat = "Clears_HardPlus", Target = 1, MinLevel = 6 },
+}
+Config.DailyQuestCount = 3
+
+function Config.DailyReward(level: number): { XP: number, Gold: number }
+	return { XP = math.floor(Config.XPToLevel(level) * 0.35), Gold = 150 + level * 25 }
+end
 
 -- Training grounds ----------------------------------------------------------------------
 

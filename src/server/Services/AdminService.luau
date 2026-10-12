@@ -109,6 +109,27 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 		return true, `Level set to {math.clamp(math.floor(level), 1, Config.MaxLevel)}`
 	end,
 
+	SkillPoints = function(player)
+		local data = PlayerService.GetData(player)
+		if not data then
+			return false, "Still loading"
+		end
+		data.SkillPoints += 10
+		PlayerService.Push(player)
+		return true, "+10 skill points"
+	end,
+
+	SetPrestige = function(player, prestige)
+		local data = PlayerService.GetData(player)
+		prestige = tonumber(prestige)
+		if not data or not prestige then
+			return false, "Type a prestige number"
+		end
+		data.Prestige = math.clamp(math.floor(prestige), 0, Config.Prestige.Max)
+		PlayerService.Push(player)
+		return true, `Prestige set to {data.Prestige}`
+	end,
+
 	Heal = function(player)
 		PlayerService.Heal(player, 1)
 		return true, "Fully healed"

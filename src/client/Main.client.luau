@@ -19,6 +19,12 @@ local PortalPanel = require(UI.PortalPanel)
 local AdminPanel = require(UI.AdminPanel)
 local CrateWindow = require(UI.CrateWindow)
 local StatsWindow = require(UI.StatsWindow)
+local QuestWindow = require(UI.QuestWindow)
+local SkillsWindow = require(UI.SkillsWindow)
+local CardWindow = require(UI.CardWindow)
+local CardUI = require(ReplicatedStorage.Shared.CardUI)
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
 local Controllers = script.Parent:WaitForChild("Controllers")
 local Movement = require(Controllers.Movement)
 local Audio = require(Controllers.Audio)
@@ -42,7 +48,7 @@ local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 })
 
 local state = nil
-local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow
+local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow, questWindow, skillsWindow, cardWindow
 
 -- Direction from your character toward the mouse (flat on the ground).
 local function getAim(): Vector3?
@@ -122,6 +128,15 @@ hud = Hud.new(gui, {
 	ToggleStats = function()
 		statsWindow.Toggle()
 	end,
+	ToggleQuests = function()
+		questWindow.Toggle()
+	end,
+	ToggleSkills = function()
+		skillsWindow.Toggle()
+	end,
+	ToggleCard = function()
+		cardWindow.Toggle()
+	end,
 	ToggleWeapon = toggleWeapon,
 	ToggleMusic = Audio.ToggleMusic,
 	SetSprint = Movement.SetSprint,
@@ -145,6 +160,28 @@ shop = Shop.new(gui, function(potionId)
 		hud.Toast(`Bought {Config.Potions[potionId].DisplayName}`, Config.Potions[potionId].Color)
 	end
 end)
+
+questWindow = QuestWindow.new(gui, function(kind, index)
+	if request(Remotes.ClaimQuest, kind, index) then
+		Util.playSfx("Coins")
+	end
+end)
+
+skillsWindow = SkillsWindow.new(gui, function(skillId)
+	request(Remotes.UpgradeSkill, skillId)
+end)
+
+cardWindow = CardWindow.new(gui, {
+	Set = function(field, value)
+		request(Remotes.SetCard, field, value)
+	end,
+	Prestige = function()
+		request(Remotes.Prestige)
+	end,
+	GetCard = function(userId)
+		return Remotes.GetCard:InvokeServer(userId)
+	end,
+})
 
 statsWindow = StatsWindow.new(gui, function()
 	return Remotes.GetLeaderboards:InvokeServer()
@@ -181,6 +218,8 @@ local function render(newState)
 	shop.Render(state)
 	crateWindow.Render(state)
 	statsWindow.Render(state)
+	skillsWindow.Render(state)
+	cardWindow.Render(state)
 	classPicker.Render(state)
 end
 
@@ -195,6 +234,16 @@ end)
 Remotes.PortalUpdate.OnClientEvent:Connect(portalPanel.Update)
 Remotes.OpenShop.OnClientEvent:Connect(shop.Open)
 Remotes.OpenCrates.OnClientEvent:Connect(crateWindow.Open)
+Remotes.OpenSkills.OnClientEvent:Connect(skillsWindow.Open)
+Remotes.OpenQuests.OnClientEvent:Connect(questWindow.Open)
+Remotes.QuestsChanged.OnClientEvent:Connect(questWindow.Render)
+
+-- Animated (spinning) gradients on high prestige emblems and frames
+RunService.RenderStepped:Connect(function(dt)
+	for _, gradient in CollectionService:GetTagged(CardUI.SpinTag) do
+		(gradient :: UIGradient).Rotation = ((gradient :: UIGradient).Rotation + dt * 60) % 360
+	end
+end)
 
 -- Attacking --------------------------------------------------------------------------
 -- Clicking with your weapon out sends the aim direction; the server does the rest.
@@ -243,6 +292,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		inventory.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.T then
 		statsWindow.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.J then
+		questWindow.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.H then
+		cardWindow.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.P and player:GetAttribute("IsAdmin") then
 		adminPanel.Toggle()
 	end
@@ -252,4 +305,7 @@ Movement.Start(Util.playSfx)
 Audio.Start()
 
 -- Data may have loaded before this script started listening.
+task.spawn(function()
+	questWindow.Render(Remotes.GetQuests:InvokeServer())
+end)
 render(Remotes.GetState:InvokeServer())

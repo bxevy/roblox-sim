@@ -54,7 +54,7 @@ end
 
 local function rollDamage(player: Player, base: number): (number, boolean)
 	local amount = base * PlayerService.GetDamageMultiplier(player) * (0.9 + math.random() * 0.2)
-	local isCrit = math.random() < Config.CritChance
+	local isCrit = math.random() < PlayerService.GetCritChance(player)
 	if isCrit then
 		amount *= Config.CritMultiplier
 	end
@@ -720,7 +720,9 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 	end
 
 	local ability = Config.Abilities[abilityId]
-	readyAt[abilityId] = now + ability.Cooldown
+	local cooldown = ability.Cooldown * PlayerService.GetCooldownMultiplier(player)
+	readyAt[abilityId] = now + cooldown
+	PlayerService.AddStat(player, "AbilitiesUsed")
 	local sound = ({
 		Whirlwind = "Lunge",
 		ShieldWall = "Unsheath",
@@ -731,7 +733,7 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 	})[abilityId]
 	Sfx.play(sound or "Lunge", root, 1.3)
 	abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon)
-	return true, ability.Cooldown
+	return true, cooldown
 end
 
 function CombatService.Start()

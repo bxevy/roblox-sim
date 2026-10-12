@@ -33,12 +33,12 @@ end
 
 local function reset(player: Player)
 	states[player] = {
-		Stamina = Config.Movement.MaxStamina,
+		Stamina = PlayerService.GetMaxStamina(player),
 		WantsSprint = false,
 		LastUse = 0,
 		LastDodge = 0,
 	}
-	player:SetAttribute("Stamina", Config.Movement.MaxStamina)
+	player:SetAttribute("Stamina", math.floor(PlayerService.GetMaxStamina(player)))
 	player:SetAttribute("Sprinting", false)
 end
 
@@ -59,6 +59,7 @@ local function onDodge(player: Player)
 	state.Stamina -= movement.DodgeCost
 	player:SetAttribute("Stamina", math.floor(state.Stamina))
 	character:SetAttribute("InvulnerableUntil", now + movement.InvulnerableTime)
+	PlayerService.AddStat(player, "Dodges")
 end
 
 local function update()
@@ -77,10 +78,14 @@ local function update()
 				sprinting = false
 			end
 		elseif now - state.LastUse >= movement.RegenDelay then
-			state.Stamina = math.min(movement.MaxStamina, state.Stamina + movement.RegenRate * TICK)
+			state.Stamina = math.min(PlayerService.GetMaxStamina(player), state.Stamina + movement.RegenRate * TICK)
 		end
 
 		setSprinting(player, sprinting)
+		local maxStamina = math.floor(PlayerService.GetMaxStamina(player))
+		if player:GetAttribute("MaxStamina") ~= maxStamina then
+			player:SetAttribute("MaxStamina", maxStamina)
+		end
 		local rounded = math.floor(state.Stamina)
 		if player:GetAttribute("Stamina") ~= rounded then
 			player:SetAttribute("Stamina", rounded)

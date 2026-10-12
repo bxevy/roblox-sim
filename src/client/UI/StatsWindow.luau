@@ -50,7 +50,9 @@ function StatsWindow.new(gui: ScreenGui, fetch: () -> any)
 
 	local function format(boardId: string, value: number): string
 		if boardId == "Level" then
-			return `Lv {math.floor(value / 1000000)}`
+			local prestige = math.floor(value / 100000000)
+			local level = math.floor(value / 1000000) % 100
+			return if prestige > 0 then `P{prestige} Lv {level}` else `Lv {level}`
 		end
 		return tostring(math.floor(value))
 	end

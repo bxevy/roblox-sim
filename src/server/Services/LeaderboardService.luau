@@ -1,6 +1,6 @@
 -- Global leaderboards: saves each player's stats to OrderedDataStores, reads the top 10,
--- and shows them on the boards in the Hall of Heroes (near the south gate) and in the
--- Stats window. Without DataStore access (e.g. unpublished Studio places) the boards
+-- and shows them on the boards in the Hall of Heroes (right in front of the spawn) and in
+-- the Stats window. Without DataStore access (e.g. unpublished Studio places) the boards
 -- rank the players in the current server instead.
 
 local DataStoreService = game:GetService("DataStoreService")
@@ -15,8 +15,10 @@ local PlayerService = require(script.Parent.PlayerService)
 
 local TOP_COUNT = 10
 local STORE_VERSION = "v1"
--- Hall of Heroes: two boards each side of the south gate, facing into town.
-local BOARD_SPOTS = { Vector3.new(-47, 0, 50), Vector3.new(-36, 0, 50), Vector3.new(36, 0, 50), Vector3.new(47, 0, 50) }
+-- Hall of Heroes: an arc of boards just south of the spawn, angled to face it, with the
+-- main road running through the middle under an archway.
+local HALL_FOCUS = Vector3.new(0, 0, 0)
+local BOARD_SPOTS = { Vector3.new(-28, 0, 24), Vector3.new(-14, 0, 28), Vector3.new(14, 0, 28), Vector3.new(28, 0, 24) }
 
 local LeaderboardService = {}
 
@@ -31,17 +33,19 @@ local boardLists: { [string]: Frame } = {}
 local rgb = Color3.fromRGB
 local M = Enum.Material
 
--- The number stored for a board. Level boards rank by level, then XP.
+-- The number stored for a board. The level board ranks by prestige, then level, then XP.
 local function scoreFor(data, boardId: string): number
 	if boardId == "Level" then
-		return data.Level * 1000000 + math.min(data.XP, 999999)
+		return (data.Prestige or 0) * 100000000 + data.Level * 1000000 + math.min(data.XP, 999999)
 	end
 	return math.floor(data.Stats[boardId] or 0)
 end
 
 local function displayValue(boardId: string, score: number): string
 	if boardId == "Level" then
-		return `Lv {math.floor(score / 1000000)}`
+		local prestige = math.floor(score / 100000000)
+		local level = math.floor(score / 1000000) % 100
+		return if prestige > 0 then `P{prestige} Lv {level}` else `Lv {level}`
 	end
 	-- 12345 -> 12,345
 	local text = tostring(math.floor(score))
@@ -165,16 +169,22 @@ local function renderBoard(boardId: string)
 end
 
 local function buildBoard(parent: Instance, position: Vector3, board)
-	local base = CFrame.lookAt(position, position - Vector3.zAxis) -- face north, into town
+	local base = CFrame.lookAt(position, Vector3.new(HALL_FOCUS.X, position.Y, HALL_FOCUS.Z)) -- face the spawn
 	local wood = rgb(90, 60, 38)
-	Build.block(parent, "BoardBase", Vector3.new(10, 1, 3), base * CFrame.new(0, 0.5, 0), rgb(85, 80, 76), M.Slate)
-	for _, x in { -4.6, 4.6 } do
-		Build.block(parent, "BoardPost", Vector3.new(0.8, 12, 0.8), base * CFrame.new(x, 6.5, 0.3), wood, M.Wood)
+	Build.block(parent, "BoardBase", Vector3.new(12, 1, 3.4), base * CFrame.new(0, 0.5, 0), rgb(85, 80, 76), M.Slate)
+	for _, x in { -5.6, 5.6 } do
+		Build.block(parent, "BoardPost", Vector3.new(1, 14, 1), base * CFrame.new(x, 7.5, 0.3), wood, M.Wood)
+		local flame = Build.block(parent, "BoardTorch", Vector3.new(0.7, 0.7, 0.7), base * CFrame.new(x, 14.9, 0.3), rgb(60, 50, 45), M.Metal)
+		local fire = Instance.new("Fire")
+		fire.Size = 2.5
+		fire.Heat = 5
+		fire.Parent = flame
+		Build.light(flame, rgb(255, 170, 80), 16, 1.5)
 	end
-	Build.block(parent, "BoardRoof", Vector3.new(10.6, 0.5, 2.4), base * CFrame.new(0, 12.6, 0.1), wood, M.WoodPlanks)
-	local crest = Build.block(parent, "BoardCrest", Vector3.new(1.2, 1.2, 0.3), base * CFrame.new(0, 13.4, -0.4) * CFrame.Angles(0, 0, math.rad(45)), board.Color, M.Neon)
-	Build.light(crest, board.Color, 12, 1)
-	local panel = Build.block(parent, "BoardPanel", Vector3.new(8.4, 10, 0.3), base * CFrame.new(0, 6.6, 0.2), rgb(40, 30, 22), M.WoodPlanks)
+	Build.block(parent, "BoardRoof", Vector3.new(12.8, 0.6, 2.8), base * CFrame.new(0, 14.4, 0.1), wood, M.WoodPlanks)
+	local crest = Build.block(parent, "BoardCrest", Vector3.new(1.6, 1.6, 0.3), base * CFrame.new(0, 15.6, -0.4) * CFrame.Angles(0, 0, math.rad(45)), board.Color, M.Neon)
+	Build.light(crest, board.Color, 14, 1.5)
+	local panel = Build.block(parent, "BoardPanel", Vector3.new(10.4, 12, 0.3), base * CFrame.new(0, 7.6, 0.2), rgb(40, 30, 22), M.WoodPlanks)
 
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
@@ -210,11 +220,15 @@ local function buildHall()
 			buildBoard(hall, spot, board)
 		end
 	end
-	-- A sign between each pair of boards
-	for _, x in { -41.5, 41.5 } do
-		local sign = Build.block(hall, "HallSign", Vector3.new(4, 1.2, 0.3), CFrame.lookAt(Vector3.new(x, 11, 49.2), Vector3.new(x, 11, 0)), rgb(60, 42, 28), M.WoodPlanks)
-		Build.label(sign, "HALL OF HEROES", rgb(255, 215, 120))
+	-- Archway over the road between the boards
+	local archZ = 34
+	for _, x in { -7, 7 } do
+		Build.block(hall, "ArchPillar", Vector3.new(1.6, 14, 1.6), CFrame.new(x, 7, archZ), rgb(120, 115, 108), M.Cobblestone)
+		Build.block(hall, "ArchCap", Vector3.new(2.2, 0.6, 2.2), CFrame.new(x, 14.3, archZ), rgb(85, 80, 76), M.Slate)
 	end
+	Build.block(hall, "ArchBeam", Vector3.new(16, 1.6, 1.6), CFrame.new(0, 15.2, archZ), rgb(120, 115, 108), M.Cobblestone)
+	local sign = Build.block(hall, "HallSign", Vector3.new(12, 2.2, 0.3), CFrame.lookAt(Vector3.new(0, 15.2, archZ - 0.95), Vector3.new(0, 15.2, 0)), rgb(60, 42, 28), M.WoodPlanks)
+	Build.label(sign, "HALL OF HEROES", rgb(255, 215, 120))
 	hall.Parent = workspace
 end
 

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+local CardUI = require(ReplicatedStorage.Shared.CardUI)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Util = require(script.Parent.Util)
 
@@ -21,6 +22,9 @@ export type Actions = {
 	OpenClassPicker: () -> (),
 	OpenAdmin: () -> (),
 	ToggleStats: () -> (),
+	ToggleQuests: () -> (),
+	ToggleSkills: () -> (),
+	ToggleCard: () -> (),
 	ToggleMusic: () -> boolean, -- returns whether music is now on
 	SetSprint: (on: boolean) -> (),
 	Dodge: () -> (),
@@ -76,10 +80,34 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	})
 	statsButton.Activated:Connect(actions.ToggleStats)
 
+	-- Second row: quests, skills, player card
+	for i, entry in {
+		{ "Quests [J]", Color3.fromRGB(150, 110, 40), actions.ToggleQuests },
+		{ "Skills", Color3.fromRGB(100, 70, 170), actions.ToggleSkills },
+		{ "Card [H]", Color3.fromRGB(170, 60, 110), actions.ToggleCard },
+	} do
+		local button = Util.button(gui, {
+			Position = UDim2.fromOffset(16 + (i - 1) * 108, 168),
+			Size = UDim2.fromOffset(100, 38),
+			BackgroundColor3 = entry[2],
+			TextScaled = false,
+			TextSize = 17,
+			Text = entry[1],
+		})
+		button.Activated:Connect(entry[3])
+	end
+	local emblemHolder = Util.make("Frame", stats, {
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, 6, 0.5, 0),
+		Size = UDim2.fromOffset(50, 50),
+		BackgroundTransparency = 1,
+	})
+	local shownPrestige = -1
+
 	-- Admin button, only for admins
 	local player = Players.LocalPlayer
 	local adminButton = Util.button(gui, {
-		Position = UDim2.fromOffset(16, 172),
+		Position = UDim2.fromOffset(16, 214),
 		Size = UDim2.fromOffset(220, 34),
 		BackgroundColor3 = Color3.fromRGB(170, 40, 40),
 		Text = "Admin Menu [P]",
@@ -103,7 +131,7 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 
 	-- Buff list (under the buttons)
 	local buffList = Util.make("Frame", gui, {
-		Position = UDim2.fromOffset(16, 214),
+		Position = UDim2.fromOffset(16, 256),
 		Size = UDim2.fromOffset(220, 200),
 		BackgroundTransparency = 1,
 	})
@@ -127,8 +155,9 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	staminaLabel.Visible = false
 
 	local function updateStamina()
-		local stamina = player:GetAttribute("Stamina") or Config.Movement.MaxStamina
-		staminaFill.Size = UDim2.fromScale(math.clamp(stamina / Config.Movement.MaxStamina, 0, 1), 1)
+		local maxStamina = player:GetAttribute("MaxStamina") or Config.Movement.MaxStamina
+		local stamina = player:GetAttribute("Stamina") or maxStamina
+		staminaFill.Size = UDim2.fromScale(math.clamp(stamina / maxStamina, 0, 1), 1)
 		staminaFill.BackgroundColor3 = if stamina < Config.Movement.DodgeCost then Color3.fromRGB(200, 110, 50) else Color3.fromRGB(240, 200, 60)
 	end
 	player:GetAttributeChangedSignal("Stamina"):Connect(updateStamina)
@@ -303,7 +332,14 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		goldLabel.Text = `Gold: {state.Gold}`
 		defenseLabel.Text = `Defense {math.floor(state.Stats.Defense * 100)}%  |  Dmg x{string.format("%.2f", state.Stats.Damage)}`
 		xpFill.Size = UDim2.fromScale(math.clamp(state.XP / state.XPNeeded, 0, 1), 1)
-		xpLabel.Text = `XP {state.XP} / {state.XPNeeded}`
+		xpLabel.Text = if state.Level >= Config.MaxLevel
+			then "MAX LEVEL - Prestige in your Card [H]"
+			else `XP {state.XP} / {state.XPNeeded}`
+		if state.Prestige ~= shownPrestige then
+			shownPrestige = state.Prestige
+			Util.clear(emblemHolder)
+			CardUI.Emblem(emblemHolder, state.Prestige, 50)
+		end
 
 		weaponLabel.Text = if class then class.WeaponType else ""
 
