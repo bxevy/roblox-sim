@@ -13,7 +13,12 @@ A Roblox simulator game, managed as code with [Rojo](https://rojo.space).
 
 Progress saves automatically with DataStores.
 
-## Getting started
+## Quick start (no setup)
+
+Download **`roblox-sim.rbxl`** and double-click it (or *File → Open from File* in Roblox Studio),
+then press **Play**. Rebuild it after code changes with `rojo build -o roblox-sim.rbxl`.
+
+## Getting started (live sync while developing)
 
 1. Install [Rokit](https://github.com/rojo-rbx/rokit), then run `rokit install` in this folder (installs Rojo, Selene, StyLua).
 2. In Roblox Studio, install the **Rojo** plugin (from the Creator Store, or run `rojo plugin install`).

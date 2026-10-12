@@ -6,6 +6,9 @@
 *.rbxm
 *.rbxmx
 
+# Ready-to-open place file, kept in the repo for convenience
+!roblox-sim.rbxl
+
 # Generated
 sourcemap.json
 roblox.d.luau
