@@ -319,6 +319,14 @@ local function winRun(run: Run)
 		PlayerService.AddXP(player, def.Rewards.XP * run.RewardMultiplier)
 		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier)
 
+		-- Ultra-rare Mythic drop, rolled separately from the normal item.
+		if math.random() < Config.MythicDrop.Chance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
+			local mythic = Items.Weapons[Config.MythicDrop.Weapon]
+			for _, other in Players:GetPlayers() do
+				PlayerService.Notify(other, `{player.DisplayName} found the MYTHIC {mythic.DisplayName}!`, Config.Rarities.Mythic)
+			end
+		end
+
 		local kind, itemId = rollLoot(player, run)
 		local item: any = if kind == "Weapon" then Items.Weapons[itemId] else Items.Armors[itemId]
 		local color = Config.Rarities[item.Rarity]

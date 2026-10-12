@@ -46,6 +46,8 @@ more XP and Gold, and drop **higher-tier loot**.
 
 - **24 weapons:** 8 swords, 8 staffs, 8 bows across tiers 1-8 (Common to Legendary). Higher tiers
   have special effects: **Burn** (damage over time), **Frost** (slows enemies) or **Lifesteal**.
+- **Mythic: Voidlight Greatsword.** A 0.05% (1 in 2,000) bonus drop from any dungeon victory.
+  The whole server is told when someone finds it. Change the odds in `Config.MythicDrop`.
 - **8 armor sets** that work for every class, adding health and damage reduction, and show on your character.
 
 If your whole party dies, the run fails and you're back in the lobby. Progress saves automatically.

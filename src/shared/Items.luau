@@ -1,6 +1,6 @@
 -- Every weapon and armor in the game.
 --
--- Items have a Tier (1-8). Tier sets rarity and base power; dungeons drop items by tier
+-- Items have a Tier (1-8, plus 9 for ultra-rare Mythic drops). Tier sets rarity and base power; dungeons drop items by tier
 -- (see Dungeons.luau). Each class uses one weapon type; armor works for every class.
 
 export type Effect = {
@@ -24,6 +24,7 @@ export type WeaponDef = {
 	Color: Color3, -- blade / shaft / limbs
 	Accent: Color3, -- guard / gem / string
 	Material: Enum.Material,
+	Model: string?, -- custom model builder in CombatService (otherwise built from Type)
 }
 
 export type ArmorDef = {
@@ -41,8 +42,8 @@ export type ArmorDef = {
 
 local Items = {}
 
-local TIER_RARITY = { "Common", "Uncommon", "Uncommon", "Rare", "Rare", "Epic", "Epic", "Legendary" }
-local TIER_DAMAGE = { 10, 16, 24, 36, 52, 75, 105, 150 }
+local TIER_RARITY = { "Common", "Uncommon", "Uncommon", "Rare", "Rare", "Epic", "Epic", "Legendary", "Mythic" }
+local TIER_DAMAGE = { 10, 16, 24, 36, 52, 75, 105, 150, 230 }
 
 local WEAPON_TYPES = {
 	Sword = { DamageMultiplier = 1, Cooldown = 0.5, Range = 7 },
@@ -53,7 +54,7 @@ local WEAPON_TYPES = {
 local rgb = Color3.fromRGB
 local M = Enum.Material
 
--- { Id, DisplayName, Type, Tier, Color, Accent, Material, Effect? }
+-- { Id, DisplayName, Type, Tier, Color, Accent, Material, Effect?, Model? }
 local WEAPON_LIST = {
 	-- Swords (Warrior)
 	{ "WoodenSword", "Wooden Sword", "Sword", 1, rgb(150, 105, 60), rgb(90, 60, 35), M.Wood },
@@ -64,6 +65,8 @@ local WEAPON_LIST = {
 	{ "SandReaver", "Sand Reaver", "Sword", 6, rgb(235, 195, 90), rgb(40, 60, 140), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
 	{ "Frostbrand", "Frostbrand", "Sword", 7, rgb(150, 220, 255), rgb(230, 245, 255), M.Ice, { Type = "Frost", Amount = 0.4, Duration = 2 } },
 	{ "Dragonfang", "Dragonfang", "Sword", 8, rgb(255, 110, 40), rgb(60, 20, 20), M.Neon, { Type = "Burn", Amount = 0.25, Duration = 3 } },
+	-- Mythic: never in normal loot tables, only from the ultra-rare drop (Config.MythicDrop)
+	{ "VoidlightGreatsword", "Voidlight Greatsword", "Sword", 9, rgb(236, 240, 252), rgb(28, 34, 92), M.Metal, { Type = "Frost", Amount = 0.5, Duration = 2.5 }, "Voidlight" },
 
 	-- Staffs (Mage)
 	{ "ApprenticeStaff", "Apprentice Staff", "Staff", 1, rgb(120, 85, 50), rgb(120, 180, 255), M.Wood },
@@ -118,6 +121,7 @@ for _, entry in WEAPON_LIST do
 		Range = base.Range,
 		Splash = base.Splash,
 		Effect = entry[8],
+		Model = entry[9],
 		Color = entry[5],
 		Accent = entry[6],
 		Material = entry[7],

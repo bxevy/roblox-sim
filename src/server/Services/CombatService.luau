@@ -294,34 +294,42 @@ local function newPart(parent: Instance, name: string, size: Vector3, color: Col
 	return p
 end
 
+-- How tools sit in the hand: Roblox welds the Tool's Handle to the right hand's grip
+-- point. While you hold a tool, the default animation raises your right arm straight
+-- forward, so in the grip's frame +Y points up and -Z points forward (away from you).
+-- Each Handle below is the part the hand actually closes around, and Tool.Grip only
+-- rotates it; the rest of the weapon is welded relative to the Handle.
+
+local SWORD_TILT = math.rad(70) -- 0 = blade straight up, 90 = straight out in front
+local STAFF_TILT = math.rad(10) -- staffs stand almost upright
+
 local function buildSword(tool: Tool, weapon: Items.WeaponDef)
-	local length = 3.4 + weapon.Tier * 0.25
-	local blade = newPart(tool, "Handle", Vector3.new(0.2, length, 0.6), weapon.Color, weapon.Material)
-	blade.CanCollide = false
-	blade.Massless = true
-	-- Shift the blade so its bottom sits in the hand.
-	tool.Grip = CFrame.new(0, -length / 2 + 0.4, 0)
+	local length = 3 + weapon.Tier * 0.25
+	local grip = newPart(tool, "Handle", Vector3.new(0.3, 1.1, 0.3), Color3.fromRGB(60, 40, 28), Enum.Material.Leather)
+	grip.CanCollide = false
+	grip.Massless = true
+	tool.Grip = CFrame.Angles(SWORD_TILT, 0, 0)
 
 	local guardWidth = if weapon.Tier >= 4 then 2 else 1.4
-	weld(blade, newPart(tool, "Guard", Vector3.new(0.35, 0.3, guardWidth), weapon.Accent, Enum.Material.Metal), CFrame.new(0, -length / 2 + 0.8, 0))
-	weld(blade, newPart(tool, "Pommel", Vector3.new(0.4, 0.4, 0.4), weapon.Accent, Enum.Material.Metal, Enum.PartType.Ball), CFrame.new(0, -length / 2 - 0.1, 0))
+	weld(grip, newPart(tool, "Guard", Vector3.new(0.35, 0.3, guardWidth), weapon.Accent, Enum.Material.Metal), CFrame.new(0, 0.7, 0))
+	weld(grip, newPart(tool, "Pommel", Vector3.new(0.4, 0.4, 0.4), weapon.Accent, Enum.Material.Metal, Enum.PartType.Ball), CFrame.new(0, -0.7, 0))
+	-- Blade sits above the guard; its flat faces point sideways and its edge points forward.
+	local bladeCenter = CFrame.new(0, 0.85 + length / 2, 0)
+	weld(grip, newPart(tool, "Blade", Vector3.new(0.2, length, 0.6), weapon.Color, weapon.Material), bladeCenter)
 	if weapon.Effect then
 		-- Glowing edge on effect weapons.
 		local edgeColor = if weapon.Effect.Type == "Frost" then FROST_COLOR elseif weapon.Effect.Type == "Burn" then BURN_COLOR else Color3.fromRGB(200, 40, 40)
-		weld(blade, newPart(tool, "Edge", Vector3.new(0.22, length * 0.8, 0.1), edgeColor, Enum.Material.Neon), CFrame.new(0, 0.2, 0.3))
+		weld(grip, newPart(tool, "Edge", Vector3.new(0.22, length * 0.8, 0.1), edgeColor, Enum.Material.Neon), bladeCenter * CFrame.new(0, 0.2, -0.3))
 	end
 end
-
--- Staffs and bows are held upright: rotate the grip so the Handle's Y axis points up.
-local UPRIGHT = CFrame.Angles(math.rad(-90), 0, 0)
 
 local function buildStaff(tool: Tool, weapon: Items.WeaponDef)
 	local length = 5 + weapon.Tier * 0.15
 	local shaft = newPart(tool, "Handle", Vector3.new(0.3, length, 0.3), weapon.Color, weapon.Material)
 	shaft.CanCollide = false
 	shaft.Massless = true
-	-- Hold it a third of the way up.
-	tool.Grip = CFrame.new(0, -length / 6, 0) * UPRIGHT
+	-- Hold it a third of the way up: the shaft's center is length/6 above the hand.
+	tool.Grip = CFrame.new(0, -length / 6, 0) * CFrame.Angles(STAFF_TILT, 0, 0)
 
 	local top = length / 2
 	local gemSize = 0.8 + weapon.Tier * 0.08
@@ -337,10 +345,11 @@ local function buildStaff(tool: Tool, weapon: Items.WeaponDef)
 end
 
 local function buildBow(tool: Tool, weapon: Items.WeaponDef)
+	-- The riser is held upright with the string on your side (+Z) and the bow facing forward.
 	local riser = newPart(tool, "Handle", Vector3.new(0.3, 1.2, 0.4), weapon.Color, weapon.Material)
 	riser.CanCollide = false
 	riser.Massless = true
-	tool.Grip = UPRIGHT
+	tool.Grip = CFrame.new()
 
 	local limbLength = 2 + weapon.Tier * 0.08
 	local bend = math.rad(20)
@@ -354,13 +363,122 @@ local function buildBow(tool: Tool, weapon: Items.WeaponDef)
 	weld(riser, newPart(tool, "String", Vector3.new(0.06, tipY * 2, 0.06), weapon.Accent, Enum.Material.Neon), CFrame.new(0, 0, tipZ))
 end
 
+-- Voidlight Greatsword (Mythic): white blade with a glowing blue fuller, navy trim,
+-- jagged shards toward the tip, a horned navy guard, spiral-wrapped grip and a crown pommel.
+local function buildVoidlight(tool: Tool, weapon: Items.WeaponDef)
+	local white = weapon.Color
+	local navy = weapon.Accent
+	local darkNavy = Color3.fromRGB(16, 18, 50)
+	local lightBlue = Color3.fromRGB(125, 150, 255)
+	local glow = Color3.fromRGB(90, 125, 255)
+
+	local grip = newPart(tool, "Handle", Vector3.new(0.34, 1.6, 0.34), navy, Enum.Material.Leather)
+	grip.CanCollide = false
+	grip.Massless = true
+	tool.Grip = CFrame.Angles(SWORD_TILT, 0, 0)
+
+	local function add(name: string, size: Vector3, color: Color3, material: Enum.Material, offset: CFrame, shape: Enum.PartType?): BasePart
+		local part = newPart(tool, name, size, color, material, shape)
+		weld(grip, part, offset)
+		return part
+	end
+
+	-- Spiral wrap on the grip
+	for i = 0, 4 do
+		add("Wrap", Vector3.new(0.4, 0.1, 0.4), lightBlue, Enum.Material.Fabric, CFrame.new(0, -0.6 + i * 0.3, 0) * CFrame.Angles(math.rad(25), 0, 0))
+	end
+
+	-- Crown pommel: a ball with spikes splaying downward
+	add("Pommel", Vector3.one * 0.55, darkNavy, Enum.Material.Metal, CFrame.new(0, -1.05, 0), Enum.PartType.Ball)
+	add("PommelSpike", Vector3.new(0.14, 0.5, 0.14), navy, Enum.Material.Metal, CFrame.new(0, -1.45, 0))
+	for k = 0, 4 do
+		add("PommelSpike", Vector3.new(0.12, 0.5, 0.12), navy, Enum.Material.Metal, CFrame.new(0, -1.15, 0) * CFrame.Angles(0, math.rad(k * 72), 0) * CFrame.Angles(math.rad(140), 0, 0) * CFrame.new(0, 0.3, 0))
+	end
+
+	-- Guard: a banded block with curved horns
+	local guardY = 1
+	add("Guard", Vector3.new(0.55, 0.55, 1.5), navy, Enum.Material.Metal, CFrame.new(0, guardY, 0))
+	for _, y in { -0.2, 0.2 } do
+		add("GuardTrim", Vector3.new(0.58, 0.07, 1.53), lightBlue, Enum.Material.Metal, CFrame.new(0, guardY + y, 0))
+	end
+	add("GuardKnot", Vector3.new(0.62, 0.28, 0.28), lightBlue, Enum.Material.Neon, CFrame.new(0, guardY, 0))
+
+	-- Each horn is a chain of short segments bending as it goes, like a claw.
+	local function horn(start: Vector3, outward: Vector3, startAngle: number, bendPerSegment: number, segments: number, length: number, thickness: number)
+		local position = start
+		for i = 1, segments do
+			local theta = math.rad(startAngle + (i - 1) * bendPerSegment)
+			local direction = (outward * math.cos(theta) + Vector3.yAxis * math.sin(theta)).Unit
+			local segmentLength = length * (1 - (i - 1) * 0.15)
+			local center = position + direction * segmentLength / 2
+			local size = Vector3.new(thickness, thickness * 1.4, segmentLength) * Vector3.new(1, 1 - (i - 1) * 0.15, 1)
+			add("Horn", size, if i == segments then lightBlue else navy, Enum.Material.Metal, CFrame.lookAt(center, center + direction))
+			position += direction * segmentLength * 0.9
+		end
+	end
+	for _, side in { -1, 1 } do
+		local edge = Vector3.zAxis * side
+		horn(Vector3.new(0, guardY, side * 0.7), edge, 10, 22, 4, 0.55, 0.16) -- big horns curving up
+		horn(Vector3.new(0, guardY - 0.1, side * 0.6), edge, -15, -25, 3, 0.4, 0.12) -- small horns curving down
+		horn(Vector3.new(side * 0.25, guardY + 0.1, 0), Vector3.xAxis * side, 20, 25, 3, 0.4, 0.12) -- side horns
+	end
+
+	-- Blade: wide lower section, narrower upper section, and a long point
+	local base = guardY + 0.3
+	local lowerLength, upperLength = 4.2, 2.1
+	local lowerWidth, upperWidth = 1.15, 0.85
+	add("Blade", Vector3.new(0.24, lowerLength, lowerWidth), white, Enum.Material.Metal, CFrame.new(0, base + lowerLength / 2, 0))
+	local upperY = base + lowerLength + upperLength / 2
+	add("Blade", Vector3.new(0.24, upperLength, upperWidth), white, Enum.Material.Metal, CFrame.new(0, upperY, 0))
+	local tipBase = base + lowerLength + upperLength
+	for _, side in { -1, 1 } do
+		add("BladeTip", Vector3.new(0.22, 1.7, upperWidth / 2 + 0.05), white, Enum.Material.Metal, CFrame.new(0, tipBase + 0.6, side * upperWidth / 4) * CFrame.Angles(-side * math.rad(15), 0, 0))
+	end
+
+	-- Edge trim
+	for _, side in { -1, 1 } do
+		add("EdgeTrim", Vector3.new(0.26, lowerLength, 0.07), navy, Enum.Material.Metal, CFrame.new(0, base + lowerLength / 2, side * (lowerWidth / 2 - 0.02)))
+		add("EdgeTrim", Vector3.new(0.26, upperLength, 0.07), navy, Enum.Material.Metal, CFrame.new(0, upperY, side * (upperWidth / 2 - 0.02)))
+	end
+
+	-- Fuller: dark groove down the middle with a glowing line inside
+	local fullerLength = lowerLength + upperLength - 0.3
+	add("Fuller", Vector3.new(0.27, fullerLength, 0.22), darkNavy, Enum.Material.Metal, CFrame.new(0, base + fullerLength / 2 + 0.1, 0))
+	local line = add("FullerGlow", Vector3.new(0.29, fullerLength - 0.2, 0.06), glow, Enum.Material.Neon, CFrame.new(0, base + fullerLength / 2 + 0.1, 0))
+	local light = Instance.new("PointLight")
+	light.Color = glow
+	light.Range = 10
+	light.Brightness = 1.5
+	light.Parent = line
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Color = ColorSequence.new(lightBlue)
+	sparkles.LightEmission = 1
+	sparkles.Size = NumberSequence.new(0.15, 0)
+	sparkles.Lifetime = NumberRange.new(0.6, 1)
+	sparkles.Rate = 6
+	sparkles.Speed = NumberRange.new(0.5, 1)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Parent = line
+
+	-- Jagged shards along both edges toward the tip, raked back like ice
+	for _, side in { -1, 1 } do
+		for k = 1, 6 do
+			local y = base + 2.6 + k * 0.6
+			local width = if y < base + lowerLength then lowerWidth else upperWidth
+			add("Shard", Vector3.new(0.2, 0.45 - k * 0.03, 0.2), white, Enum.Material.Metal, CFrame.new(0, y, side * (width / 2 + 0.06)) * CFrame.Angles(side * math.rad(35), 0, 0))
+		end
+	end
+end
+
 local function buildTool(weapon: Items.WeaponDef): Tool
 	local tool = Instance.new("Tool")
 	tool.Name = weapon.DisplayName
 	tool.CanBeDropped = false
 	tool.ToolTip = `{weapon.Rarity} {weapon.Type} - {weapon.Damage} damage`
 	tool:SetAttribute(TOOL_ATTRIBUTE, weapon.Id)
-	if weapon.Type == "Sword" then
+	if weapon.Model == "Voidlight" then
+		buildVoidlight(tool, weapon)
+	elseif weapon.Type == "Sword" then
 		buildSword(tool, weapon)
 	elseif weapon.Type == "Staff" then
 		buildStaff(tool, weapon)
@@ -369,6 +487,9 @@ local function buildTool(weapon: Items.WeaponDef): Tool
 	end
 	return tool
 end
+
+-- Exposed so tools can be previewed outside the game.
+CombatService.BuildTool = buildTool
 
 -- Armor models -------------------------------------------------------------------
 
@@ -439,10 +560,19 @@ local function updateBackWeapon(player: Player, tool: Tool)
 
 	local model = Instance.new("Model")
 	model.Name = BACK_MODEL
-	local handleCFrame = torso.CFrame
+	local handleCFrame: CFrame = torso.CFrame
 		* CFrame.new(0, 0, torso.Size.Z / 2 + 0.35)
 		* CFrame.Angles(0, 0, math.rad(40))
 		* CFrame.Angles(0, math.rad(90), 0)
+	-- Centre the weapon on your back (the Handle is the grip, not the middle).
+	local sumY, count = 0, 0
+	for _, part in tool:GetDescendants() do
+		if part:IsA("BasePart") then
+			sumY += handle.CFrame:ToObjectSpace(part.CFrame).Y
+			count += 1
+		end
+	end
+	handleCFrame *= CFrame.new(0, -sumY / math.max(count, 1), 0)
 	for _, part in tool:GetDescendants() do
 		if part:IsA("BasePart") then
 			local copy = part:Clone()

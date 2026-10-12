@@ -224,6 +224,13 @@ Config.Rarities = {
 	Rare = Color3.fromRGB(70, 150, 255),
 	Epic = Color3.fromRGB(190, 90, 255),
 	Legendary = Color3.fromRGB(255, 160, 40),
+	Mythic = Color3.fromRGB(130, 150, 255),
+}
+
+-- Ultra-rare drop: every player who beats any dungeon boss has this chance to also get it.
+Config.MythicDrop = {
+	Weapon = "VoidlightGreatsword",
+	Chance = 0.0005, -- 0.05% (1 in 2,000)
 }
 
 -- Parties -------------------------------------------------------------------
