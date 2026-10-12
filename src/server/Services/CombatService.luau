@@ -108,7 +108,15 @@ local function fireProjectile(kind: string, from: Vector3, to: Vector3, color: C
 	local distance = (to - from).Magnitude
 	local travel = math.max(0.05, distance / (PROJECTILE_SPEED[kind] or 120))
 	local projectile
-	if kind == "Bow" then
+	if kind == "Coin" then
+		projectile = effectPart({
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.15, 0.8, 0.8),
+			Color = color,
+			Material = Enum.Material.Metal,
+			CFrame = CFrame.lookAt(from, to),
+		})
+	elseif kind == "Bow" then
 		projectile = effectPart({
 			Size = Vector3.new(0.15, 0.15, 2.5),
 			Color = color,
@@ -178,11 +186,35 @@ local function applyEffect(player: Player, enemy: EnemyService.Enemy, effect: It
 	end
 end
 
+-- Healer passive: heal the most hurt teammate nearby (including yourself).
+local function healOnHit(player: Player, dealt: number)
+	local class = PlayerService.GetClass(player)
+	local share = class and (class :: any).HealOnHit
+	local _, root = getAlive(player)
+	if not share or not root or dealt <= 0 then
+		return
+	end
+	local target, lowest = nil, 1
+	for _, other in Players:GetPlayers() do
+		local humanoid, otherRoot = getAlive(other)
+		if humanoid and otherRoot and (otherRoot.Position - root.Position).Magnitude <= 40 then
+			local ratio = humanoid.Health / humanoid.MaxHealth
+			if ratio < lowest then
+				target, lowest = humanoid, ratio
+			end
+		end
+	end
+	if target then
+		target.Health = math.min(target.MaxHealth, target.Health + dealt * share)
+	end
+end
+
 local function hit(player: Player, enemy: EnemyService.Enemy, baseDamage: number, weapon: Items.WeaponDef)
 	local amount, isCrit = rollDamage(player, baseDamage)
 	local color = if weapon.Effect and weapon.Effect.Type == "Frost" then FROST_COLOR else nil
 	local dealt = EnemyService.Damage(enemy, amount, isCrit, if isCrit then nil else color)
 	applyEffect(player, enemy, weapon.Effect, dealt)
+	healOnHit(player, dealt)
 end
 
 -- Attacks ----------------------------------------------------------------------
@@ -259,8 +291,10 @@ local function onAttack(player: Player, aim: unknown)
 	anim.Parent = tool
 
 	local direction = sanitizeAim(aim, root)
-	Sfx.play(if weapon.Type == "Sword" then "Swing" elseif weapon.Type == "Staff" then "Cast" else "BowShot", root)
-	if weapon.Type == "Sword" then
+	local melee = weapon.Type == "Sword" or weapon.Type == "Dagger" or weapon.Type == "Mace"
+	local sound = if melee then "Swing" elseif weapon.Type == "Bow" then "BowShot" else "Cast"
+	Sfx.play(sound, root, if weapon.Type == "Mace" then 1.3 else 1)
+	if melee then
 		swordAttack(player, root, direction, weapon)
 	else
 		rangedAttack(player, root, direction, weapon)
@@ -470,6 +504,61 @@ local function buildVoidlight(tool: Tool, weapon: Items.WeaponDef)
 	end
 end
 
+local function buildDagger(tool: Tool, weapon: Items.WeaponDef)
+	local length = 1.6 + weapon.Tier * 0.1
+	local grip = newPart(tool, "Handle", Vector3.new(0.25, 0.8, 0.25), Color3.fromRGB(45, 35, 30), Enum.Material.Leather)
+	grip.CanCollide = false
+	grip.Massless = true
+	tool.Grip = CFrame.Angles(SWORD_TILT, 0, 0)
+	weld(grip, newPart(tool, "Guard", Vector3.new(0.3, 0.2, 0.9), weapon.Accent, Enum.Material.Metal), CFrame.new(0, 0.5, 0))
+	local blade = newPart(tool, "Blade", Vector3.new(0.15, length, 0.4), weapon.Color, weapon.Material)
+	weld(grip, blade, CFrame.new(0, 0.6 + length / 2, 0))
+	weld(grip, newPart(tool, "Tip", Vector3.new(0.14, 0.3, 0.3), weapon.Color, weapon.Material), CFrame.new(0, 0.6 + length + 0.05, 0) * CFrame.Angles(math.rad(45), 0, 0))
+	if weapon.Effect then
+		weld(grip, newPart(tool, "Edge", Vector3.new(0.17, length * 0.8, 0.06), weapon.Accent, Enum.Material.Neon), CFrame.new(0, 0.6 + length / 2, -0.2))
+	end
+end
+
+local function buildTome(tool: Tool, weapon: Items.WeaponDef)
+	-- Held open in front of you
+	local book = newPart(tool, "Handle", Vector3.new(1.4, 0.25, 1.1), weapon.Color, weapon.Material)
+	book.CanCollide = false
+	book.Massless = true
+	tool.Grip = CFrame.new(0, 0, 0.3) * CFrame.Angles(math.rad(-90), 0, 0)
+	local pages = newPart(tool, "Pages", Vector3.new(1.25, 0.12, 0.95), weapon.Accent, Enum.Material.Neon)
+	weld(book, pages, CFrame.new(0, 0.18, 0))
+	weld(book, newPart(tool, "Spine", Vector3.new(0.12, 0.35, 1.12), weapon.Color:Lerp(Color3.new(0, 0, 0), 0.3), weapon.Material), CFrame.new(0, 0.02, 0))
+	local glow = Instance.new("PointLight")
+	glow.Color = weapon.Accent
+	glow.Range = 8
+	glow.Parent = pages
+	local motes = Instance.new("ParticleEmitter")
+	motes.Color = ColorSequence.new(weapon.Accent)
+	motes.LightEmission = 1
+	motes.Size = NumberSequence.new(0.18, 0)
+	motes.Lifetime = NumberRange.new(0.8, 1.2)
+	motes.Rate = 6
+	motes.Speed = NumberRange.new(0.5, 1)
+	motes.Acceleration = Vector3.new(0, 2, 0)
+	motes.Parent = pages
+end
+
+local function buildMace(tool: Tool, weapon: Items.WeaponDef)
+	local length = 2.6 + weapon.Tier * 0.12
+	local shaft = newPart(tool, "Handle", Vector3.new(0.3, length, 0.3), weapon.Color:Lerp(Color3.fromRGB(60, 40, 25), 0.5), Enum.Material.Wood)
+	shaft.CanCollide = false
+	shaft.Massless = true
+	tool.Grip = CFrame.new(0, -length / 2 + 0.5, 0) * CFrame.Angles(SWORD_TILT, 0, 0)
+	local headSize = 0.9 + weapon.Tier * 0.06
+	local head = newPart(tool, "MaceHead", Vector3.one * headSize, weapon.Color, weapon.Material, Enum.PartType.Ball)
+	weld(shaft, head, CFrame.new(0, length / 2 + headSize * 0.35, 0))
+	for i = 0, 5 do
+		local angle = i / 6 * math.pi * 2
+		weld(shaft, newPart(tool, "Flange", Vector3.new(0.12, headSize * 0.9, headSize * 0.45), weapon.Accent, Enum.Material.Metal), CFrame.new(0, length / 2 + headSize * 0.35, 0) * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0, headSize * 0.45))
+	end
+	weld(shaft, newPart(tool, "Pommel", Vector3.one * 0.4, weapon.Accent, Enum.Material.Metal, Enum.PartType.Ball), CFrame.new(0, -length / 2, 0))
+end
+
 local function buildTool(weapon: Items.WeaponDef): Tool
 	local tool = Instance.new("Tool")
 	tool.Name = weapon.DisplayName
@@ -482,6 +571,12 @@ local function buildTool(weapon: Items.WeaponDef): Tool
 		buildSword(tool, weapon)
 	elseif weapon.Type == "Staff" then
 		buildStaff(tool, weapon)
+	elseif weapon.Type == "Dagger" then
+		buildDagger(tool, weapon)
+	elseif weapon.Type == "Tome" then
+		buildTome(tool, weapon)
+	elseif weapon.Type == "Mace" then
+		buildMace(tool, weapon)
 	else
 		buildBow(tool, weapon)
 	end
@@ -619,7 +714,8 @@ local function damageAround(player: Player, center: Vector3, radius: number, mul
 	end
 end
 
-local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.WeaponDef) -> () } = {
+-- Handlers return false if nothing happened (no cooldown is used).
+local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.WeaponDef) -> boolean? } = {
 	Whirlwind = function(player, _, root, _, weapon)
 		local ability = Config.Abilities.Whirlwind
 		damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
@@ -691,6 +787,124 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 		end
 	end,
 
+	HolyNova = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.HolyNova
+		for _, other in Players:GetPlayers() do
+			local _, otherRoot = getAlive(other)
+			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= ability.Radius then
+				PlayerService.Heal(other, ability.HealPercent)
+			end
+		end
+		damageAround(player, root.Position, ability.DamageRadius, ability.DamageMultiplier, weapon)
+		ringEffect(root.Position - Vector3.new(0, 2.5, 0), ability.Radius, ability.Color)
+		burstEffect(root.Position, ability.DamageRadius, ability.Color)
+	end,
+
+	DivineShield = function(_, _, root)
+		local ability = Config.Abilities.DivineShield
+		for _, other in Players:GetPlayers() do
+			local _, otherRoot = getAlive(other)
+			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= ability.Radius then
+				PlayerService.AddBuff(other, ability.Buff, ability.Duration)
+				local highlight = Instance.new("Highlight")
+				highlight.FillColor = ability.Color
+				highlight.FillTransparency = 0.75
+				highlight.OutlineColor = ability.Color
+				highlight.Parent = otherRoot.Parent
+				Debris:AddItem(highlight, ability.Duration)
+			end
+		end
+		ringEffect(root.Position - Vector3.new(0, 2.5, 0), ability.Radius, ability.Color)
+	end,
+
+	ShadowStrike = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.ShadowStrike
+		local target = findAimTarget(root.Position, aim, ability.Range, 0.5)
+		if not target then
+			return false
+		end
+		burstEffect(root.Position, 3, ability.Color)
+		-- Appear just behind the target, facing it
+		local targetPos = target.Root.Position
+		local away = (targetPos - root.Position) * Vector3.new(1, 0, 1)
+		local behind = targetPos + (if away.Magnitude > 0.1 then away.Unit else aim) * (target.Radius + 2.5)
+		local character = root.Parent :: Model
+		character:PivotTo(CFrame.lookAt(Vector3.new(behind.X, root.Position.Y, behind.Z), Vector3.new(targetPos.X, root.Position.Y, targetPos.Z)))
+		burstEffect(behind, 3, ability.Color)
+		hit(player, target, weapon.Damage * ability.DamageMultiplier, weapon)
+		return true
+	end,
+
+	Vanish = function(player, _, root)
+		local ability = Config.Abilities.Vanish
+		local character = root.Parent :: Model
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		-- Enemies lose track of you (EnemyService skips "Vanished" characters)
+		character:SetAttribute("Vanished", true)
+		for _, part in character:GetDescendants() do
+			if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+				part:SetAttribute("VanishOriginal", part.Transparency)
+				part.Transparency = math.max(part.Transparency, 0.75)
+			end
+		end
+		burstEffect(root.Position, 5, ability.Color)
+		task.delay(ability.Duration, function()
+			if character.Parent then
+				character:SetAttribute("Vanished", nil)
+				for _, part in character:GetDescendants() do
+					local original = part:IsA("BasePart") and part:GetAttribute("VanishOriginal")
+					if original ~= nil then
+						(part :: BasePart).Transparency = original
+						part:SetAttribute("VanishOriginal", nil)
+					end
+				end
+			end
+		end)
+	end,
+
+	CoinBarrage = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.CoinBarrage
+		local targets = {}
+		for _, enemy in EnemyService.GetEnemiesNear(root.Position, ability.Range) do
+			local offset = enemy.Root.Position - root.Position
+			local flat = Vector3.new(offset.X, 0, offset.Z)
+			if flat.Magnitude < 3 or flat.Unit:Dot(aim) >= 0.4 then
+				table.insert(targets, { Enemy = enemy, Distance = flat.Magnitude })
+			end
+		end
+		table.sort(targets, function(a, b)
+			return a.Distance < b.Distance
+		end)
+		local from = root.Position + aim * 2 + Vector3.new(0, 1.5, 0)
+		if #targets == 0 then
+			for i = -2, 2 do
+				fireProjectile("Coin", from, from + (CFrame.Angles(0, math.rad(i * 10), 0) * aim) * ability.Range * 0.6, ability.Color, function() end)
+			end
+			return
+		end
+		for i = 1, math.min(#targets, ability.MaxTargets) do
+			local enemy = targets[i].Enemy
+			fireProjectile("Coin", from, enemy.Root.Position, ability.Color, function()
+				if not enemy.Dead then
+					hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+					PlayerService.AddGold(player, ability.CoinsPerHit, true)
+				end
+			end)
+		end
+	end,
+
+	MidasTouch = function(player, _, root)
+		local ability = Config.Abilities.MidasTouch
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = ability.Color
+		highlight.FillTransparency = 0.6
+		highlight.OutlineColor = ability.Color
+		highlight.Parent = root.Parent
+		Debris:AddItem(highlight, ability.Duration)
+		burstEffect(root.Position, 6, ability.Color)
+	end,
+
 	SwiftStep = function(player, _, root)
 		local ability = Config.Abilities.SwiftStep
 		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
@@ -730,9 +944,18 @@ local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (
 		HealingCircle = "Heal",
 		Volley = "BowShot",
 		SwiftStep = "Dodge",
+		HolyNova = "Heal",
+		DivineShield = "Heal",
+		ShadowStrike = "Lunge",
+		Vanish = "Dodge",
+		CoinBarrage = "Coins",
+		MidasTouch = "Coins",
 	})[abilityId]
+	if abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon) == false then
+		readyAt[abilityId] = 0 -- nothing happened (e.g. no target): don't use the cooldown
+		return false, 0
+	end
 	Sfx.play(sound or "Lunge", root, 1.3)
-	abilityHandlers[abilityId](player, humanoid, root, sanitizeAim(aim, root), weapon)
 	return true, cooldown
 end
 

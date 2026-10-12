@@ -14,7 +14,7 @@ local Util = require(UI.Util)
 local Hud = require(UI.Hud)
 local Inventory = require(UI.Inventory)
 local Shop = require(UI.Shop)
-local ClassPicker = require(UI.ClassPicker)
+local ClassRoller = require(UI.ClassRoller)
 local PortalPanel = require(UI.PortalPanel)
 local AdminPanel = require(UI.AdminPanel)
 local CrateWindow = require(UI.CrateWindow)
@@ -196,11 +196,10 @@ end, function(result)
 	end
 end)
 
-classPicker = ClassPicker.new(gui, function(classId)
-	if request(Remotes.ChooseClass, classId) then
-		classPicker.Close()
-	end
+classPicker = ClassRoller.new(gui, function(currency)
+	request(Remotes.RollClass, currency)
 end)
+Remotes.ClassRolled.OnClientEvent:Connect(classPicker.ShowRoll)
 
 local portalPanel = PortalPanel.new(gui, function(difficultyId)
 	request(Remotes.SetDifficulty, difficultyId)

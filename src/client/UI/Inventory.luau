@@ -6,7 +6,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Items = require(ReplicatedStorage.Shared.Items)
 local Util = require(script.Parent.Util)
 
-local CLASS_FOR_TYPE = { Sword = "Warrior", Staff = "Mage", Bow = "Ranger" }
+local CLASS_FOR_TYPE = { Sword = "Warrior", Staff = "Mage", Bow = "Ranger", Dagger = "Assassin", Tome = "Healer", Mace = "Treasurer" }
 
 local Inventory = {}
 

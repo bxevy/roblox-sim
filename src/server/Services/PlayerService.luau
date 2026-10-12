@@ -109,7 +109,11 @@ end
 
 function PlayerService.GetCritChance(player: Player): number
 	local data = DataService.Get(player)
-	return Config.CritChance + (if data then skillBonus(data, "Precision") else 0)
+	local class = data and getClass(data)
+	return Config.CritChance
+		+ (if data then skillBonus(data, "Precision") else 0)
+		+ (if class then (class :: any).CritBonus or 0 else 0)
+		+ buffTotal(player, "Crit")
 end
 
 -- Multiplier on ability cooldowns (Focus skill).
@@ -261,7 +265,7 @@ function PlayerService.AddGold(player: Player, amount: number, isReward: boolean
 		return
 	end
 	if isReward then
-		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune")
+		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune") + buffTotal(player, "Gold")
 	end
 	amount = math.floor(amount)
 	data.Gold += amount
@@ -457,28 +461,18 @@ local function onEquip(player: Player, kind: unknown, itemId: unknown): (boolean
 	return true
 end
 
-local function onChooseClass(player: Player, classId: unknown): (boolean, string?)
+-- Sets the player's class (classes are rolled by ClassService). Gives the class's starter
+-- weapon and equips their best weapon for it.
+function PlayerService.SetClass(player: Player, classId: string)
 	local data = DataService.Get(player)
-	if not data then
-		return false, "Still loading"
+	if not data or not Config.Classes[classId] then
+		return
 	end
-	if type(classId) ~= "string" or not Config.Classes[classId] then
-		return false, "Unknown class"
-	end
-	if player:GetAttribute("InDungeon") then
-		return false, "You can't change class inside a dungeon"
-	end
-	if data.Class == classId then
-		return true
-	end
-
 	data.Class = classId
 	fixLoadout(data)
 	PlayerService.RefreshStats(player, true)
 	PlayerService.Push(player)
 	fireLoadoutChanged(player)
-	PlayerService.Notify(player, `You are now a {Config.Classes[classId].DisplayName}!`, Config.Classes[classId].Color)
-	return true
 end
 
 -- Setup ----------------------------------------------------------------------
@@ -556,7 +550,6 @@ function PlayerService.Start()
 	end)
 
 	Remotes.Equip.OnServerInvoke = onEquip
-	Remotes.ChooseClass.OnServerInvoke = onChooseClass
 	Remotes.GetState.OnServerInvoke = function(player)
 		local data = DataService.Get(player)
 		return data and buildState(player, data)

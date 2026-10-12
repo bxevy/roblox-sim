@@ -118,6 +118,11 @@ local function save(player: Player)
 	end
 end
 
+-- Saves right away (used after Robux purchases so they're never lost).
+function DataService.Save(player: Player)
+	save(player)
+end
+
 function DataService.Get(player: Player): { [string]: any }?
 	local profile = profiles[player]
 	return profile and profile.Data

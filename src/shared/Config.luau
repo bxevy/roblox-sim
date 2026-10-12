@@ -29,6 +29,7 @@ Config.DefaultData = {
 	SkillPoints = 0,
 	Skills = {}, -- skill id -> rank
 	Quests = {}, -- managed by QuestService
+	Receipts = {}, -- Robux purchase ids already granted
 	Card = {
 		Background = "Parchment",
 		Title = "Adventurer",
@@ -90,7 +91,12 @@ Config.MaxDefense = 0.8 -- damage reduction can never go above 80%
 export type ClassDef = {
 	DisplayName: string,
 	Description: string,
-	WeaponType: string, -- "Sword" | "Staff" | "Bow"
+	WeaponType: string, -- "Sword" | "Staff" | "Bow" | "Dagger" | "Tome" | "Mace"
+	Rarity: string,
+	Weight: number, -- chance when rolling a class (relative)
+	Passive: string,
+	LootLuck: number?, -- chance to upgrade dungeon loot by one tier
+	HealOnHit: number?, -- heals the most hurt nearby teammate by this share of damage dealt
 	StarterWeapon: string,
 	HealthMultiplier: number,
 	DamageMultiplier: number,
@@ -112,6 +118,9 @@ Config.Classes = {
 		SpeedMultiplier = 1,
 		Abilities = { "Whirlwind", "ShieldWall" },
 		Color = Color3.fromRGB(220, 70, 60),
+		Rarity = "Common",
+		Weight = 30,
+		Passive = "+30% health, +10% defense",
 	},
 	Mage = {
 		DisplayName = "Mage",
@@ -124,6 +133,9 @@ Config.Classes = {
 		SpeedMultiplier = 1,
 		Abilities = { "Fireball", "HealingCircle" },
 		Color = Color3.fromRGB(80, 120, 255),
+		Rarity = "Common",
+		Weight = 25,
+		Passive = "+25% damage, magic splashes",
 	},
 	Ranger = {
 		DisplayName = "Ranger",
@@ -136,10 +148,70 @@ Config.Classes = {
 		SpeedMultiplier = 1.15,
 		Abilities = { "Volley", "SwiftStep" },
 		Color = Color3.fromRGB(70, 190, 90),
+		Rarity = "Common",
+		Weight = 25,
+		Passive = "+15% speed, longest range",
+	},
+	Healer = {
+		DisplayName = "Healer",
+		Description = "Holy caster. Your attacks heal hurt teammates; keeps the party alive.",
+		WeaponType = "Tome",
+		StarterWeapon = "PrayerBook",
+		HealthMultiplier = 1.1,
+		DamageMultiplier = 0.95,
+		Defense = 0.05,
+		SpeedMultiplier = 1,
+		Abilities = { "HolyNova", "DivineShield" },
+		Color = Color3.fromRGB(255, 230, 130),
+		Rarity = "Rare",
+		Weight = 10,
+		Passive = "Hits heal the most hurt teammate for 20% of damage",
+		HealOnHit = 0.2,
+	},
+	Assassin = {
+		DisplayName = "Assassin",
+		Description = "Twin daggers. Very fast attacks, huge critical hits, teleports behind foes.",
+		WeaponType = "Dagger",
+		StarterWeapon = "RustyShiv",
+		HealthMultiplier = 0.9,
+		DamageMultiplier = 1.15,
+		Defense = 0,
+		SpeedMultiplier = 1.2,
+		Abilities = { "ShadowStrike", "Vanish" },
+		Color = Color3.fromRGB(160, 90, 220),
+		Rarity = "Epic",
+		Weight = 7,
+		Passive = "+20% speed, +15% critical hit chance",
+		CritBonus = 0.15,
+	},
+	Treasurer = {
+		DisplayName = "Treasurer",
+		Description = "Gilded mace. Heavy hits, showers enemies in coins, finds better loot.",
+		WeaponType = "Mace",
+		StarterWeapon = "WoodenCudgel",
+		HealthMultiplier = 1.15,
+		DamageMultiplier = 1,
+		Defense = 0.05,
+		SpeedMultiplier = 1,
+		Abilities = { "CoinBarrage", "MidasTouch" },
+		Color = Color3.fromRGB(255, 200, 50),
+		Rarity = "Legendary",
+		Weight = 3,
+		Passive = "10% better loot drops (chance for a higher tier)",
+		LootLuck = 0.1,
 	},
 } :: { [string]: ClassDef }
 
-Config.ClassOrder = { "Warrior", "Mage", "Ranger" }
+Config.ClassOrder = { "Warrior", "Mage", "Ranger", "Healer", "Assassin", "Treasurer" }
+
+-- Classes are rolled, not chosen. New players get one free roll.
+Config.ClassRoll = {
+	CoinCost = 2500,
+	-- Robux rolls: create a Developer Product on your game's page (Creator Dashboard >
+	-- your experience > Monetization > Developer Products) and paste its id here.
+	RobuxProductId = 0,
+	RobuxPriceLabel = "R$ 25",
+}
 
 -- Abilities -----------------------------------------------------------------
 
@@ -191,6 +263,56 @@ Config.Abilities = {
 		Duration = 4,
 		Color = Color3.fromRGB(120, 255, 200),
 	},
+	-- Healer
+	HolyNova = {
+		DisplayName = "Holy Nova",
+		Cooldown = 10,
+		Radius = 25, -- heals teammates in this radius
+		DamageRadius = 14,
+		HealPercent = 0.25,
+		DamageMultiplier = 2,
+		Color = Color3.fromRGB(255, 235, 140),
+	},
+	DivineShield = {
+		DisplayName = "Divine Shield",
+		Cooldown = 20,
+		Radius = 25,
+		Buff = "DivineShield",
+		Duration = 5,
+		Color = Color3.fromRGB(255, 250, 200),
+	},
+	-- Assassin
+	ShadowStrike = {
+		DisplayName = "Shadow Strike",
+		Cooldown = 8,
+		Range = 30,
+		DamageMultiplier = 4,
+		Color = Color3.fromRGB(150, 80, 230),
+	},
+	Vanish = {
+		DisplayName = "Vanish",
+		Cooldown = 16,
+		Buff = "Vanish",
+		Duration = 4,
+		Color = Color3.fromRGB(90, 60, 140),
+	},
+	-- Treasurer
+	CoinBarrage = {
+		DisplayName = "Coin Barrage",
+		Cooldown = 8,
+		Range = 45,
+		MaxTargets = 6,
+		DamageMultiplier = 1.6,
+		CoinsPerHit = 2,
+		Color = Color3.fromRGB(255, 210, 60),
+	},
+	MidasTouch = {
+		DisplayName = "Midas Touch",
+		Cooldown = 25,
+		Buff = "Midas",
+		Duration = 10,
+		Color = Color3.fromRGB(255, 220, 80),
+	},
 }
 
 -- Buffs (from abilities and potions). Values are added together.
@@ -201,6 +323,9 @@ Config.Buffs = {
 	Strength = { DisplayName = "Strength", Damage = 0.3 },
 	Swiftness = { DisplayName = "Swiftness", Speed = 0.3 },
 	Ironskin = { DisplayName = "Ironskin", Defense = 0.25 },
+	DivineShield = { DisplayName = "Divine Shield", Defense = 0.5 },
+	Vanish = { DisplayName = "Vanish", Crit = 0.4, Speed = 0.3 },
+	Midas = { DisplayName = "Midas Touch", Damage = 0.2, Gold = 0.5 },
 }
 
 Config.CritChance = 0.1

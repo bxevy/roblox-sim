@@ -17,6 +17,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
 local DungeonService = require(script.Parent.DungeonService)
+local ClassService = require(script.Parent.ClassService)
 
 local TOWN_SPAWN = Vector3.new(0, 4, 0)
 
@@ -128,6 +129,28 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 		data.Prestige = math.clamp(math.floor(prestige), 0, Config.Prestige.Max)
 		PlayerService.Push(player)
 		return true, `Prestige set to {data.Prestige}`
+	end,
+
+	FreeRoll = function(player)
+		if player:GetAttribute("InDungeon") then
+			return false, "Leave the dungeon first"
+		end
+		ClassService.FreeRoll(player)
+		return true, "Rolling a class (free)"
+	end,
+
+	SetClass = function(player, classId)
+		local match = nil
+		for id in Config.Classes do
+			if type(classId) == "string" and id:lower() == classId:lower() then
+				match = id
+			end
+		end
+		if not match then
+			return false, "Class: Warrior, Mage, Ranger, Healer, Assassin or Treasurer"
+		end
+		PlayerService.SetClass(player, match)
+		return true, `Class set to {match}`
 	end,
 
 	Heal = function(player)

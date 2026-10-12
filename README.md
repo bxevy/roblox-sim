@@ -15,12 +15,20 @@ pieces with hand-built models in Studio.
 
 ## How to play
 
-1. **Pick a class** when you first join (change it any time in the lobby with the **Class** button):
-   | Class   | Weapon | Strengths                         | Q          | E              |
-   | ------- | ------ | --------------------------------- | ---------- | -------------- |
-   | Warrior | Sword  | +30% health, +10% defense         | Whirlwind  | Shield Wall    |
-   | Mage    | Staff  | +25% damage, ranged splash magic  | Fireball   | Healing Circle (heals the party) |
-   | Ranger  | Bow    | +15% speed, longest range         | Volley     | Swift Step     |
+1. **Roll a class** (your first roll is free; open the **Class** button to roll again for 2,500
+   coins or Robux; a new roll replaces your class):
+   | Class     | Weapon  | Rarity / odds  | Passive                                 | Q / E                          |
+   | --------- | ------- | -------------- | --------------------------------------- | ------------------------------ |
+   | Warrior   | Sword   | Common 30%     | +30% health, +10% defense               | Whirlwind / Shield Wall        |
+   | Mage      | Staff   | Common 25%     | +25% damage, magic splashes             | Fireball / Healing Circle      |
+   | Ranger    | Bow     | Common 25%     | +15% speed, longest range               | Volley / Swift Step            |
+   | Healer    | Tome    | Rare 10%       | Hits heal the most hurt teammate        | Holy Nova / Divine Shield      |
+   | Assassin  | Daggers | Epic 7%        | +20% speed, +15% crit                   | Shadow Strike / Vanish         |
+   | Treasurer | Mace    | Legendary 3%   | 10% better loot drops                   | Coin Barrage / Midas Touch     |
+
+   **Robux rolls:** create a Developer Product (Creator Dashboard > your experience > Monetization >
+   Developer Products), then put its id in `Config.ClassRoll.RobuxProductId` and its price in
+   `RobuxPriceLabel`. Purchases are recorded per receipt so a roll is never granted twice.
 2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **2-6**.
 3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
    After a 10 second countdown, everyone on the pad (up to 4 players) goes in together.
@@ -173,11 +181,13 @@ src/
       QuestService.luau     story + daily quests, Quest Board
       ProgressionService.luau  prestige, skills, Skill Sanctum
       CardService.luau      player card customization, nameplates
+      ClassService.luau     class rolling (coins / Robux developer product)
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau        input (attack, 1, Q/E, 2-6, G, T, J, H, P) and wiring
     Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting)
-    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel, AdminPanel,
-                            CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow
+    UI/                     Hud, Inventory, Shop, PortalPanel, AdminPanel,
+                            CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow,
+                            ClassRoller
 ```
 
 ### Adding content

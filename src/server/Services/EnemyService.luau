@@ -223,7 +223,7 @@ local function findTarget(enemy: Enemy): (Humanoid?, BasePart?, number)
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if humanoid and root and humanoid.Health > 0 then
+		if humanoid and root and humanoid.Health > 0 and not (character :: Model):GetAttribute("Vanished") then
 			local distance = (root.Position - enemy.Root.Position).Magnitude
 			if distance < bestDistance then
 				bestHumanoid, bestRoot, bestDistance = humanoid, root, distance

@@ -13,7 +13,7 @@ export type WeaponDef = {
 	Id: string,
 	Kind: "Weapon",
 	DisplayName: string,
-	Type: string, -- "Sword" | "Staff" | "Bow"
+	Type: string, -- "Sword" | "Staff" | "Bow" | "Dagger" | "Tome" | "Mace"
 	Tier: number,
 	Rarity: string,
 	Damage: number,
@@ -71,6 +71,9 @@ local WEAPON_TYPES = {
 	Sword = { DamageMultiplier = 1, Cooldown = 0.5, Range = 7 },
 	Staff = { DamageMultiplier = 1.3, Cooldown = 0.8, Range = 45, Splash = 5 },
 	Bow = { DamageMultiplier = 0.8, Cooldown = 0.45, Range = 60 },
+	Dagger = { DamageMultiplier = 0.7, Cooldown = 0.3, Range = 5.5 },
+	Tome = { DamageMultiplier = 0.95, Cooldown = 0.7, Range = 40 },
+	Mace = { DamageMultiplier = 1.4, Cooldown = 0.75, Range = 7.5 },
 }
 
 local rgb = Color3.fromRGB
@@ -87,6 +90,36 @@ local WEAPON_LIST = {
 	{ "SandReaver", "Sand Reaver", "Sword", 6, rgb(235, 195, 90), rgb(40, 60, 140), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
 	{ "Frostbrand", "Frostbrand", "Sword", 7, rgb(150, 220, 255), rgb(230, 245, 255), M.Ice, { Type = "Frost", Amount = 0.4, Duration = 2 } },
 	{ "Dragonfang", "Dragonfang", "Sword", 8, rgb(255, 110, 40), rgb(60, 20, 20), M.Neon, { Type = "Burn", Amount = 0.25, Duration = 3 } },
+	-- Daggers (Assassin)
+	{ "RustyShiv", "Rusty Shiv", "Dagger", 1, rgb(140, 110, 90), rgb(70, 50, 40), M.CorrodedMetal },
+	{ "IronDirk", "Iron Dirk", "Dagger", 2, rgb(165, 165, 175), rgb(60, 45, 35), M.Metal },
+	{ "SteelStiletto", "Steel Stiletto", "Dagger", 3, rgb(210, 215, 225), rgb(40, 40, 45), M.Metal },
+	{ "VenomFang", "Venom Fang", "Dagger", 4, rgb(90, 200, 90), rgb(30, 60, 30), M.Glass, { Type = "Burn", Amount = 0.15, Duration = 3 } },
+	{ "NightshadeKris", "Nightshade Kris", "Dagger", 5, rgb(120, 60, 160), rgb(30, 15, 40), M.Metal, { Type = "Lifesteal", Amount = 0.06 } },
+	{ "Shadowfang", "Shadowfang", "Dagger", 6, rgb(40, 40, 55), rgb(150, 110, 255), M.Slate, { Type = "Frost", Amount = 0.35, Duration = 2 } },
+	{ "EclipseEdge", "Eclipse Edge", "Dagger", 7, rgb(255, 170, 60), rgb(40, 20, 60), M.Neon, { Type = "Burn", Amount = 0.22, Duration = 3 } },
+	{ "PhantomReaper", "Phantom Reaper", "Dagger", 8, rgb(170, 240, 255), rgb(20, 30, 50), M.Glass, { Type = "Lifesteal", Amount = 0.1 } },
+
+	-- Tomes (Healer)
+	{ "PrayerBook", "Prayer Book", "Tome", 1, rgb(120, 80, 50), rgb(255, 240, 200), M.Leather },
+	{ "HymnalOfDawn", "Hymnal of Dawn", "Tome", 2, rgb(170, 70, 50), rgb(255, 220, 150), M.Leather },
+	{ "CodexOfLight", "Codex of Light", "Tome", 3, rgb(230, 225, 210), rgb(255, 230, 120), M.Leather },
+	{ "TomeOfMending", "Tome of Mending", "Tome", 4, rgb(60, 140, 90), rgb(150, 255, 170), M.Leather, { Type = "Lifesteal", Amount = 0.06 } },
+	{ "RadiantScripture", "Radiant Scripture", "Tome", 5, rgb(240, 200, 90), rgb(255, 255, 220), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
+	{ "SeraphsGospel", "Seraph's Gospel", "Tome", 6, rgb(245, 245, 255), rgb(140, 200, 255), M.Fabric, { Type = "Frost", Amount = 0.3, Duration = 2 } },
+	{ "CelestialCanticle", "Celestial Canticle", "Tome", 7, rgb(60, 70, 160), rgb(255, 240, 150), M.Fabric, { Type = "Burn", Amount = 0.2, Duration = 3 } },
+	{ "BookOfGenesis", "Book of Genesis", "Tome", 8, rgb(255, 250, 235), rgb(255, 200, 60), M.Neon, { Type = "Lifesteal", Amount = 0.1 } },
+
+	-- Maces (Treasurer)
+	{ "WoodenCudgel", "Wooden Cudgel", "Mace", 1, rgb(140, 100, 60), rgb(90, 60, 35), M.Wood },
+	{ "CopperMace", "Copper Mace", "Mace", 2, rgb(200, 120, 70), rgb(90, 60, 35), M.Metal },
+	{ "SilverScepter", "Silver Scepter", "Mace", 3, rgb(215, 220, 230), rgb(120, 180, 255), M.Metal },
+	{ "GoldenMorningstar", "Golden Morningstar", "Mace", 4, rgb(240, 200, 70), rgb(120, 80, 20), M.Metal },
+	{ "JeweledFlail", "Jeweled Flail", "Mace", 5, rgb(230, 190, 80), rgb(200, 40, 80), M.Metal, { Type = "Burn", Amount = 0.15, Duration = 3 } },
+	{ "MidasHammer", "Midas Hammer", "Mace", 6, rgb(255, 215, 60), rgb(255, 250, 200), M.Neon, { Type = "Lifesteal", Amount = 0.06 } },
+	{ "CrownBreaker", "Crown Breaker", "Mace", 7, rgb(120, 60, 160), rgb(255, 210, 80), M.Metal, { Type = "Frost", Amount = 0.4, Duration = 2 } },
+	{ "ScepterOfAvarice", "Scepter of Avarice", "Mace", 8, rgb(255, 200, 40), rgb(40, 200, 120), M.Metal, { Type = "Burn", Amount = 0.25, Duration = 3 } },
+
 	-- Mythic: never in normal loot tables, only from the ultra-rare drop (Config.MythicDrop)
 	{ "VoidlightGreatsword", "Voidlight Greatsword", "Sword", 9, rgb(236, 240, 252), rgb(28, 34, 92), M.Metal, { Type = "Frost", Amount = 0.5, Duration = 2.5 }, "Voidlight" },
 

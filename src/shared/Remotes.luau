@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged" }
-local FUNCTIONS = { "GetState", "Equip", "ChooseClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled" }
+local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -50,7 +50,8 @@ return {
 	Dodge = get("Dodge") :: RemoteEvent, -- ()
 	GetState = get("GetState") :: RemoteFunction,
 	Equip = get("Equip") :: RemoteFunction, -- (kind: "Weapon" | "Armor", id) -> (ok, err?)
-	ChooseClass = get("ChooseClass") :: RemoteFunction, -- (classId) -> (ok, err?)
+	RollClass = get("RollClass") :: RemoteFunction, -- (currency: "Coins" | "Robux") -> (ok, err?)
+	ClassRolled = get("ClassRolled") :: RemoteEvent, -- (classId) result of a roll, for the reveal
 	UseAbility = get("UseAbility") :: RemoteFunction, -- (abilityId, aimDirection) -> (ok, cooldownRemaining)
 	SetDifficulty = get("SetDifficulty") :: RemoteFunction, -- (difficultyId) -> (ok, err?)
 	BuyPotion = get("BuyPotion") :: RemoteFunction, -- (potionId) -> (ok, err?)

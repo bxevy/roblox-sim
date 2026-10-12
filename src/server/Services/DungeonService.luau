@@ -296,6 +296,11 @@ local function rollLoot(player: Player, run: Run): (string, string)
 	local settings = run.Def.Difficulties[run.DifficultyId]
 	local tier = pickWeighted(settings.Loot)
 	local class = PlayerService.GetClass(player)
+	-- Treasurer passive: a chance for the drop to be one tier better
+	local luck = class and (class :: any).LootLuck
+	if luck and math.random() < luck then
+		tier = math.min(tier + 1, 8)
+	end
 	if class and math.random() < 0.6 then
 		local options = Items.WeaponsOfType(class.WeaponType, tier)
 		if #options > 0 then
@@ -328,7 +333,9 @@ local function winRun(run: Run)
 		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier, true)
 
 		-- Ultra-rare Mythic drop, rolled separately from the normal item.
-		if math.random() < Config.MythicDrop.Chance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
+		local playerClass = PlayerService.GetClass(player)
+		local mythicChance = Config.MythicDrop.Chance * (1 + (if playerClass then (playerClass :: any).LootLuck or 0 else 0))
+		if math.random() < mythicChance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
 			local mythic = Items.Weapons[Config.MythicDrop.Weapon]
 			for _, other in Players:GetPlayers() do
 				PlayerService.Notify(other, `{player.DisplayName} found the MYTHIC {mythic.DisplayName}!`, Config.Rarities.Mythic)
@@ -617,7 +624,7 @@ local function updatePortal(portal: Portal)
 		onPad[player] = true
 		local reason
 		if not PlayerService.GetClass(player) then
-			reason = "Choose a class first!"
+			reason = "Roll a class first! (Class button)"
 		elseif PlayerService.GetLevel(player) < requiredLevel then
 			reason = `{def.DisplayName} on {portal.DifficultyId} needs level {requiredLevel}`
 		end
