@@ -449,8 +449,8 @@ local function buildDecor()
 		lampPost(position)
 	end
 
-	tree(Vector3.new(-30, 0, 46), 1.1)
-	tree(Vector3.new(26, 0, 46), 1)
+	tree(Vector3.new(-20, 0, 47), 1.1)
+	tree(Vector3.new(20, 0, 47), 1)
 	tree(Vector3.new(-55, 0, -62), 0.9)
 	tree(Vector3.new(55, 0, -62), 0.9)
 

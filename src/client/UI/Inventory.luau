@@ -96,19 +96,44 @@ function Inventory.new(gui: ScreenGui, equip: (kind: string, id: string) -> ())
 				end
 			end
 		else
-			local any = false
-			for order, id in Items.ArmorOrder do
-				if state.Armors[id] then
-					any = true
-					local armor = Items.Armors[id]
-					local equipped = state.Equipped.Armor == id
-					row(order, `{armor.DisplayName}{if equipped then "  (equipped - click to remove)" else ""}`, `T{armor.Tier} {armor.Rarity} | +{armor.Health} HP | {math.floor(armor.Defense * 100)}% defense`, Config.Rarities[armor.Rarity], equipped, true, function()
-						equip("Armor", id)
-					end)
+			-- Armor grouped by set: a header (with set bonus) then the pieces you own.
+			local order = 0
+			for _, setId in Items.ArmorSetOrder do
+				local set = Items.ArmorSets[setId]
+				local owned = 0
+				for _, pieceId in set.Pieces do
+					if state.Armors[pieceId] then
+						owned += 1
+					end
+				end
+				if owned > 0 then
+					order += 1
+					local active = state.FullSet == setId
+					Util.text(list, {
+						LayoutOrder = order,
+						Size = UDim2.new(1, -10, 0, 40),
+						TextXAlignment = Enum.TextXAlignment.Left,
+						TextColor3 = Config.Rarities[set.Rarity],
+						TextScaled = false,
+						TextSize = 17,
+						TextWrapped = true,
+						Text = `{set.DisplayName} ({set.Rarity}) {owned}/4\nSet bonus{if active then " ACTIVE" else ""}: {set.SetBonus.Description}`,
+					})
+					for _, slot in Items.ArmorSlots do
+						local pieceId = set.Pieces[slot]
+						if state.Armors[pieceId] then
+							order += 1
+							local piece = Items.Armors[pieceId]
+							local equipped = state.Equipped[slot] == pieceId
+							row(order, `{piece.DisplayName}{if equipped then "  (equipped)" else ""}`, `{slot} | +{piece.Health} HP | {string.format("%.1f", piece.Defense * 100)}% defense`, Config.Rarities[piece.Rarity], equipped, true, function()
+								equip("Armor", pieceId)
+							end)
+						end
+					end
 				end
 			end
-			if not any then
-				Util.text(list, { Size = UDim2.new(1, -10, 0, 40), Text = "No armor yet - clear dungeons to find some!", TextColor3 = Color3.fromRGB(180, 180, 190) })
+			if order == 0 then
+				Util.text(list, { Size = UDim2.new(1, -10, 0, 40), Text = "No armor yet - clear dungeons or open crates!", TextColor3 = Color3.fromRGB(180, 180, 190) })
 			end
 		end
 	end

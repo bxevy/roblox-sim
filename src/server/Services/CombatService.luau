@@ -15,9 +15,9 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
 local EnemyService = require(script.Parent.EnemyService)
 local Sfx = require(script.Parent.Parent.Sfx)
+local ArmorVisuals = require(script.Parent.Parent.ArmorVisuals)
 
 local TOOL_ATTRIBUTE = "WeaponId"
-local ARMOR_FOLDER = "ArmorVisual"
 local BACK_MODEL = "SheathedWeapon"
 local PROJECTILE_SPEED = { Staff = 90, Bow = 150 }
 local BURN_COLOR = Color3.fromRGB(255, 140, 40)
@@ -491,42 +491,6 @@ end
 -- Exposed so tools can be previewed outside the game.
 CombatService.BuildTool = buildTool
 
--- Armor models -------------------------------------------------------------------
-
-local function buildArmor(character: Model, armor: Items.ArmorDef)
-	local old = character:FindFirstChild(ARMOR_FOLDER)
-	if old then
-		old:Destroy()
-	end
-	local torso: BasePart? = (character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) :: any
-	if not torso then
-		return
-	end
-
-	local folder = Instance.new("Folder")
-	folder.Name = ARMOR_FOLDER
-
-	local function piece(name: string, size: Vector3, color: Color3, material: Enum.Material, offset: CFrame)
-		local p = newPart(folder, name, size, color, material)
-		p.CanTouch = false
-		weld(torso, p, offset)
-	end
-
-	local t = torso.Size
-	piece("Chest", t + Vector3.new(0.2, 0.1, 0.2), armor.Color, armor.Material, CFrame.new())
-	for _, side in { -1, 1 } do
-		piece("Shoulder", Vector3.new(1.2, 0.5, 1.3), armor.Accent, armor.Material, CFrame.new(side * (t.X / 2 + 0.35), t.Y / 2 - 0.1, 0))
-	end
-	if armor.Tier >= 3 then
-		piece("Belt", Vector3.new(t.X + 0.3, 0.3, t.Z + 0.3), armor.Accent, Enum.Material.Metal, CFrame.new(0, -t.Y / 2 + 0.1, 0))
-	end
-	if armor.Tier >= 6 then
-		-- Glowing emblem on the chest for high-tier armor.
-		piece("Emblem", Vector3.new(0.6, 0.6, 0.1), armor.Accent, Enum.Material.Neon, CFrame.new(0, 0.1, -t.Z / 2 - 0.12))
-	end
-	folder.Parent = character
-end
-
 -- Loadout ----------------------------------------------------------------------
 
 local function removeWeaponTools(player: Player)
@@ -604,15 +568,8 @@ local function applyLoadout(player: Player)
 		return
 	end
 
-	local armor = PlayerService.GetArmor(player)
-	if armor then
-		buildArmor(character, armor)
-	else
-		local old = character:FindFirstChild(ARMOR_FOLDER)
-		if old then
-			old:Destroy()
-		end
-	end
+	local pieces, fullSet = PlayerService.GetArmor(player)
+	ArmorVisuals.apply(character, pieces, fullSet)
 
 	removeWeaponTools(player)
 	local weapon = PlayerService.GetWeapon(player)

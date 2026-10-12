@@ -20,6 +20,7 @@ export type Actions = {
 	ToggleInventory: () -> (),
 	OpenClassPicker: () -> (),
 	OpenAdmin: () -> (),
+	ToggleStats: () -> (),
 	ToggleMusic: () -> boolean, -- returns whether music is now on
 	SetSprint: (on: boolean) -> (),
 	Dodge: () -> (),
@@ -66,6 +67,14 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		Text = "Class",
 	})
 	classButton.Activated:Connect(actions.OpenClassPicker)
+
+	local statsButton = Util.button(gui, {
+		Position = UDim2.fromOffset(244, 124),
+		Size = UDim2.fromOffset(90, 40),
+		BackgroundColor3 = Color3.fromRGB(50, 90, 110),
+		Text = "Stats [T]",
+	})
+	statsButton.Activated:Connect(actions.ToggleStats)
 
 	-- Admin button, only for admins
 	local player = Players.LocalPlayer

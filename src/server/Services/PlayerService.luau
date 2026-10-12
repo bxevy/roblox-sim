@@ -33,15 +33,48 @@ local function buffTotal(player: Player, stat: string): number
 	return total
 end
 
+-- Equipped armor pieces by slot, and the set id if all 4 slots are from one set.
+local function getArmor(data): ({ [string]: Items.ArmorDef }, string?)
+	local pieces = {}
+	local setId: string? = nil
+	local full = true
+	for _, slot in Items.ArmorSlots do
+		local piece = data.Equipped[slot] and Items.Armors[data.Equipped[slot]]
+		if piece then
+			pieces[slot] = piece
+			if setId == nil then
+				setId = piece.Set
+			elseif setId ~= piece.Set then
+				full = false
+			end
+		else
+			full = false
+		end
+	end
+	return pieces, if full then setId else nil
+end
+
+-- Sum of a stat across armor pieces plus the full-set bonus (if any).
+local function armorStat(data, stat: string): number
+	local pieces, fullSet = getArmor(data)
+	local total = 0
+	for _, piece in pieces do
+		total += (piece :: any)[stat] or 0
+	end
+	if fullSet then
+		total += (Items.ArmorSets[fullSet].SetBonus :: any)[stat] or 0
+	end
+	return total
+end
+
 function PlayerService.GetMaxHealth(player: Player): number
 	local data = DataService.Get(player)
 	if not data then
 		return 100
 	end
 	local class = getClass(data)
-	local armor = data.Equipped.Armor and Items.Armors[data.Equipped.Armor]
 	local health = Config.BaseHealth(data.Level) * (if class then class.HealthMultiplier else 1)
-	return math.floor(health + (if armor then armor.Health else 0))
+	return math.floor(health + armorStat(data, "Health"))
 end
 
 function PlayerService.GetDefense(player: Player): number
@@ -50,8 +83,7 @@ function PlayerService.GetDefense(player: Player): number
 		return 0
 	end
 	local class = getClass(data)
-	local armor = data.Equipped.Armor and Items.Armors[data.Equipped.Armor]
-	local defense = (if class then class.Defense else 0) + (if armor then armor.Defense else 0) + buffTotal(player, "Defense")
+	local defense = (if class then class.Defense else 0) + armorStat(data, "Defense") + buffTotal(player, "Defense")
 	return math.min(defense, Config.MaxDefense)
 end
 
@@ -61,14 +93,18 @@ function PlayerService.GetDamageMultiplier(player: Player): number
 		return 1
 	end
 	local class = getClass(data)
-	return Config.LevelDamageMultiplier(data.Level) * (if class then class.DamageMultiplier else 1) * (1 + buffTotal(player, "Damage"))
+	return Config.LevelDamageMultiplier(data.Level)
+		* (if class then class.DamageMultiplier else 1)
+		* (1 + buffTotal(player, "Damage"))
+		* (1 + armorStat(data, "Damage"))
 end
 
 function PlayerService.GetWalkSpeed(player: Player): number
 	local data = DataService.Get(player)
 	local class = data and getClass(data)
 	local sprint = if player:GetAttribute("Sprinting") then Config.Movement.SprintMultiplier else 1
-	return Config.BaseWalkSpeed * (if class then class.SpeedMultiplier else 1) * (1 + buffTotal(player, "Speed")) * sprint
+	local armorSpeed = if data then armorStat(data, "Speed") else 0
+	return Config.BaseWalkSpeed * (if class then class.SpeedMultiplier else 1) * (1 + buffTotal(player, "Speed") + armorSpeed) * sprint
 end
 
 -- Pushes current stats onto the character. `refill` restores full health.
@@ -103,8 +139,10 @@ local function buildState(player: Player, data)
 		Class = data.Class,
 		Weapons = data.Weapons,
 		Armors = data.Armors,
+		FullSet = select(2, getArmor(data)),
 		Equipped = data.Equipped,
 		Potions = data.Potions,
+		Lifetime = data.Stats, -- lifetime stats for the Stats window
 		Buffs = activeBuffs, -- buff id -> seconds remaining
 		Stats = {
 			MaxHealth = PlayerService.GetMaxHealth(player),
@@ -170,9 +208,13 @@ function PlayerService.GetWeapon(player: Player): Items.WeaponDef?
 	return data and data.Equipped.Weapon and Items.Weapons[data.Equipped.Weapon]
 end
 
-function PlayerService.GetArmor(player: Player): Items.ArmorDef?
+-- Equipped armor pieces by slot, and the full set id if wearing all 4 of one set.
+function PlayerService.GetArmor(player: Player): ({ [string]: Items.ArmorDef }, string?)
 	local data = DataService.Get(player)
-	return data and data.Equipped.Armor and Items.Armors[data.Equipped.Armor]
+	if not data then
+		return {}, nil
+	end
+	return getArmor(data)
 end
 
 function PlayerService.AddGold(player: Player, amount: number)
@@ -181,7 +223,18 @@ function PlayerService.AddGold(player: Player, amount: number)
 		return
 	end
 	data.Gold += math.floor(amount)
+	if amount > 0 then
+		data.Stats.GoldEarned += math.floor(amount)
+	end
 	PlayerService.Push(player)
+end
+
+-- Adds to a lifetime stat (see Config.DefaultData.Stats).
+function PlayerService.AddStat(player: Player, stat: string, amount: number?)
+	local data = DataService.Get(player)
+	if data and data.Stats[stat] ~= nil then
+		data.Stats[stat] += amount or 1
+	end
 end
 
 -- Returns false (and charges nothing) if the player can't afford it.
@@ -329,11 +382,12 @@ local function onEquip(player: Player, kind: unknown, itemId: unknown): (boolean
 		end
 		data.Equipped.Weapon = itemId
 	elseif kind == "Armor" then
-		if not Items.Armors[itemId] or not data.Armors[itemId] then
+		local piece = Items.Armors[itemId]
+		if not piece or not data.Armors[itemId] then
 			return false, "You don't own that armor"
 		end
-		-- Clicking your equipped armor takes it off.
-		data.Equipped.Armor = if data.Equipped.Armor == itemId then nil else itemId
+		-- Clicking an equipped piece takes it off; otherwise it replaces that slot.
+		data.Equipped[piece.Slot] = if data.Equipped[piece.Slot] == itemId then nil else itemId
 	else
 		return false, "Unknown item"
 	end
@@ -399,8 +453,12 @@ local function sanitize(data)
 	if data.Class and not Config.Classes[data.Class] then
 		data.Class = nil
 	end
-	if data.Equipped.Armor and not data.Armors[data.Equipped.Armor] then
-		data.Equipped.Armor = nil
+	data.Equipped.Armor = nil -- old single-slot armor from before armor sets
+	for _, slot in Items.ArmorSlots do
+		local pieceId = data.Equipped[slot]
+		if pieceId and (not data.Armors[pieceId] or Items.Armors[pieceId].Slot ~= slot) then
+			data.Equipped[slot] = nil
+		end
 	end
 	fixLoadout(data)
 end

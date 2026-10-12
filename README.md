@@ -48,9 +48,31 @@ more XP and Gold, and drop **higher-tier loot**.
   have special effects: **Burn** (damage over time), **Frost** (slows enemies) or **Lifesteal**.
 - **Mythic: Voidlight Greatsword.** A 0.05% (1 in 2,000) bonus drop from any dungeon victory.
   The whole server is told when someone finds it. Change the odds in `Config.MythicDrop`.
-- **8 armor sets** that work for every class, adding health and damage reduction, and show on your character.
+- **10 armor sets**, each with 4 pieces (helmet, chestplate, leggings, boots) that work for every
+  class. Each piece adds health and defense and has its own look and particle effects; wearing all
+  4 pieces of one set gives a **set bonus** and an aura.
+
+  | Set | Rarity | Where |
+  | --- | --- | --- |
+  | Squire's Leathers, Militia Chainmail | Common | Dungeon loot (tiers 1-2) |
+  | Knight's Plate, Crusader's Plate | Rare | Dungeon loot (tiers 3-4) |
+  | Royal Guard Regalia, Warlord's Bastion | Legendary | Dungeon loot (tiers 5-6) |
+  | Paladin's Radiance, Abyssal Knight | Mythic | Dungeon loot (tiers 7-8) |
+  | **Black Dragon**, **Shogun's Oath** | **Godly** | Crates only |
+
+- **Crate Shrine** (west side of the plaza, press **F**): spend Gold on a Black Dragon or Shogun's
+  crate for a chance at its Godly set (5% per crate), or Rare/Legendary/Mythic armor. Duplicates
+  refund 25% of the price. Odds and prices are in `Config.Crates`.
 
 If your whole party dies, the run fails and you're back in the lobby. Progress saves automatically.
+
+### Leaderboards & stats
+
+Lifetime stats are saved per player: enemies slain, dungeons cleared, bosses defeated, gold
+earned, crates opened, deaths and minutes played. The **Hall of Heroes** boards by the south gate
+show the global top 10 (all servers) for Highest Level, Enemies Slain, Dungeons Cleared and Gold
+Earned. Press **T** for your own stats and the boards. (Global boards need a published place with
+API access; otherwise they rank the players in the current server.)
 
 ### Dungeon themes
 
@@ -103,6 +125,7 @@ src/
     Main.server.luau        starts the services
     Build.luau              helpers for building scenery from parts
     DungeonDecor.luau       themed decorations for Crypt / Temple / Ice rooms
+    ArmorVisuals.luau       builds every armor piece's look and effects on the character
     Sfx.luau                plays sound effects in the world
     Services/
       DataService.luau      load/save player data
@@ -116,10 +139,13 @@ src/
       TownsfolkService.luau villagers who walk around and talk, guards, shopkeepers
       MovementService.luau  stamina, sprint and dodge
       AdminService.luau     admin menu actions and chat commands
+      CrateService.luau     Crate Shrine, crate odds and opening
+      LeaderboardService.luau  lifetime stats -> global leaderboards (Hall of Heroes)
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, 1, Q/E, 2-6, G, P) and wiring
+    Main.client.luau        input (attack, 1, Q/E, 2-6, G, T, P) and wiring
     Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting)
-    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel, AdminPanel
+    UI/                     Hud, Inventory, Shop, ClassPicker, PortalPanel, AdminPanel,
+                            CrateWindow, StatsWindow
 ```
 
 ### Adding content

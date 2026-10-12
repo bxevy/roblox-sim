@@ -13,9 +13,18 @@ Config.DefaultData = {
 	Gold = 0,
 	-- Class = nil until the player picks one
 	Weapons = {}, -- set of owned weapon ids
-	Armors = {}, -- set of owned armor ids
-	Equipped = {}, -- { Weapon = id?, Armor = id? }
+	Armors = {}, -- set of owned armor piece ids
+	Equipped = {}, -- { Weapon = id?, Helmet = id?, Chest = id?, Legs = id?, Boots = id? }
 	Potions = {}, -- potion id -> count
+	Stats = { -- lifetime stats for leaderboards
+		EnemiesKilled = 0,
+		DungeonsCleared = 0,
+		BossesKilled = 0,
+		GoldEarned = 0,
+		CratesOpened = 0,
+		Deaths = 0,
+		MinutesPlayed = 0,
+	},
 }
 
 -- Leveling ------------------------------------------------------------------
@@ -225,7 +234,40 @@ Config.Rarities = {
 	Epic = Color3.fromRGB(190, 90, 255),
 	Legendary = Color3.fromRGB(255, 160, 40),
 	Mythic = Color3.fromRGB(130, 150, 255),
+	Godly = Color3.fromRGB(255, 60, 120),
 }
+
+-- Crates (Crate Shrine in town). Godly armor only comes from these. Each roll picks a
+-- rarity by Chance; Godly gives a random piece of the crate's set, other rarities give a
+-- random dungeon armor piece of that rarity. Duplicates refund CrateDuplicateRefund.
+Config.Crates = {
+	BlackDragonCrate = {
+		DisplayName = "Black Dragon Crate",
+		Set = "BlackDragon",
+		Price = 5000,
+		Color = Color3.fromRGB(200, 40, 30),
+		Odds = {
+			{ Rarity = "Godly", Chance = 0.05 },
+			{ Rarity = "Mythic", Chance = 0.15 },
+			{ Rarity = "Legendary", Chance = 0.3 },
+			{ Rarity = "Rare", Chance = 0.5 },
+		},
+	},
+	ShogunCrate = {
+		DisplayName = "Shogun's Crate",
+		Set = "ShogunsOath",
+		Price = 5000,
+		Color = Color3.fromRGB(230, 180, 60),
+		Odds = {
+			{ Rarity = "Godly", Chance = 0.05 },
+			{ Rarity = "Mythic", Chance = 0.15 },
+			{ Rarity = "Legendary", Chance = 0.3 },
+			{ Rarity = "Rare", Chance = 0.5 },
+		},
+	},
+}
+Config.CrateOrder = { "BlackDragonCrate", "ShogunCrate" }
+Config.CrateDuplicateRefund = 0.25 -- fraction of the crate price returned for a duplicate
 
 -- Ultra-rare drop: every player who beats any dungeon boss has this chance to also get it.
 Config.MythicDrop = {
@@ -301,6 +343,29 @@ Config.Audio = {
 		Dodge = { "rbxasset://sounds/action_jump.mp3", 0.7, 1.4 },
 		Click = { "rbxasset://sounds/button.wav", 0.4, 1 },
 	},
+}
+
+-- Leaderboards ----------------------------------------------------------------------
+-- Global boards (all servers) shown in the Hall of Heroes and the Stats window (T).
+-- Stat "Level" ranks by level, then XP.
+
+Config.Leaderboards = {
+	{ Id = "Level", DisplayName = "Highest Level", Color = Color3.fromRGB(255, 215, 90) },
+	{ Id = "EnemiesKilled", DisplayName = "Enemies Slain", Color = Color3.fromRGB(230, 80, 70) },
+	{ Id = "DungeonsCleared", DisplayName = "Dungeons Cleared", Color = Color3.fromRGB(110, 190, 255) },
+	{ Id = "GoldEarned", DisplayName = "Gold Earned", Color = Color3.fromRGB(255, 190, 60) },
+}
+Config.LeaderboardRefresh = 120 -- seconds between saving scores and refreshing boards
+
+-- Every tracked stat, in the order the Stats window lists them.
+Config.StatNames = {
+	{ "EnemiesKilled", "Enemies slain" },
+	{ "DungeonsCleared", "Dungeons cleared" },
+	{ "BossesKilled", "Bosses defeated" },
+	{ "GoldEarned", "Gold earned" },
+	{ "CratesOpened", "Crates opened" },
+	{ "Deaths", "Deaths in dungeons" },
+	{ "MinutesPlayed", "Minutes played" },
 }
 
 -- Training grounds ----------------------------------------------------------------------

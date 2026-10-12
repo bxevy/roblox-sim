@@ -17,6 +17,8 @@ local Shop = require(UI.Shop)
 local ClassPicker = require(UI.ClassPicker)
 local PortalPanel = require(UI.PortalPanel)
 local AdminPanel = require(UI.AdminPanel)
+local CrateWindow = require(UI.CrateWindow)
+local StatsWindow = require(UI.StatsWindow)
 local Controllers = script.Parent:WaitForChild("Controllers")
 local Movement = require(Controllers.Movement)
 local Audio = require(Controllers.Audio)
@@ -40,7 +42,7 @@ local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 })
 
 local state = nil
-local hud, inventory, shop, classPicker, adminPanel
+local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow
 
 -- Direction from your character toward the mouse (flat on the ground).
 local function getAim(): Vector3?
@@ -117,6 +119,9 @@ hud = Hud.new(gui, {
 	OpenAdmin = function()
 		adminPanel.Toggle()
 	end,
+	ToggleStats = function()
+		statsWindow.Toggle()
+	end,
 	ToggleWeapon = toggleWeapon,
 	ToggleMusic = Audio.ToggleMusic,
 	SetSprint = Movement.SetSprint,
@@ -141,6 +146,19 @@ shop = Shop.new(gui, function(potionId)
 	end
 end)
 
+statsWindow = StatsWindow.new(gui, function()
+	return Remotes.GetLeaderboards:InvokeServer()
+end)
+
+crateWindow = CrateWindow.new(gui, function(crateId)
+	return Remotes.OpenCrate:InvokeServer(crateId)
+end, function(result)
+	Util.playSfx(if result.Rarity == "Godly" or result.Rarity == "Mythic" then "LevelUp" else "Coins")
+	if result.IsNew then
+		hud.Toast(`New armor: {result.DisplayName}! Equip it in Gear [G]`, Config.Rarities[result.Rarity])
+	end
+end)
+
 classPicker = ClassPicker.new(gui, function(classId)
 	if request(Remotes.ChooseClass, classId) then
 		classPicker.Close()
@@ -161,6 +179,8 @@ local function render(newState)
 	hud.Render(state)
 	inventory.Render(state)
 	shop.Render(state)
+	crateWindow.Render(state)
+	statsWindow.Render(state)
 	classPicker.Render(state)
 end
 
@@ -174,6 +194,7 @@ Remotes.DungeonStatus.OnClientEvent:Connect(function(status, info)
 end)
 Remotes.PortalUpdate.OnClientEvent:Connect(portalPanel.Update)
 Remotes.OpenShop.OnClientEvent:Connect(shop.Open)
+Remotes.OpenCrates.OnClientEvent:Connect(crateWindow.Open)
 
 -- Attacking --------------------------------------------------------------------------
 -- Clicking with your weapon out sends the aim direction; the server does the rest.
@@ -220,6 +241,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		toggleWeapon()
 	elseif input.KeyCode == Enum.KeyCode.G then
 		inventory.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.T then
+		statsWindow.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.P and player:GetAttribute("IsAdmin") then
 		adminPanel.Toggle()
 	end

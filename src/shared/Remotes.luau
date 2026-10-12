@@ -6,8 +6,8 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge" }
-local FUNCTIONS = { "GetState", "Equip", "ChooseClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates" }
+local FUNCTIONS = { "GetState", "Equip", "ChooseClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -39,6 +39,7 @@ return {
 	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?, info: { Style: string, Boss: boolean }?)
 	PortalUpdate = get("PortalUpdate") :: RemoteEvent, -- (info?) while standing on a portal pad
 	OpenShop = get("OpenShop") :: RemoteEvent, -- ()
+	OpenCrates = get("OpenCrates") :: RemoteEvent, -- () opens the crate window
 
 	-- Client -> server
 	Attack = get("Attack") :: RemoteEvent, -- (aimDirection: Vector3)
@@ -51,5 +52,7 @@ return {
 	SetDifficulty = get("SetDifficulty") :: RemoteFunction, -- (difficultyId) -> (ok, err?)
 	BuyPotion = get("BuyPotion") :: RemoteFunction, -- (potionId) -> (ok, err?)
 	UsePotion = get("UsePotion") :: RemoteFunction, -- (potionId) -> (ok, err?)
+	GetLeaderboards = get("GetLeaderboards") :: RemoteFunction, -- () -> { [boardId]: { { Name, Value } } }
+	OpenCrate = get("OpenCrate") :: RemoteFunction, -- (crateId) -> (ok, result | err)
 	Admin = get("Admin") :: RemoteFunction, -- (action, arg?) -> (ok, message?)  admins only
 }

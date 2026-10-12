@@ -316,6 +316,7 @@ local function winRun(run: Run)
 	notifyRun(run, "VICTORY!", Color3.fromRGB(255, 220, 80))
 
 	for player in run.Players do
+		PlayerService.AddStat(player, "DungeonsCleared")
 		PlayerService.AddXP(player, def.Rewards.XP * run.RewardMultiplier)
 		PlayerService.AddGold(player, def.Rewards.Gold * run.RewardMultiplier)
 
@@ -359,6 +360,10 @@ local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enem
 	run.Enemies[enemy] = nil
 	local multiplier = run.Def.Power * run.RewardMultiplier
 	for player in run.Players do
+		PlayerService.AddStat(player, "EnemiesKilled")
+		if enemy.Def.Boss then
+			PlayerService.AddStat(player, "BossesKilled")
+		end
 		PlayerService.AddXP(player, enemy.Def.XP * multiplier)
 		PlayerService.AddGold(player, enemy.Def.Gold * multiplier)
 	end
@@ -462,6 +467,7 @@ local function startRun(def: Dungeons.DungeonDef, difficultyId: string, party: {
 			player:SetAttribute("InDungeon", true)
 			run.Connections[player] = humanoid.Died:Connect(function()
 				PlayerService.Notify(player, "You were defeated!", Color3.fromRGB(255, 80, 80))
+				PlayerService.AddStat(player, "Deaths")
 				leaveRun(run, player)
 				if next(run.Players) == nil then
 					failRun(run)
