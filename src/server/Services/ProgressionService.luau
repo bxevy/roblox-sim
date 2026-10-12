@@ -47,7 +47,7 @@ local function onPrestige(player: Player): (boolean, string?)
 	PlayerService.RefreshStats(player, true)
 	PlayerService.Push(player)
 
-	local emblem = Cosmetics.Emblems[data.Prestige]
+	local emblem = Cosmetics.EmblemFor(data.Prestige) :: any
 	for _, other in Players:GetPlayers() do
 		PlayerService.Notify(other, `{player.DisplayName} reached Prestige {Cosmetics.Roman(data.Prestige)} ({emblem.Name})!`, emblem.Outer)
 	end

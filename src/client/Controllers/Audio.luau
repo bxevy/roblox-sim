@@ -19,6 +19,9 @@ local MOODS = {
 	Crypt = { Ambient = Color3.fromRGB(60, 78, 66), OutdoorAmbient = Color3.fromRGB(40, 55, 45), Tint = Color3.fromRGB(205, 235, 210), Brightness = 1 },
 	Temple = { Ambient = Color3.fromRGB(95, 80, 55), OutdoorAmbient = Color3.fromRGB(80, 65, 45), Tint = Color3.fromRGB(255, 235, 200), Brightness = 1.4 },
 	Ice = { Ambient = Color3.fromRGB(75, 95, 125), OutdoorAmbient = Color3.fromRGB(70, 90, 120), Tint = Color3.fromRGB(210, 230, 255), Brightness = 1.4 },
+	Forest = { Ambient = Color3.fromRGB(60, 75, 55), OutdoorAmbient = Color3.fromRGB(45, 60, 45), Tint = Color3.fromRGB(215, 235, 205), Brightness = 1.1 },
+	Volcano = { Ambient = Color3.fromRGB(110, 60, 45), OutdoorAmbient = Color3.fromRGB(90, 45, 35), Tint = Color3.fromRGB(255, 215, 190), Brightness = 1.3 },
+	Void = { Ambient = Color3.fromRGB(60, 45, 85), OutdoorAmbient = Color3.fromRGB(45, 30, 70), Tint = Color3.fromRGB(225, 205, 255), Brightness = 1 },
 }
 
 local Audio = {}

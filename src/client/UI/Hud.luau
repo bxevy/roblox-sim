@@ -300,7 +300,48 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		ZIndex = 10,
 	})
 
+	-- Boss health bar (top-center, under the dungeon status) -------------------
+	local bossFrame = Util.make("Frame", gui, {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 96),
+		Size = UDim2.fromOffset(520, 46),
+		BackgroundTransparency = 1,
+		Visible = false,
+	})
+	local bossName = Util.text(bossFrame, {
+		Size = UDim2.new(1, 0, 0, 22),
+		TextColor3 = Color3.fromRGB(255, 120, 120),
+	})
+	local bossBack = Util.make("Frame", bossFrame, {
+		Position = UDim2.fromOffset(0, 26),
+		Size = UDim2.new(1, 0, 0, 16),
+		BackgroundColor3 = Color3.fromRGB(25, 20, 25),
+		BorderSizePixel = 0,
+	})
+	Util.corner(bossBack, 6)
+	Util.make("UIStroke", bossBack, { Color = Color3.fromRGB(0, 0, 0), Thickness = 2 })
+	local bossFill = Util.make("Frame", bossBack, {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(210, 40, 50),
+		BorderSizePixel = 0,
+	})
+	Util.corner(bossFill, 6)
+	local bossHp = Util.text(bossBack, { Size = UDim2.fromScale(1, 1), ZIndex = 3, TextColor3 = Color3.new(1, 1, 1) })
+
 	-- Public -------------------------------------------------------------------
+
+	function self.SetBossBar(info)
+		bossFrame.Visible = info ~= nil
+		if not info then
+			return
+		end
+		local ratio = math.clamp(info.Health / math.max(info.MaxHealth, 1), 0, 1)
+		bossName.Text = `{if info.Mini then "Mini-boss: " else ""}{info.Name}{if info.Enraged then "  - ENRAGED" else ""}{if info.Shielded then "  - SHIELDED" else ""}`
+		bossName.TextColor3 = if info.Shielded then Color3.fromRGB(130, 210, 255) elseif info.Enraged then Color3.fromRGB(255, 70, 50) else Color3.fromRGB(255, 120, 120)
+		TweenService:Create(bossFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(ratio, 1) }):Play()
+		bossFill.BackgroundColor3 = if info.Shielded then Color3.fromRGB(90, 170, 255) elseif info.Enraged then Color3.fromRGB(255, 60, 20) else Color3.fromRGB(210, 40, 50)
+		bossHp.Text = `{math.ceil(info.Health)} / {math.floor(info.MaxHealth)}`
+	end
 
 	local toastToken = 0
 	function self.Toast(message: string, color: Color3?)

@@ -352,6 +352,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
+Remotes.BossBar.OnClientEvent:Connect(function(info)
+	hud.SetBossBar(info)
+end)
+
 Movement.Start(Util.playSfx)
 Audio.Start()
 Animator.Start()

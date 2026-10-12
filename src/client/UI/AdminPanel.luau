@@ -1,6 +1,8 @@
 -- Admin menu: give yourself everything and other testing tools. Only shown to admins;
 -- the server re-checks every action (see AdminService).
 
+local Players = game:GetService("Players")
+
 local Util = require(script.Parent.Util)
 
 local AdminPanel = {}
@@ -10,7 +12,7 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 	local self = {}
 
 	local window, body
-	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 620), function()
+	window, body = Util.window(gui, "Admin Menu", Vector2.new(420, 680), function()
 		window.Visible = false
 	end)
 
@@ -85,6 +87,24 @@ function AdminPanel.new(gui: ScreenGui, run: (action: string, arg: any) -> ())
 	inputRow(66 + 5 * 46 + 56, "Item id, e.g. Dragonfang", "Give Item", "GiveItem")
 	inputRow(66 + 5 * 46 + 104, "Prestige (0-10)", "Set Prestige", "SetPrestige")
 	inputRow(66 + 5 * 46 + 152, "Class, e.g. Assassin", "Set Class", "SetClass")
+
+	-- Owner only: Creator Rank (level 999 / prestige 999)
+	local creator = Util.button(body, {
+		Position = UDim2.fromOffset(0, 66 + 5 * 46 + 200),
+		Size = UDim2.new(1, 0, 0, 44),
+		BackgroundColor3 = Color3.fromRGB(170, 50, 160),
+		Text = "CREATOR RANK (Lv 999 / Prestige 999)",
+		Visible = false,
+	})
+	creator.Activated:Connect(function()
+		run("CreatorRank")
+	end)
+	local player = Players.LocalPlayer
+	local function updateOwner()
+		creator.Visible = player:GetAttribute("IsOwner") == true
+	end
+	player:GetAttributeChangedSignal("IsOwner"):Connect(updateOwner)
+	updateOwner()
 
 	Util.text(body, {
 		AnchorPoint = Vector2.new(0, 1),

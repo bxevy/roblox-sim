@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 
 local FOLDER_NAME = "Remotes"
 
-local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove" }
+local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove", "BossBar" }
 local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill" }
 
 local folder: Folder
@@ -37,6 +37,7 @@ return {
 	Notify = get("Notify") :: RemoteEvent, -- (message: string, color: Color3?)
 	StateChanged = get("StateChanged") :: RemoteEvent, -- (state)
 	DungeonStatus = get("DungeonStatus") :: RemoteEvent, -- (text: string?, info: { Style: string, Boss: boolean }?)
+	BossBar = get("BossBar") :: RemoteEvent, -- (info: { Name, Health, MaxHealth, Shielded, Enraged, Mini }?)
 	PortalUpdate = get("PortalUpdate") :: RemoteEvent, -- (info?) while standing on a portal pad
 	OpenShop = get("OpenShop") :: RemoteEvent, -- ()
 	OpenCrates = get("OpenCrates") :: RemoteEvent, -- () opens the crate window

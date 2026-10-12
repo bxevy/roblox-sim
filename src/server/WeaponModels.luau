@@ -689,6 +689,315 @@ local function buildVoidlight(b: Builder)
 	finish(b, main, Vector3.new(0, base + 0.5, 0), Vector3.new(0, tipBase + 1.4, 0))
 end
 
+-- Axes (Berserker) -----------------------------------------------------------------------
+-- Held like a mace (handle at the bottom of the haft). The bit faces the Handle's -Z.
+
+local function buildAxe(b: Builder)
+	local w, d = b.Weapon, b.Weapon.Design
+	local length = 3 + w.Tier * 0.12
+	local top = length - 0.5
+	cylinder(b, "Haft", 0.3, length, Vector3.new(0, length / 2 - 0.5, 0), rgb(80, 55, 36):Lerp(w.Accent, 0.2), M.Wood)
+	for i = 0, 2 do
+		add(b, "GripWrap", Vector3.new(0.36, 0.08, 0.36), CFrame.new(0, -0.3 + i * 0.3, 0) * CFrame.Angles(math.rad(20), 0, 0), LEATHER, M.Fabric)
+	end
+	ball(b, "Pommel", 0.4, Vector3.new(0, -0.6, 0), w.Accent, M.Metal)
+	local s = 1.3 + w.Tier * 0.07
+	local headY = top - 0.35
+	local main = add(b, "AxeSocket", Vector3.new(0.42, 0.75 * s, 0.5), CFrame.new(0, headY, 0), w.Accent, M.Metal)
+	local head = d.Head or "Hatchet"
+	local edgeZ = -(0.25 + 0.85 * s)
+
+	local function bit(side: number, height: number, depth: number, yOffset: number)
+		local z = side * (0.25 + depth / 2)
+		local blade = add(b, "AxeBlade", Vector3.new(0.16, height, depth), CFrame.new(0, headY + yOffset, z), w.Color, w.Material)
+		add(b, "AxeEdge", Vector3.new(0.18, height * 1.08, 0.14), CFrame.new(0, headY + yOffset, side * (0.25 + depth)), if d.Glow then d.Glow else w.Color:Lerp(rgb(255, 255, 255), 0.4), if d.Glow then M.Neon else M.Metal)
+		return blade
+	end
+
+	if head == "Bearded" then
+		main = bit(-1, 0.75 * s, 0.75 * s, 0.1 * s)
+		add(b, "Beard", Vector3.new(0.16, 0.7 * s, 0.45 * s), CFrame.new(0, headY - 0.45 * s, -(0.25 + 0.6 * s)) * CFrame.Angles(math.rad(-20), 0, 0), w.Color, w.Material)
+	elseif head == "Double" then
+		main = bit(-1, 1.05 * s, 0.8 * s, 0)
+		bit(1, 1.05 * s, 0.8 * s, 0)
+		edgeZ = -(0.25 + 0.8 * s)
+	elseif head == "Crescent" then
+		main = bit(-1, 0.6 * s, 0.6 * s, 0)
+		curve(b, "Crescent", Vector3.new(0, headY - 0.75 * s, -(0.3 + 0.4 * s)), Vector3.new(0, 0, -1), 30, 30, 5, 0.42 * s, Vector2.new(0.16, 0.22), w.Color, w.Material, d.Glow)
+	elseif head == "Jagged" then
+		main = bit(-1, 0.95 * s, 0.85 * s, 0)
+		for i = -2, 2 do
+			add(b, "Tooth", Vector3.new(0.16, 0.22, 0.22), CFrame.new(0, headY + i * 0.18 * s, edgeZ - 0.12) * CFrame.Angles(math.rad(45), 0, 0), w.Color, w.Material)
+		end
+	elseif head == "Demon" then
+		main = bit(-1, 1.15 * s, 0.85 * s, 0)
+		bit(1, 0.8 * s, 0.55 * s, 0)
+		for _, side in { -1, 1 } do
+			curve(b, "DemonHorn", Vector3.new(side * 0.15, headY + 0.35 * s, 0), Vector3.new(side, 0, 0), 40, 25, 4, 0.3 * s, Vector2.new(0.14, 0.14), rgb(30, 25, 30), M.Slate, d.Glow)
+		end
+		add(b, "DemonEye", Vector3.new(0.45, 0.22, 0.22), CFrame.new(0, headY, 0) * CFrame.Angles(math.rad(45), 0, 0), d.Glow or w.Accent, M.Neon)
+	else -- Hatchet
+		main = bit(-1, 0.7 * s, 0.7 * s, 0)
+	end
+	add(b, "TopSpike", Vector3.new(0.18, 0.45 * s, 0.18), CFrame.new(0, headY + 0.55 * s, 0) * CFrame.Angles(0, math.rad(45), 0), w.Accent, M.Metal)
+	if d.Runes then
+		for i = -1, 1 do
+			add(b, "Rune", Vector3.new(0.2, 0.12, 0.12), CFrame.new(0, headY + i * 0.25 * s, -(0.25 + 0.35 * s)) * CFrame.Angles(math.rad(45), 0, 0), d.Runes, M.Neon)
+		end
+	end
+	finish(b, main, Vector3.new(0, top * 0.55, 0), Vector3.new(0, headY, edgeZ))
+end
+
+-- Greatswords (Paladin) --------------------------------------------------------------------
+
+local function buildGreatsword(b: Builder)
+	local w, d = b.Weapon, b.Weapon.Design
+	local length = 4.2 + w.Tier * 0.25
+	local width, thickness = 0.8, 0.26
+	if d.Blade == "Long" then
+		length *= 1.1
+		width = 0.7
+	elseif d.Blade == "Broad" then
+		width = 1.05
+		thickness = 0.3
+	end
+	for i = 0, 4 do
+		add(b, "GripWrap", Vector3.new(0.36, 0.08, 0.36), CFrame.new(0, -0.55 + i * 0.32, 0) * CFrame.Angles(math.rad(20), 0, 0), w.Accent, M.Fabric)
+	end
+	guard(b, d.Guard or "Cross", 1.2, width * 0.9)
+	-- Ricasso: a short unsharpened block above the guard, like a real zweihander
+	add(b, "Ricasso", Vector3.new(thickness + 0.04, 0.45, width * 0.6), CFrame.new(0, 1.55, 0), w.Accent, M.Metal)
+	pommel(b, d.Pommel or "Ball", -1.05)
+	local main, tipY = blade(b, d.Blade or "Straight", 1.75, length, width, thickness)
+	finish(b, main, Vector3.new(0, 2.2, 0), Vector3.new(0, tipY, 0))
+end
+
+-- Katanas (Ronin) --------------------------------------------------------------------------
+-- A gently curved, single-edged blade (edge toward -Z) with a round guard (tsuba).
+
+local function buildKatana(b: Builder)
+	local w, d = b.Weapon, b.Weapon.Design
+	local length = 3.6 + w.Tier * 0.15
+	local width, thickness = 0.36, 0.12
+	-- Diamond-pattern wrap (tsuka-ito)
+	for i = 0, 5 do
+		add(b, "Tsuka", Vector3.new(0.3, 0.12, 0.3), CFrame.new(0, -0.55 + i * 0.22, 0) * CFrame.Angles(0, math.rad(45), math.rad(if i % 2 == 0 then 25 else -25)), w.Accent, M.Fabric)
+	end
+	add(b, "Kashira", Vector3.new(0.32, 0.18, 0.32), CFrame.new(0, -0.7, 0), rgb(40, 35, 30), M.Metal)
+	local tsubaY = 0.75
+	local tsuba = d.Tsuba or "Round"
+	if tsuba == "Square" then
+		add(b, "Tsuba", Vector3.new(0.75, 0.1, 0.75), CFrame.new(0, tsubaY, 0), rgb(40, 35, 30), M.Metal)
+	else
+		cylinder(b, "Tsuba", 0.85, 0.1, Vector3.new(0, tsubaY, 0), rgb(40, 35, 30), M.Metal)
+		if tsuba == "Flower" then
+			for i = 0, 3 do
+				local angle = i / 4 * math.pi * 2 + math.pi / 4
+				ball(b, "TsubaPetal", 0.3, Vector3.new(math.cos(angle) * 0.38, tsubaY, math.sin(angle) * 0.38), w.Design.Glow or rgb(200, 170, 90), M.Metal)
+			end
+		end
+	end
+	add(b, "Habaki", Vector3.new(thickness + 0.06, 0.18, width + 0.04), CFrame.new(0, tsubaY + 0.14, 0), rgb(200, 170, 90), M.Metal)
+	local segments = 6
+	local segmentLength = length / segments
+	local position = Vector3.new(0, tsubaY + 0.2, 0)
+	local angle = 0
+	local main: BasePart
+	for i = 1, segments do
+		angle = math.rad(i * 2.2) -- curves back toward the spine
+		local direction = CFrame.Angles(angle, 0, 0) * Vector3.yAxis
+		local center = position + direction * segmentLength / 2
+		local seg = add(b, "Blade", Vector3.new(thickness, segmentLength * 1.08, width), CFrame.new(center) * CFrame.Angles(angle, 0, 0), w.Color, w.Material)
+		main = main or seg
+		if d.Hamon then
+			add(b, "Hamon", Vector3.new(thickness + 0.02, segmentLength * 1.05, 0.06), CFrame.new(center) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, 0, -width * 0.3), d.Hamon, M.Neon)
+		end
+		position += direction * segmentLength
+	end
+	-- Kissaki (tip), slanted toward the edge
+	add(b, "Kissaki", Vector3.new(thickness, width * 1.1, width * 0.7), CFrame.new(position) * CFrame.Angles(angle - math.rad(40), 0, 0) * CFrame.new(0, width * 0.2, -width * 0.05), w.Color, w.Material)
+	finish(b, main, Vector3.new(0, tsubaY + 0.5, 0), position)
+end
+
+-- Polearms: scythes, spears, halberds --------------------------------------------------------
+-- The Handle is the whole shaft (like a staff).
+
+local function shaft(b: Builder, length: number, twisted: boolean?)
+	local w = b.Weapon
+	if twisted then
+		for i = 0, 9 do
+			add(b, "Twist", Vector3.new(0.36, 0.12, 0.2), CFrame.new(0, -length / 2 + 0.4 + i * (length - 0.8) / 9, 0) * CFrame.Angles(0, i * 0.8, math.rad(30)), w.Color:Lerp(w.Accent, 0.5), w.Material)
+		end
+	end
+	for _, y in { -length / 2 + 0.1, length / 2 - 0.3 } do
+		cylinder(b, "ShaftBand", 0.36, 0.18, Vector3.new(0, y, 0), w.Color, M.Metal)
+	end
+	if w.Design.Runes then
+		for i = 1, 3 do
+			cylinder(b, "ShaftRune", 0.34, 0.1, Vector3.new(0, length * (0.1 + i * 0.08), 0), w.Design.Runes, M.Neon)
+		end
+	end
+end
+
+local function buildScythe(b: Builder, length: number)
+	local w, d = b.Weapon, b.Weapon.Design
+	shaft(b, length, d.Shaft == "Twisted")
+	local top = length / 2
+	local kind = d.Blade or "Reaper"
+	local s = 1.15 + w.Tier * 0.05
+	local bladeLength = (if kind == "Farm" then 2.2 elseif kind == "Moon" then 3.2 else 2.8) * s
+	local segments = 6
+	local bend = if kind == "Moon" then -22 elseif kind == "Farm" then -10 else -15
+	local start = Vector3.new(0, top - 0.25, -0.1)
+	add(b, "BladeMount", Vector3.new(0.3, 0.45, 0.45), CFrame.new(0, top - 0.25, 0), w.Accent:Lerp(rgb(30, 30, 30), 0.3), M.Metal)
+	local function scytheBlade(from: Vector3, outward: Vector3, color: Color3, material: Enum.Material, transparency: number)
+		local before = #b.Tool:GetChildren()
+		curve(b, "ScytheBlade", from, outward, 15, bend, segments, bladeLength / segments, Vector2.new(0.12, 0.5 * s), color, material)
+		if d.Glow then
+			curve(b, "ScytheEdge", from - Vector3.new(0, 0.25 * s, 0), outward, 15, bend, segments, bladeLength / segments, Vector2.new(0.14, 0.07), d.Glow, M.Neon)
+		end
+		local children = b.Tool:GetChildren()
+		for i = before + 1, #children do
+			local part = children[i]
+			if part:IsA("BasePart") and part.Name == "ScytheBlade" then
+				part.Transparency = transparency
+			end
+		end
+	end
+	local material = if kind == "Bone" then M.Marble else w.Material
+	scytheBlade(start, Vector3.new(0, 0, -1), w.Color, material, if kind == "Spectral" then 0.35 else 0)
+	if kind == "Twin" then
+		scytheBlade(Vector3.new(0, top - 0.25, 0.1), Vector3.new(0, 0, 1), w.Color, material, 0)
+	end
+	if kind == "Bone" then
+		for i = 1, 4 do
+			add(b, "BoneSpur", Vector3.new(0.12, 0.35, 0.12), CFrame.new(0, top + 0.05 + i * 0.05, -0.4 * i) * CFrame.Angles(math.rad(-30), 0, 0), w.Color, M.Marble)
+		end
+	end
+	-- Ornament at the top of the shaft
+	local ornament = d.Ornament
+	local main: BasePart = b.Handle
+	if ornament == "Skull" then
+		main = ball(b, "Skull", 0.6, Vector3.new(0, top + 0.25, 0.15), rgb(230, 225, 205), M.SmoothPlastic)
+		for _, side in { -1, 1 } do
+			add(b, "SkullEye", Vector3.new(0.12, 0.12, 0.1), CFrame.new(side * 0.12, top + 0.3, -0.1), d.Glow or rgb(255, 60, 60), M.Neon)
+		end
+	elseif ornament == "Lantern" then
+		add(b, "LanternChain", Vector3.new(0.06, 0.6, 0.06), CFrame.new(0, top - 0.7, 0.3), rgb(60, 60, 65), M.Metal)
+		main = add(b, "Lantern", Vector3.new(0.3, 0.4, 0.3), CFrame.new(0, top - 1.15, 0.3), d.Glow or rgb(255, 200, 100), M.Neon)
+	elseif ornament == "Gem" then
+		main = add(b, "Gem", Vector3.one * 0.35, CFrame.new(0, top + 0.15, 0) * CFrame.Angles(math.rad(45), 0, math.rad(45)), d.Glow or w.Accent, M.Neon)
+	end
+	finish(b, main, Vector3.new(0, top - 0.3, -0.4), Vector3.new(0, top - 0.3 - bladeLength * 0.45, -bladeLength * 0.75))
+end
+
+local function spearhead(b: Builder, kind: string, y: number, s: number): (BasePart, number)
+	local w, d = b.Weapon, b.Weapon.Design
+	local glow = d.Glow
+	local main: BasePart
+	local tip = y
+	if kind == "Pike" then
+		main = add(b, "Spearhead", Vector3.new(0.18, 1.1 * s, 0.22), CFrame.new(0, y + 0.55 * s, 0), w.Color, w.Material)
+		add(b, "SpearTip", Vector3.new(0.17, 0.2, 0.2), CFrame.new(0, y + 1.1 * s, 0) * CFrame.Angles(math.rad(45), 0, 0), w.Color, w.Material)
+		tip = y + 1.2 * s
+	elseif kind == "Trident" then
+		add(b, "TridentBar", Vector3.new(0.18, 0.18, 1.1 * s), CFrame.new(0, y + 0.1, 0), w.Accent, M.Metal)
+		for _, z in { -0.5 * s, 0, 0.5 * s } do
+			local height = if z == 0 then 1.2 * s else 0.85 * s
+			local prong = add(b, "Prong", Vector3.new(0.14, height, 0.14), CFrame.new(0, y + 0.1 + height / 2, z), w.Color, w.Material)
+			main = main or prong
+			add(b, "ProngTip", Vector3.new(0.13, 0.22, 0.22), CFrame.new(0, y + 0.1 + height, z) * CFrame.Angles(math.rad(45), 0, 0), w.Color, w.Material)
+		end
+		tip = y + 1.3 * s
+	elseif kind == "Crystal" then
+		main = add(b, "Spearhead", Vector3.new(0.3, 1.4 * s, 0.3), CFrame.new(0, y + 0.7 * s, 0) * CFrame.Angles(0, math.rad(45), 0), glow or w.Color, M.Neon)
+		main.Transparency = 0.15
+		for _, z in { -1, 1 } do
+			add(b, "Shard", Vector3.new(0.16, 0.6 * s, 0.16), CFrame.new(0, y + 0.3 * s, z * 0.2) * CFrame.Angles(math.rad(z * 25), 0, 0), w.Color, M.Glass).Transparency = 0.2
+		end
+		tip = y + 1.5 * s
+	else -- Leaf, Winged, Dragon
+		main = add(b, "Spearhead", Vector3.new(0.14, 1.1 * s, 0.42 * s), CFrame.new(0, y + 0.6 * s, 0), w.Color, w.Material)
+		add(b, "SpearTip", Vector3.new(0.13, 0.42 * s, 0.42 * s), CFrame.new(0, y + 1.15 * s, 0) * CFrame.Angles(math.rad(45), 0, 0), w.Color, w.Material)
+		add(b, "SpearBase", Vector3.new(0.13, 0.3 * s, 0.3 * s), CFrame.new(0, y + 0.08, 0) * CFrame.Angles(math.rad(45), 0, 0), w.Color, w.Material)
+		if glow then
+			add(b, "SpearEdge", Vector3.new(0.16, 1 * s, 0.06), CFrame.new(0, y + 0.6 * s, 0), glow, M.Neon)
+		end
+		if kind == "Winged" then
+			for _, side in { -1, 1 } do
+				add(b, "Lug", Vector3.new(0.12, 0.18, 0.45), CFrame.new(0, y - 0.05, side * 0.32) * CFrame.Angles(math.rad(side * 30), 0, 0), w.Color, w.Material)
+			end
+		elseif kind == "Dragon" then
+			for _, side in { -1, 1 } do
+				curve(b, "DragonHorn", Vector3.new(0, y + 0.05, side * 0.18), Vector3.new(0, 0, side), -20, 30, 4, 0.28 * s, Vector2.new(0.12, 0.14), w.Accent, M.Metal, glow)
+			end
+			ball(b, "DragonEye", 0.24, Vector3.new(0, y + 0.05, 0), glow or w.Accent, M.Neon)
+		end
+		tip = y + 1.4 * s
+	end
+	return main, tip
+end
+
+local function tassel(b: Builder, y: number, color: Color3)
+	for i = 0, 4 do
+		local angle = i / 5 * math.pi * 2
+		add(b, "Tassel", Vector3.new(0.08, 0.6, 0.08), CFrame.new(math.cos(angle) * 0.12, y - 0.35, math.sin(angle) * 0.12) * CFrame.Angles(math.rad(math.cos(angle) * 8), 0, math.rad(math.sin(angle) * 8)), color, M.Fabric)
+	end
+	cylinder(b, "TasselRing", 0.38, 0.12, Vector3.new(0, y, 0), color, M.Fabric)
+end
+
+local function buildSpear(b: Builder, length: number)
+	local w, d = b.Weapon, b.Weapon.Design
+	shaft(b, length, false)
+	local top = length / 2
+	add(b, "ButtSpike", Vector3.new(0.2, 0.4, 0.2), CFrame.new(0, -top - 0.15, 0) * CFrame.Angles(0, math.rad(45), 0), w.Color, M.Metal)
+	local main, tipY = spearhead(b, d.Head or "Leaf", top, 1.35 + w.Tier * 0.06)
+	if d.Tassel then
+		tassel(b, top - 0.2, d.Tassel)
+	end
+	finish(b, main, Vector3.new(0, top - 1, 0), Vector3.new(0, tipY, 0))
+end
+
+local function buildHalberd(b: Builder, length: number)
+	local w, d = b.Weapon, b.Weapon.Design
+	shaft(b, length, false)
+	local top = length / 2
+	local s = 1.35 + w.Tier * 0.06
+	add(b, "ButtCap", Vector3.new(0.34, 0.3, 0.34), CFrame.new(0, -top - 0.1, 0), w.Accent, M.Metal)
+	-- Spike on top
+	local _, tipY = spearhead(b, "Leaf", top + 0.2, s * 0.9)
+	-- Axe blade forward (-Z), hook/spike back (+Z)
+	local bladeY = top - 0.2
+	local main: BasePart
+	if d.Head == "Crescent" then
+		main = add(b, "HalberdBlade", Vector3.new(0.14, 0.9 * s, 0.6 * s), CFrame.new(0, bladeY, -0.45 * s), w.Color, w.Material)
+		curve(b, "HalberdCrescent", Vector3.new(0, bladeY - 0.9 * s, -0.35 * s), Vector3.new(0, 0, -1), 35, 28, 5, 0.42 * s, Vector2.new(0.14, 0.22), w.Color, w.Material, d.Glow)
+	else
+		main = add(b, "HalberdBlade", Vector3.new(0.14, 1.3 * s, 0.9 * s), CFrame.new(0, bladeY, -0.6 * s), w.Color, w.Material)
+		add(b, "HalberdEdge", Vector3.new(0.16, 1.38 * s, 0.12), CFrame.new(0, bladeY, -1.05 * s), d.Glow or w.Color:Lerp(rgb(255, 255, 255), 0.4), if d.Glow then M.Neon else M.Metal)
+	end
+	add(b, "BackSpike", Vector3.new(0.14, 0.24, 0.8 * s), CFrame.new(0, bladeY + 0.1, 0.5 * s) * CFrame.Angles(math.rad(-12), 0, 0), w.Color, w.Material)
+	add(b, "Langet", Vector3.new(0.34, 1, 0.34), CFrame.new(0, top - 0.7, 0), w.Accent, M.Metal)
+	if d.Wings then
+		for _, side in { -1, 1 } do
+			for i = 0, 3 do
+				local feather = add(b, "Feather", Vector3.new(0.5 - i * 0.06, 0.12, 0.9 - i * 0.12), CFrame.new(side * (0.35 + i * 0.22), top - 0.9 + i * 0.25, 0.25) * CFrame.Angles(0, 0, math.rad(side * (30 + i * 12))), rgb(255, 255, 255), M.SmoothPlastic)
+				feather.Transparency = 0.05
+			end
+		end
+	end
+	if d.Halo then
+		for i = 0, 11 do
+			local angle = i / 12 * math.pi * 2
+			add(b, "Halo", Vector3.new(0.12, 0.08, 0.32), CFrame.new(0, top + 1.6 * s, 0) * CFrame.Angles(0, angle, 0) * CFrame.new(0.55, 0, 0), d.Glow or rgb(255, 230, 140), M.Neon)
+		end
+	end
+	if d.Tassel then
+		tassel(b, top - 1.3, d.Tassel)
+	end
+	finish(b, main, Vector3.new(0, top - 1.2, 0), Vector3.new(0, tipY, 0))
+end
+
 -- Public ----------------------------------------------------------------------------------
 
 function WeaponModels.Build(weapon: Items.WeaponDef): Tool
@@ -714,6 +1023,37 @@ function WeaponModels.Build(weapon: Items.WeaponDef): Tool
 		-- Lying in the palm, tilted up toward your face
 		tool.Grip = CFrame.new(0, -0.3, 0) * CFrame.Angles(math.rad(-30), 0, 0)
 		buildTome({ Tool = tool, Handle = handle, Weapon = weapon })
+	elseif t == "Axe" then
+		handle = newPart(tool, "Handle", Vector3.new(0.32, 1, 0.32), LEATHER, M.Leather)
+		tool.Grip = CFrame.Angles(SWORD_TILT, 0, 0)
+		buildAxe({ Tool = tool, Handle = handle, Weapon = weapon })
+	elseif t == "Greatsword" then
+		handle = newPart(tool, "Handle", Vector3.new(0.32, 1.6, 0.32), LEATHER, M.Leather)
+		tool.Grip = CFrame.new(0, 0.35, 0) * CFrame.Angles(SWORD_TILT, 0, 0)
+		buildGreatsword({ Tool = tool, Handle = handle, Weapon = weapon })
+	elseif t == "Katana" then
+		handle = newPart(tool, "Handle", Vector3.new(0.28, 1.3, 0.28), weapon.Accent, M.Fabric)
+		tool.Grip = CFrame.new(0, 0.2, 0) * CFrame.Angles(SWORD_TILT, 0, 0)
+		buildKatana({ Tool = tool, Handle = handle, Weapon = weapon })
+	elseif t == "Scythe" or t == "Spear" or t == "Halberd" then
+		local length = (if t == "Scythe" then 6 elseif t == "Spear" then 6.5 else 7) + weapon.Tier * 0.12
+		local shaftColor = if t == "Scythe" then weapon.Accent:Lerp(rgb(35, 28, 24), 0.65) else rgb(90, 62, 40)
+		if t == "Halberd" then
+			shaftColor = weapon.Accent
+		end
+		handle = newPart(tool, "Handle", Vector3.new(0.28, length, 0.28), shaftColor, if t == "Halberd" then M.Metal else M.Wood)
+		local b = { Tool = tool, Handle = handle, Weapon = weapon }
+		if t == "Spear" then
+			-- Held level and pointing forward, ready to thrust
+			tool.Grip = CFrame.new(0, -length * 0.2, 0) * CFrame.Angles(math.rad(80), 0, 0)
+			buildSpear(b, length)
+		elseif t == "Scythe" then
+			tool.Grip = CFrame.new(0, -length * 0.12, 0) * CFrame.Angles(math.rad(18), 0, 0)
+			buildScythe(b, length)
+		else
+			tool.Grip = CFrame.new(0, -length * 0.15, 0) * CFrame.Angles(math.rad(14), 0, 0)
+			buildHalberd(b, length)
+		end
 	elseif t == "Mace" then
 		local length = 2.6 + weapon.Tier * 0.12
 		handle = newPart(tool, "Handle", Vector3.new(0.32, 1, 0.32), LEATHER, M.Leather)

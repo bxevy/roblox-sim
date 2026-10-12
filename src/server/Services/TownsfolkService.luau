@@ -37,6 +37,19 @@ local WAYPOINTS = {
 	Vector3.new(40, 0, -26),
 	Vector3.new(28, 0, 38),
 	Vector3.new(-42, 0, 6),
+	-- The bigger town
+	Vector3.new(-70, 0, -40),
+	Vector3.new(-50, 0, -60),
+	Vector3.new(0, 0, -72),
+	Vector3.new(-30, 0, -74),
+	Vector3.new(30, 0, -74),
+	Vector3.new(66, 0, -40),
+	Vector3.new(80, 0, -6),
+	Vector3.new(72, 0, 30),
+	Vector3.new(100, 0, 4),
+	Vector3.new(-70, 0, 12),
+	Vector3.new(-100, 0, -4),
+	Vector3.new(-66, 0, 34),
 }
 
 type NpcDef = {

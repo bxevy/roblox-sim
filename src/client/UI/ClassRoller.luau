@@ -23,11 +23,17 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 	local spinning = false
 
 	local window, body
-	window, body = Util.window(gui, "Classes", Vector2.new(860, 580), function()
+	window, body = Util.window(gui, "Classes", Vector2.new(1040, 700), function()
 		if state and state.Class and not spinning then
 			window.Visible = false
 		end
 	end)
+
+	-- 20% -> "20", 2.45% -> "2.45", 0.05% -> "0.05"
+	local function formatOdds(percent: number): string
+		local text = if percent >= 10 then string.format("%.0f", percent) else string.format("%.2f", percent)
+		return (text:gsub("%.?0+$", ""))
+	end
 
 	local totalWeight = 0
 	for _, classId in Config.ClassOrder do
@@ -35,14 +41,25 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 	end
 
 	-- Class cards
-	local grid = Util.make("Frame", body, { Size = UDim2.new(1, 0, 0, 300), BackgroundTransparency = 1 })
-	Util.make("UIGridLayout", grid, { CellSize = UDim2.new(1 / 3, -8, 0, 144), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder })
+	local grid = Util.make("Frame", body, { Size = UDim2.new(1, 0, 0, 408), BackgroundTransparency = 1 })
+	Util.make("UIGridLayout", grid, { CellSize = UDim2.new(0.25, -8, 0, 130), CellPadding = UDim2.fromOffset(8, 8), SortOrder = Enum.SortOrder.LayoutOrder })
 	local cards: { [string]: Frame } = {}
 	for order, classId in Config.ClassOrder do
 		local class = Config.Classes[classId]
 		local card = Util.panel(grid, { LayoutOrder = order, BackgroundColor3 = Util.ButtonColor, BackgroundTransparency = 0 })
 		Util.padding(card, 8)
-		Util.make("UIStroke", card, { Color = class.Color, Thickness = 2 })
+		local stroke = Util.make("UIStroke", card, { Color = class.Color, Thickness = if class.Rarity == "Godly" then 3 else 2 })
+		if class.Rarity == "Godly" then
+			-- The Godly class card shimmers
+			local gradient = Util.make("UIGradient", stroke, {
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+					ColorSequenceKeypoint.new(0.5, Config.Rarities.Godly),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 230, 120)),
+				}),
+			})
+			gradient:AddTag("SpinGradient")
+		end
 		Util.text(card, { Size = UDim2.new(0.6, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = class.Color, Text = class.DisplayName })
 		Util.text(card, {
 			AnchorPoint = Vector2.new(1, 0),
@@ -50,7 +67,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 			Size = UDim2.new(0.4, 0, 0, 20),
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextColor3 = Config.Rarities[class.Rarity],
-			Text = `{class.Rarity} {string.format("%.0f", class.Weight / totalWeight * 100)}%`,
+			Text = `{class.Rarity} {formatOdds(class.Weight / totalWeight * 100)}%`,
 		})
 		local abilities = {}
 		for i, abilityId in class.Abilities do
@@ -60,7 +77,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 			Position = UDim2.fromOffset(0, 28),
 			Size = UDim2.new(1, 0, 1, -28),
 			TextScaled = false,
-			TextSize = 14,
+			TextSize = 13,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Top,
@@ -72,7 +89,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 
 	-- Reel
 	local reel = Util.panel(body, {
-		Position = UDim2.fromOffset(0, 312),
+		Position = UDim2.fromOffset(0, 420),
 		Size = UDim2.new(1, 0, 0, 90),
 		BackgroundColor3 = Color3.fromRGB(15, 13, 18),
 		BackgroundTransparency = 0,
@@ -91,7 +108,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 		BorderSizePixel = 0,
 		ZIndex = 5,
 	})
-	local status = Util.text(body, { Position = UDim2.fromOffset(0, 410), Size = UDim2.new(1, 0, 0, 34), Text = "" })
+	local status = Util.text(body, { Position = UDim2.fromOffset(0, 516), Size = UDim2.new(1, 0, 0, 34), Text = "" })
 
 	local coinButton = Util.button(body, {
 		AnchorPoint = Vector2.new(1, 1),

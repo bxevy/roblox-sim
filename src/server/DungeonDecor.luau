@@ -1,4 +1,5 @@
--- Theme decorations for dungeon rooms. Each style (Crypt, Temple, Ice) adds props along
+-- Theme decorations for dungeon rooms. Each style (Crypt, Forest, Temple, Ice, Volcano,
+-- Void) adds props along
 -- the walls and corners, leaving the middle of the room open for fighting.
 
 local Build = require(script.Parent.Build)
@@ -305,7 +306,194 @@ local function ice(parent: Instance, room: Room, isBoss: boolean, rng: Random)
 	end
 end
 
-local DECORATORS = { Crypt = crypt, Temple = temple, Ice = ice }
+-- Forest ----------------------------------------------------------------------------
+
+local function particlesOver(parent: Instance, room: Room, y: number, color: Color3, rate: number, settings: { [string]: any })
+	local area = noCollide(Build.block(parent, "Ambience", Vector3.new(room.Size - 4, 0.2, room.Size - 4), CFrame.new(room.Center + Vector3.new(0, y, 0)), rgb(0, 0, 0), M.SmoothPlastic))
+	area.Transparency = 1
+	local e = Instance.new("ParticleEmitter")
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.Color = ColorSequence.new(color)
+	e.LightEmission = 1
+	e.Rate = rate
+	for k, v in settings do
+		(e :: any)[k] = v
+	end
+	e.Parent = area
+end
+
+local function tree(parent: Instance, base: Vector3, height: number, rng: Random, leaf: Color3)
+	Build.cylinder(parent, "Trunk", 2.4, height, CFrame.new(base + Vector3.new(0, height / 2, 0)), rgb(80, 58, 38), M.Wood)
+	for i = 1, 3 do
+		local root = Build.block(parent, "Root", Vector3.new(0.9, 0.8, 3), CFrame.new(base + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, i * 2.1 + rng:NextNumber(0, 0.5), 0) * CFrame.new(0, 0, 1.6) * CFrame.Angles(math.rad(-15), 0, 0), rgb(75, 55, 35), M.Wood)
+		noCollide(root)
+	end
+	for i = 1, 4 do
+		local leaves = Build.ball(parent, "Leaves", rng:NextNumber(5, 8), base + Vector3.new(rng:NextNumber(-2.5, 2.5), height + rng:NextNumber(-1, 2), rng:NextNumber(-2.5, 2.5)), leaf:Lerp(rgb(20, 40, 15), rng:NextNumber(0, 0.4)), M.Grass)
+		noCollide(leaves)
+		leaves.Name = if i == 1 then "Canopy" else "Leaves"
+	end
+end
+
+local function forest(parent: Instance, room: Room, isBoss: boolean, rng: Random)
+	local glow = rgb(190, 110, 255)
+	for _, spot in sideSpots(room, 5, if isBoss then 4 else 3) do
+		tree(parent, spot.Position + Vector3.new(0, 0, rng:NextNumber(-3, 3)), rng:NextNumber(12, 17), rng, rgb(60, 110, 50))
+	end
+	-- Glowing mushrooms and ferns in the corners
+	for _, corner in corners(room, 5) do
+		for _ = 1, 4 do
+			local p = corner + Vector3.new(rng:NextNumber(-3, 3), 0, rng:NextNumber(-3, 3))
+			local height = rng:NextNumber(0.8, 2.2)
+			noCollide(Build.cylinder(parent, "MushroomStem", 0.5, height, CFrame.new(p + Vector3.new(0, height / 2, 0)), rgb(230, 225, 210), M.SmoothPlastic))
+			local cap = noCollide(Build.ball(parent, "MushroomCap", height * 1.2, p + Vector3.new(0, height, 0), glow, M.Neon))
+			cap.Size = Vector3.new(height * 1.3, height * 0.6, height * 1.3)
+		end
+		local fern = noCollide(Build.ball(parent, "Fern", 3, corner + Vector3.new(0, 0.4, 0), rgb(50, 120, 45), M.Grass))
+		fern.Size = Vector3.new(4, 1.2, 4)
+		local lamp = noCollide(Build.block(parent, "MushroomLight", Vector3.one, CFrame.new(corner + Vector3.new(0, 2, 0)), glow, M.SmoothPlastic))
+		lamp.Transparency = 1
+		Build.light(lamp, glow, 18, 1.2)
+	end
+	-- Hanging vines
+	for _ = 1, 12 do
+		local length = rng:NextNumber(4, 9)
+		local p = room.Center + Vector3.new(rng:NextNumber(-room.Size / 2 + 2, room.Size / 2 - 2), 22 - length / 2, rng:NextNumber(-room.Size / 2 + 2, room.Size / 2 - 2))
+		noCollide(Build.block(parent, "Vine", Vector3.new(0.3, length, 0.3), CFrame.new(p), rgb(50, 100, 40), M.Grass))
+	end
+	-- Mossy stones
+	for _ = 1, 5 do
+		local side = if rng:NextNumber() < 0.5 then -1 else 1
+		local p = room.Center + Vector3.new(side * (room.Size / 2 - 9), 0, rng:NextNumber(-room.Size / 3, room.Size / 3))
+		Build.block(parent, "Stone", Vector3.new(rng:NextNumber(2, 4), rng:NextNumber(1.5, 3), rng:NextNumber(2, 4)), CFrame.new(p + Vector3.new(0, 0.8, 0)) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), rgb(90, 100, 85), M.Slate)
+	end
+	-- Fireflies
+	particlesOver(parent, room, 6, rgb(220, 255, 120), 8, {
+		Size = NumberSequence.new(0.2),
+		Lifetime = NumberRange.new(3, 5),
+		Speed = NumberRange.new(0.5, 1.5),
+		SpreadAngle = Vector2.new(180, 180),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) }),
+	})
+	if isBoss then
+		-- The witch's cauldron
+		local back = room.Center + Vector3.new(0, 0, room.Size / 2 - 10)
+		Build.cylinder(parent, "Cauldron", 6, 4, CFrame.new(back + Vector3.new(0, 2, 0)), rgb(35, 35, 40), M.Metal)
+		local brew = Build.cylinder(parent, "Brew", 5.2, 0.3, CFrame.new(back + Vector3.new(0, 3.9, 0)), rgb(120, 255, 90), M.Neon)
+		fire(brew, rgb(140, 255, 90), rgb(60, 140, 40), 4)
+		Build.light(brew, rgb(140, 255, 90), 24, 2)
+		tree(parent, back + Vector3.new(-14, 0, 2), 20, rng, rgb(70, 40, 90))
+		tree(parent, back + Vector3.new(14, 0, 2), 20, rng, rgb(70, 40, 90))
+	end
+end
+
+-- Volcano (Infernal Forge) ----------------------------------------------------------------
+
+local function volcano(parent: Instance, room: Room, isBoss: boolean, rng: Random)
+	local lava = rgb(255, 110, 30)
+	local half = room.Size / 2
+	-- Lava channels along both walls
+	for _, side in { -1, 1 } do
+		local channel = Build.block(parent, "LavaChannel", Vector3.new(5, 0.4, room.Size - 10), CFrame.new(room.Center + Vector3.new(side * (half - 3.5), 0.05, 0)), lava, M.Neon)
+		noCollide(channel)
+		fire(channel, rgb(255, 140, 40), rgb(200, 40, 10), 6)
+		Build.light(channel, lava, 30, 2)
+		Build.block(parent, "ChannelRim", Vector3.new(1, 1, room.Size - 10), CFrame.new(room.Center + Vector3.new(side * (half - 6.5), 0.5, 0)), rgb(40, 35, 35), M.Basalt)
+	end
+	-- Obsidian spikes and forge pillars in the corners
+	for _, corner in corners(room, 8) do
+		Build.block(parent, "ForgePillar", Vector3.new(4, 22, 4), CFrame.new(corner + Vector3.new(0, 11, 0)), rgb(50, 40, 40), M.Basalt)
+		for i = 0, 3 do
+			noCollide(Build.block(parent, "PillarGlow", Vector3.new(4.1, 0.4, 4.1), CFrame.new(corner + Vector3.new(0, 4 + i * 5, 0)), lava, M.Neon))
+		end
+		for _ = 1, 3 do
+			local p = corner + Vector3.new(rng:NextNumber(-4, 4), 0, rng:NextNumber(-4, 4))
+			local h = rng:NextNumber(3, 6)
+			Build.block(parent, "ObsidianSpike", Vector3.new(1.2, h, 1.2), CFrame.new(p + Vector3.new(0, h / 2 - 0.5, 0)) * CFrame.Angles(math.rad(rng:NextNumber(-15, 15)), rng:NextNumber(0, 3), math.rad(rng:NextNumber(-15, 15))), rgb(25, 20, 30), M.Glass)
+		end
+	end
+	-- Anvils and hanging chains
+	for _, spot in sideSpots(room, 10, 2) do
+		local p = spot.Position
+		Build.block(parent, "AnvilBase", Vector3.new(1.6, 2, 1.6), CFrame.new(p + Vector3.new(0, 1, 0)), rgb(60, 60, 65), M.Metal)
+		Build.block(parent, "Anvil", Vector3.new(1.8, 0.9, 3.6), CFrame.new(p + Vector3.new(0, 2.4, 0)), rgb(70, 70, 75), M.Metal)
+	end
+	for _ = 1, 6 do
+		local p = room.Center + Vector3.new(rng:NextNumber(-half + 8, half - 8), 17, rng:NextNumber(-half + 8, half - 8))
+		noCollide(Build.block(parent, "Chain", Vector3.new(0.4, 10, 0.4), CFrame.new(p), rgb(50, 45, 45), M.Metal))
+		noCollide(Build.block(parent, "Hook", Vector3.new(1, 1, 0.3), CFrame.new(p - Vector3.new(0, 5.3, 0)), rgb(50, 45, 45), M.Metal))
+	end
+	-- Embers drifting up
+	particlesOver(parent, room, 1, rgb(255, 150, 50), 20, {
+		Texture = "rbxasset://textures/particles/fire_main.dds",
+		EmissionDirection = Enum.NormalId.Top,
+		Size = NumberSequence.new(0.3, 0),
+		Lifetime = NumberRange.new(3, 5),
+		Speed = NumberRange.new(2, 4),
+		SpreadAngle = Vector2.new(20, 20),
+	})
+	if isBoss then
+		-- Lavafalls down the back wall and a giant anvil throne
+		local back = room.Center + Vector3.new(0, 0, half - 1.5)
+		for _, x in { -20, 0, 20 } do
+			local fall = noCollide(Build.block(parent, "Lavafall", Vector3.new(6, 22, 1), CFrame.new(back + Vector3.new(x, 11, 0)), lava, M.Neon))
+			fire(fall, rgb(255, 140, 40), rgb(200, 40, 10), 8)
+		end
+		Build.block(parent, "GreatAnvil", Vector3.new(14, 4, 7), CFrame.new(back + Vector3.new(0, 2, -8)), rgb(55, 50, 55), M.Metal)
+	end
+end
+
+-- Void (Abyssal Rift) -----------------------------------------------------------------
+
+local function void(parent: Instance, room: Room, isBoss: boolean, rng: Random)
+	local glow = rgb(190, 110, 255)
+	local half = room.Size / 2
+	-- Rune circle on the floor
+	for i = 0, 23 do
+		local angle = i / 24 * math.pi * 2
+		local r = half * 0.55
+		noCollide(Build.block(parent, "Rune", Vector3.new(1.4, 0.1, 0.4), CFrame.new(room.Center + Vector3.new(math.cos(angle) * r, 0.05, math.sin(angle) * r)) * CFrame.Angles(0, -angle, 0), glow, M.Neon))
+	end
+	-- Crystal clusters along the walls
+	for _, spot in sideSpots(room, 3, 3) do
+		for i = 1, 4 do
+			local height = rng:NextNumber(4, 10)
+			local crystal = Build.block(parent, "VoidCrystal", Vector3.new(1.3, height, 1.3), CFrame.new(spot.Position + Vector3.new(rng:NextNumber(-1.5, 1.5), height / 2 - 0.5, rng:NextNumber(-1.5, 1.5))) * CFrame.Angles(math.rad(rng:NextNumber(-25, 25)), rng:NextNumber(0, 6), math.rad(rng:NextNumber(-25, 25))), if i == 1 then glow else rgb(40, 25, 70), if i == 1 then M.Neon else M.Glass)
+			crystal.Transparency = 0.1
+		end
+		local lamp = noCollide(Build.block(parent, "CrystalLight", Vector3.one, CFrame.new(spot.Position + Vector3.new(0, 4, 0)), glow, M.SmoothPlastic))
+		lamp.Transparency = 1
+		Build.light(lamp, glow, 20, 1.3)
+	end
+	-- Floating rocks
+	for _ = 1, 10 do
+		local p = room.Center + Vector3.new(rng:NextNumber(-half + 4, half - 4), rng:NextNumber(10, 19), rng:NextNumber(-half + 4, half - 4))
+		local rock = noCollide(Build.block(parent, "FloatingRock", Vector3.new(rng:NextNumber(2, 4), rng:NextNumber(1, 2.5), rng:NextNumber(2, 4)), CFrame.new(p) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 6), rng:NextNumber(0, 1)), rgb(35, 25, 45), M.Slate))
+		rock.Name = "FloatingRock"
+	end
+	-- Rifts in the corners
+	for _, corner in corners(room, 5) do
+		local rift = noCollide(Build.cylinder(parent, "Rift", 6, 0.2, CFrame.new(corner + Vector3.new(0, 6, 0)) * CFrame.Angles(math.rad(90), 0, 0), rgb(5, 0, 10), M.SmoothPlastic))
+		rift.Name = "Rift"
+		noCollide(Build.cylinder(parent, "RiftRing", 6.6, 0.15, CFrame.new(corner + Vector3.new(0, 6, 0.05)) * CFrame.Angles(math.rad(90), 0, 0), glow, M.Neon))
+	end
+	-- Drifting motes
+	particlesOver(parent, room, 18, glow, 14, {
+		EmissionDirection = Enum.NormalId.Bottom,
+		Size = NumberSequence.new(0.25, 0),
+		Lifetime = NumberRange.new(5, 7),
+		Speed = NumberRange.new(1, 2.5),
+		SpreadAngle = Vector2.new(25, 25),
+	})
+	if isBoss then
+		throne(parent, room, rgb(25, 15, 40), glow, M.Glass)
+		for i = 0, 2 do
+			noCollide(Build.cylinder(parent, "HaloRing", 10 + i * 4, 0.3, CFrame.new(room.Center + Vector3.new(0, 16 + i * 1.5, half - 5)) * CFrame.Angles(math.rad(90), 0, 0), glow, M.Neon)).Transparency = 0.3 + i * 0.2
+		end
+	end
+end
+
+local DECORATORS = { Crypt = crypt, Temple = temple, Ice = ice, Forest = forest, Volcano = volcano, Void = void }
 
 function DungeonDecor.decorate(style: string, parent: Instance, room: Room, isBoss: boolean, seed: number)
 	local decorator = DECORATORS[style]
@@ -322,6 +510,12 @@ function DungeonDecor.doorLook(style: string): (Color3, Enum.Material, number)
 		return rgb(190, 150, 80), M.Sandstone, 0
 	elseif style == "Ice" then
 		return rgb(150, 210, 245), M.Ice, 0.25
+	elseif style == "Forest" then
+		return rgb(70, 110, 45), M.Grass, 0
+	elseif style == "Volcano" then
+		return rgb(60, 45, 40), M.CrackedLava, 0
+	elseif style == "Void" then
+		return rgb(120, 60, 200), M.ForceField, 0.1
 	end
 	return rgb(70, 45, 30), M.WoodPlanks, 0
 end

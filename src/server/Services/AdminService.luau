@@ -42,6 +42,26 @@ local function isAdmin(player: Player): boolean
 	return false
 end
 
+-- Only the game's owner (or Config.OwnerUserIds) - not every admin.
+local function isOwner(player: Player): boolean
+	if RunService:IsStudio() or table.find(Config.OwnerUserIds, player.UserId) then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.User then
+		return player.UserId == game.CreatorId
+	elseif game.CreatorType == Enum.CreatorType.Group then
+		local ok, groups = pcall(GroupService.GetGroupsAsync, GroupService, player.UserId)
+		if ok then
+			for _, group in groups do
+				if group.Id == game.CreatorId then
+					return group.Rank >= 255
+				end
+			end
+		end
+	end
+	return false
+end
+
 local function teleport(player: Player, position: Vector3): (boolean, string?)
 	if player:GetAttribute("InDungeon") then
 		return false, "Leave the dungeon first"
@@ -131,6 +151,36 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 		return true, `Prestige set to {data.Prestige}`
 	end,
 
+	-- Owner only: level 999 / prestige 999 (press again to go back to 50 / 10).
+	CreatorRank = function(player)
+		if player:GetAttribute("IsOwner") ~= true then
+			return false, "Only the game owner can use this"
+		end
+		local data = PlayerService.GetData(player)
+		if not data then
+			return false, "Still loading"
+		end
+		if data.CreatorRank then
+			data.CreatorRank = nil
+			data.Level = Config.MaxLevel
+			data.Prestige = Config.Prestige.Max
+		else
+			data.CreatorRank = true
+			data.Level = Config.CreatorRank.Level
+			data.Prestige = Config.CreatorRank.Prestige
+		end
+		data.XP = 0
+		PlayerService.RefreshStats(player, true)
+		PlayerService.Push(player)
+		if data.CreatorRank then
+			for _, other in Players:GetPlayers() do
+				PlayerService.Notify(other, `{player.DisplayName} has ascended to CREATOR RANK (Level {data.Level}, Prestige {data.Prestige})!`, Color3.fromRGB(255, 80, 200))
+			end
+			return true, "Creator Rank ON"
+		end
+		return true, "Creator Rank OFF"
+	end,
+
 	FreeRoll = function(player)
 		if player:GetAttribute("InDungeon") then
 			return false, "Leave the dungeon first"
@@ -147,7 +197,7 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 			end
 		end
 		if not match then
-			return false, "Class: Warrior, Mage, Ranger, Healer, Assassin or Treasurer"
+			return false, `Class: {table.concat(Config.ClassOrder, ", ")}`
 		end
 		PlayerService.SetClass(player, match)
 		return true, `Class set to {match}`
@@ -216,6 +266,7 @@ function AdminService.Start()
 	local function onPlayer(player: Player)
 		-- The client uses this to decide whether to show the Admin button.
 		player:SetAttribute("IsAdmin", isAdmin(player))
+		player:SetAttribute("IsOwner", isOwner(player))
 		if TextChatService.ChatVersion ~= Enum.ChatVersion.TextChatService then
 			player.Chatted:Connect(function(message)
 				runChat(player, message)

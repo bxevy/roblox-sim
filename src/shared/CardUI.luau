@@ -74,8 +74,8 @@ end
 
 -- Draws prestige emblem `prestige` (1-10) into a new square frame of `size` pixels.
 function CardUI.Emblem(parent: Instance, prestige: number, size: number, position: UDim2?, anchor: Vector2?): Frame?
-	local def = Cosmetics.Emblems[math.clamp(prestige, 1, #Cosmetics.Emblems)]
-	if prestige <= 0 or not def then
+	local def = Cosmetics.EmblemFor(prestige)
+	if not def then
 		return nil
 	end
 	local holder = make("Frame", parent, {

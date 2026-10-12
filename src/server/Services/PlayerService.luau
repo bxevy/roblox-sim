@@ -512,7 +512,9 @@ local function sanitize(data)
 		data.SkillPoints += math.max(0, data.Level - 1)
 		data.SkillPointsGranted = true
 	end
-	data.Level = math.min(data.Level, Config.MaxLevel)
+	if not data.CreatorRank then
+		data.Level = math.min(data.Level, Config.MaxLevel)
+	end
 	for _, slot in Items.ArmorSlots do
 		local pieceId = data.Equipped[slot]
 		if pieceId and (not data.Armors[pieceId] or Items.Armors[pieceId].Slot ~= slot) then

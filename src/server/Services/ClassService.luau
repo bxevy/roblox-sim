@@ -44,7 +44,12 @@ local function grantRoll(player: Player)
 		end
 		PlayerService.SetClass(player, classId)
 		PlayerService.Notify(player, `You rolled {class.Rarity} {class.DisplayName}!`, class.Color)
-		if class.Rarity == "Legendary" or class.Rarity == "Epic" then
+		if class.Rarity == "Godly" then
+			PlayerService.AddStat(player, "SeraphRolled")
+			for _, other in Players:GetPlayers() do
+				PlayerService.Notify(other, `{player.DisplayName} ROLLED THE GODLY {string.upper(class.DisplayName)} CLASS! (0.05%)`, Config.Rarities.Godly)
+			end
+		elseif class.Rarity == "Legendary" or class.Rarity == "Epic" then
 			for _, other in Players:GetPlayers() do
 				if other ~= player then
 					PlayerService.Notify(other, `{player.DisplayName} rolled the {class.Rarity} {class.DisplayName} class!`, class.Color)

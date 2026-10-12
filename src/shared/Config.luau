@@ -91,12 +91,19 @@ Config.MaxDefense = 0.8 -- damage reduction can never go above 80%
 export type ClassDef = {
 	DisplayName: string,
 	Description: string,
-	WeaponType: string, -- "Sword" | "Staff" | "Bow" | "Dagger" | "Tome" | "Mace"
+	WeaponType: string, -- each class has its own weapon type (Items.luau)
 	Rarity: string,
 	Weight: number, -- chance when rolling a class (relative)
 	Passive: string,
 	LootLuck: number?, -- chance to upgrade dungeon loot by one tier
 	HealOnHit: number?, -- heals the most hurt nearby teammate by this share of damage dealt
+	CritBonus: number?, -- extra critical hit chance
+	CritDamage: number?, -- extra critical hit damage (0.5 = crits hit 50% harder)
+	Rage: number?, -- up to this much extra damage as your health drops
+	Regen: number?, -- share of max health regenerated per second
+	LifeSteal: number?, -- heals you by this share of damage dealt
+	Reach: number?, -- melee range multiplier
+	Revive: boolean?, -- once per life, survive a killing blow
 	StarterWeapon: string,
 	HealthMultiplier: number,
 	DamageMultiplier: number,
@@ -119,7 +126,7 @@ Config.Classes = {
 		Abilities = { "Whirlwind", "ShieldWall" },
 		Color = Color3.fromRGB(220, 70, 60),
 		Rarity = "Common",
-		Weight = 30,
+		Weight = 20,
 		Passive = "+30% health, +10% defense",
 	},
 	Mage = {
@@ -134,7 +141,7 @@ Config.Classes = {
 		Abilities = { "Fireball", "HealingCircle" },
 		Color = Color3.fromRGB(80, 120, 255),
 		Rarity = "Common",
-		Weight = 25,
+		Weight = 18,
 		Passive = "+25% damage, magic splashes",
 	},
 	Ranger = {
@@ -149,7 +156,7 @@ Config.Classes = {
 		Abilities = { "Volley", "SwiftStep" },
 		Color = Color3.fromRGB(70, 190, 90),
 		Rarity = "Common",
-		Weight = 25,
+		Weight = 18,
 		Passive = "+15% speed, longest range",
 	},
 	Healer = {
@@ -164,7 +171,7 @@ Config.Classes = {
 		Abilities = { "HolyNova", "DivineShield" },
 		Color = Color3.fromRGB(255, 230, 130),
 		Rarity = "Rare",
-		Weight = 10,
+		Weight = 8,
 		Passive = "Hits heal the most hurt teammate for 20% of damage",
 		HealOnHit = 0.2,
 	},
@@ -180,7 +187,7 @@ Config.Classes = {
 		Abilities = { "ShadowStrike", "Vanish" },
 		Color = Color3.fromRGB(160, 90, 220),
 		Rarity = "Epic",
-		Weight = 7,
+		Weight = 5,
 		Passive = "+20% speed, +15% critical hit chance",
 		CritBonus = 0.15,
 	},
@@ -196,13 +203,118 @@ Config.Classes = {
 		Abilities = { "CoinBarrage", "MidasTouch" },
 		Color = Color3.fromRGB(255, 200, 50),
 		Rarity = "Legendary",
-		Weight = 3,
+		Weight = 2.5,
 		Passive = "10% better loot drops (chance for a higher tier)",
 		LootLuck = 0.1,
 	},
+	Berserker = {
+		DisplayName = "Berserker",
+		Description = "Axe brute. The more hurt you are, the harder you hit. Leaps into the fray.",
+		WeaponType = "Axe",
+		StarterWeapon = "WoodcutterAxe",
+		HealthMultiplier = 1.25,
+		DamageMultiplier = 1.15,
+		Defense = 0.05,
+		SpeedMultiplier = 1.05,
+		Abilities = { "Bloodlust", "LeapSmash" },
+		Color = Color3.fromRGB(200, 40, 40),
+		Rarity = "Rare",
+		Weight = 8,
+		Passive = "Rage: up to +40% damage as your health drops",
+		Rage = 0.4,
+	},
+	Paladin = {
+		DisplayName = "Paladin",
+		Description = "Holy greatsword knight. Heavily armored, heals over time, smites evil.",
+		WeaponType = "Greatsword",
+		StarterWeapon = "TrainingGreatsword",
+		HealthMultiplier = 1.35,
+		DamageMultiplier = 1,
+		Defense = 0.15,
+		SpeedMultiplier = 0.95,
+		Abilities = { "Consecration", "Judgment" },
+		Color = Color3.fromRGB(255, 225, 150),
+		Rarity = "Rare",
+		Weight = 8,
+		Passive = "+15% defense, regenerate 1.5% health per second",
+		Regen = 0.015,
+	},
+	Necromancer = {
+		DisplayName = "Necromancer",
+		Description = "Scythe-wielding death mage. Drains life with every hit, raises the dead.",
+		WeaponType = "Scythe",
+		StarterWeapon = "FarmersScythe",
+		HealthMultiplier = 0.95,
+		DamageMultiplier = 1.2,
+		Defense = 0,
+		SpeedMultiplier = 1,
+		Abilities = { "RaiseDead", "SoulHarvest" },
+		Color = Color3.fromRGB(110, 230, 140),
+		Rarity = "Epic",
+		Weight = 5,
+		Passive = "Hits heal you for 8% of damage dealt",
+		LifeSteal = 0.08,
+	},
+	Dragoon = {
+		DisplayName = "Dragoon",
+		Description = "Dragon-knight spearman. Huge reach, dives from the sky onto enemies.",
+		WeaponType = "Spear",
+		StarterWeapon = "WoodenPike",
+		HealthMultiplier = 1.1,
+		DamageMultiplier = 1.1,
+		Defense = 0.05,
+		SpeedMultiplier = 1.1,
+		Abilities = { "DragonDive", "WyvernLance" },
+		Color = Color3.fromRGB(60, 140, 220),
+		Rarity = "Epic",
+		Weight = 5,
+		Passive = "+25% melee reach, +10% speed",
+		Reach = 1.25,
+	},
+	Ronin = {
+		DisplayName = "Ronin",
+		Description = "Wandering katana master. Lightning-fast draws and devastating critical hits.",
+		WeaponType = "Katana",
+		StarterWeapon = "BambooKatana",
+		HealthMultiplier = 1,
+		DamageMultiplier = 1.2,
+		Defense = 0.05,
+		SpeedMultiplier = 1.15,
+		Abilities = { "Iaido", "ThousandCuts" },
+		Color = Color3.fromRGB(230, 60, 90),
+		Rarity = "Legendary",
+		Weight = 2.45,
+		Passive = "+10% crit chance, critical hits deal +50% damage",
+		CritBonus = 0.1,
+		CritDamage = 0.5,
+	},
+	Seraph = {
+		DisplayName = "Seraph",
+		Description = "GODLY. A winged warrior of heaven wielding holy halberds. Cheats death.",
+		WeaponType = "Halberd",
+		StarterWeapon = "AcolyteHalberd",
+		HealthMultiplier = 1.5,
+		DamageMultiplier = 1.5,
+		Defense = 0.2,
+		SpeedMultiplier = 1.25,
+		Abilities = { "HeavensWrath", "Ascension" },
+		Color = Color3.fromRGB(255, 240, 170),
+		Rarity = "Godly",
+		Weight = 0.05,
+		Passive = "+50% health and damage, +20% defense, wings, heals allies on hit, revives once per life, better loot",
+		CritBonus = 0.1,
+		HealOnHit = 0.1,
+		LootLuck = 0.1,
+		Revive = true,
+	},
 } :: { [string]: ClassDef }
 
-Config.ClassOrder = { "Warrior", "Mage", "Ranger", "Healer", "Assassin", "Treasurer" }
+Config.ClassOrder = {
+	"Warrior", "Mage", "Ranger",
+	"Healer", "Berserker", "Paladin",
+	"Assassin", "Necromancer", "Dragoon",
+	"Treasurer", "Ronin", "Seraph",
+}
 
 -- Classes are rolled, not chosen. New players get one free roll.
 Config.ClassRoll = {
@@ -313,6 +425,111 @@ Config.Abilities = {
 		Duration = 10,
 		Color = Color3.fromRGB(255, 220, 80),
 	},
+	-- Berserker
+	Bloodlust = {
+		DisplayName = "Bloodlust",
+		Cooldown = 18,
+		Buff = "Bloodlust",
+		Duration = 8,
+		HealPercent = 0.1,
+		Color = Color3.fromRGB(220, 30, 30),
+	},
+	LeapSmash = {
+		DisplayName = "Leap Smash",
+		Cooldown = 9,
+		Range = 35,
+		Radius = 12,
+		DamageMultiplier = 3.5,
+		Stun = 1.5,
+		Color = Color3.fromRGB(255, 120, 60),
+	},
+	-- Paladin
+	Consecration = {
+		DisplayName = "Consecration",
+		Cooldown = 16,
+		Radius = 16,
+		Duration = 6,
+		DamageMultiplier = 0.6, -- per second
+		HealPercent = 0.03, -- per second
+		Color = Color3.fromRGB(255, 220, 120),
+	},
+	Judgment = {
+		DisplayName = "Judgment",
+		Cooldown = 12,
+		Range = 45,
+		Radius = 10,
+		DamageMultiplier = 5,
+		Stun = 2,
+		Color = Color3.fromRGB(255, 245, 190),
+	},
+	-- Necromancer
+	RaiseDead = {
+		DisplayName = "Raise Dead",
+		Cooldown = 18,
+		Count = 3,
+		Duration = 8,
+		DamageMultiplier = 0.8, -- per spirit hit
+		Color = Color3.fromRGB(110, 255, 150),
+	},
+	SoulHarvest = {
+		DisplayName = "Soul Harvest",
+		Cooldown = 11,
+		Radius = 18,
+		DamageMultiplier = 2.2,
+		HealPerEnemy = 0.04,
+		Color = Color3.fromRGB(80, 220, 120),
+	},
+	-- Dragoon
+	DragonDive = {
+		DisplayName = "Dragon Dive",
+		Cooldown = 10,
+		Range = 40,
+		Radius = 12,
+		DamageMultiplier = 4,
+		Color = Color3.fromRGB(80, 160, 255),
+	},
+	WyvernLance = {
+		DisplayName = "Wyvern Lance",
+		Cooldown = 8,
+		Range = 28,
+		DamageMultiplier = 3,
+		Color = Color3.fromRGB(120, 200, 255),
+	},
+	-- Ronin
+	Iaido = {
+		DisplayName = "Iaido",
+		Cooldown = 9,
+		Range = 26,
+		DamageMultiplier = 4.5,
+		Color = Color3.fromRGB(255, 80, 110),
+	},
+	ThousandCuts = {
+		DisplayName = "Thousand Cuts",
+		Cooldown = 14,
+		Radius = 14,
+		Ticks = 10,
+		DamageMultiplier = 0.6,
+		Color = Color3.fromRGB(255, 150, 170),
+	},
+	-- Seraph (Godly)
+	HeavensWrath = {
+		DisplayName = "Heaven's Wrath",
+		Cooldown = 12,
+		Range = 50,
+		Radius = 14,
+		Count = 10,
+		DamageMultiplier = 1.6,
+		Color = Color3.fromRGB(255, 235, 140),
+	},
+	Ascension = {
+		DisplayName = "Ascension",
+		Cooldown = 25,
+		Radius = 22,
+		Duration = 2.5,
+		DamageMultiplier = 5,
+		HealPercent = 0.5,
+		Color = Color3.fromRGB(255, 250, 220),
+	},
 }
 
 -- Buffs (from abilities and potions). Values are added together.
@@ -326,6 +543,7 @@ Config.Buffs = {
 	DivineShield = { DisplayName = "Divine Shield", Defense = 0.5 },
 	Vanish = { DisplayName = "Vanish", Crit = 0.4, Speed = 0.3 },
 	Midas = { DisplayName = "Midas Touch", Damage = 0.2, Gold = 0.5 },
+	Bloodlust = { DisplayName = "Bloodlust", Damage = 0.35, Speed = 0.2 },
 }
 
 Config.CritChance = 0.1
@@ -472,6 +690,14 @@ Config.AdminUserIds = {
 	-- 123456789,
 }
 
+-- The game owner (and anyone listed here) also gets the Creator Rank button in the admin
+-- menu: level 999, prestige 999, with its own emblem, title, card background and frame.
+-- Other admins don't see it.
+Config.OwnerUserIds = {
+	-- 123456789,
+}
+Config.CreatorRank = { Level = 999, Prestige = 999 }
+
 -- Audio -------------------------------------------------------------------------------
 -- Music uses Creator Store audio ids. Roblox only lets public or owned audio play, so if a
 -- track is silent, find one in Studio (Toolbox > Audio, or the Creator Store website),
@@ -486,6 +712,9 @@ Config.Audio = {
 		Crypt = "rbxassetid://139743346356072",
 		Temple = "rbxassetid://139743346356072",
 		Ice = "rbxassetid://139743346356072",
+		Forest = "rbxassetid://139743346356072",
+		Volcano = "rbxassetid://139743346356072",
+		Void = "rbxassetid://139743346356072",
 		Boss = "rbxassetid://101000446004472",
 	},
 	-- { Id, Volume, PlaybackSpeed }
@@ -526,6 +755,8 @@ Config.StatNames = {
 	{ "EnemiesKilled", "Enemies slain" },
 	{ "DungeonsCleared", "Dungeons cleared" },
 	{ "BossesKilled", "Bosses defeated" },
+	{ "MiniBossesKilled", "Mini-bosses defeated" },
+	{ "TotemsDestroyed", "Boss totems destroyed" },
 	{ "GoldEarned", "Gold earned" },
 	{ "CratesOpened", "Crates opened" },
 	{ "Deaths", "Deaths in dungeons" },
@@ -544,12 +775,16 @@ Config.StoryQuests = {
 	{ Title = "First Steps", Description = "Clear the Crypt of Bones", Stat = "Clears_Crypt", Target = 1, Reward = { XP = 300, Gold = 200, SkillPoints = 1 } },
 	{ Title = "Monster Hunter", Description = "Defeat 60 enemies", Stat = "EnemiesKilled", Target = 60, Reward = { XP = 600, Gold = 400, SkillPoints = 1 } },
 	{ Title = "Seasoned Delver", Description = "Clear the Crypt of Bones on Hard", Stat = "Clears_Crypt_Hard", Target = 1, Reward = { XP = 1500, Gold = 800, SkillPoints = 1 } },
+	{ Title = "Into the Woods", Description = "Clear Witchwood Hollow", Stat = "Clears_Witchwood", Target = 1, Reward = { XP = 1200, Gold = 600, SkillPoints = 1 } },
 	{ Title = "Into the Sands", Description = "Clear the Sunken Temple", Stat = "Clears_Temple", Target = 1, Reward = { XP = 3000, Gold = 1500, SkillPoints = 2 } },
 	{ Title = "Treasure Seeker", Description = "Open a crate at the Crate Shrine", Stat = "CratesOpened", Target = 1, Reward = { XP = 2000, Gold = 2500, SkillPoints = 1 } },
 	{ Title = "Pharaoh's Bane", Description = "Clear the Sunken Temple on Hard", Stat = "Clears_Temple_Hard", Target = 1, Reward = { XP = 6000, Gold = 3000, SkillPoints = 2 } },
 	{ Title = "Into the Cold", Description = "Clear the Frozen Keep", Stat = "Clears_Keep", Target = 1, Reward = { XP = 10000, Gold = 5000, SkillPoints = 2 } },
 	{ Title = "Waking Nightmare", Description = "Clear any dungeon on Nightmare", Stat = "Clears_Nightmare", Target = 1, Reward = { XP = 15000, Gold = 7500, SkillPoints = 2 } },
 	{ Title = "Frost Lord's End", Description = "Clear the Frozen Keep on Nightmare", Stat = "Clears_Keep_Nightmare", Target = 1, Reward = { XP = 25000, Gold = 12000, SkillPoints = 3 } },
+	{ Title = "Through the Fire", Description = "Clear the Infernal Forge", Stat = "Clears_Forge", Target = 1, Reward = { XP = 40000, Gold = 20000, SkillPoints = 3 } },
+	{ Title = "Into the Abyss", Description = "Clear the Abyssal Rift", Stat = "Clears_Abyss", Target = 1, Reward = { XP = 80000, Gold = 40000, SkillPoints = 3 } },
+	{ Title = "Emperor's Fall", Description = "Clear the Abyssal Rift on Nightmare", Stat = "Clears_Abyss_Nightmare", Target = 1, Reward = { XP = 150000, Gold = 75000, SkillPoints = 5 } },
 	{ Title = "Ascension", Description = "Prestige for the first time", Stat = "PrestigeCount", Target = 1, Reward = { XP = 5000, Gold = 25000, SkillPoints = 5 } },
 }
 
@@ -569,6 +804,10 @@ Config.DailyQuests = {
 	{ Id = "Scarabs", Title = "Bug Hunt", Description = "Defeat 25 Scarabs", Stat = "Kills_Scarab", Target = 25, MinLevel = 10 },
 	{ Id = "Yetis", Title = "Yeti Hunter", Description = "Defeat 12 Yetis", Stat = "Kills_Yeti", Target = 12, MinLevel = 20 },
 	{ Id = "Wraiths", Title = "Ghostbuster", Description = "Defeat 20 Frost Wraiths", Stat = "Kills_FrostWraith", Target = 20, MinLevel = 20 },
+	{ Id = "Wolves", Title = "Wolf Pack", Description = "Defeat 20 Dire Wolves", Stat = "Kills_Wolf", Target = 20, MinLevel = 5, MaxLevel = 25 },
+	{ Id = "Imps", Title = "Imp Exterminator", Description = "Defeat 25 Magma Imps", Stat = "Kills_MagmaImp", Target = 25, MinLevel = 33 },
+	{ Id = "Stalkers", Title = "Void Hunter", Description = "Defeat 20 Void Stalkers", Stat = "Kills_VoidStalker", Target = 20, MinLevel = 40 },
+	{ Id = "Totems", Title = "Shieldbreaker", Description = "Destroy 4 boss totems", Stat = "TotemsDestroyed", Target = 4, MinLevel = 5 },
 	{ Id = "Hard", Title = "Hardened", Description = "Clear a dungeon on Hard or Nightmare", Stat = "Clears_HardPlus", Target = 1, MinLevel = 6 },
 }
 Config.DailyQuestCount = 3

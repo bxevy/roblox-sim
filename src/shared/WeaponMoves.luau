@@ -151,6 +151,62 @@ WeaponMoves.Animations = {
 		{ T = 0.6, Pose = { LS = v(90, -50, 0), W = v(0, -20, 0) } },
 		{ T = 1, Pose = { LS = v(60, -20, 0) } },
 	} },
+	-- Axes / greatswords (two-handed: the left arm joins the swing)
+	Cleave = { Duration = 0.45, Keys = {
+		{ T = 0, Pose = { RS = v(120, -40, 0), LS = v(120, 30, 0), W = v(10, -30, 0) } },
+		{ T = 0.55, Pose = { RS = v(-50, 40, 0), LS = v(-10, 50, 0), W = v(-18, 25, 0) } },
+		{ T = 1, Pose = { RS = v(-35, 30, 0), LS = v(0, 40, 0), W = v(-10, 15, 0) } },
+	} },
+	Upheaval = { Duration = 0.5, Keys = {
+		{ T = 0, Pose = { RS = v(-60, 30, 0), LS = v(-20, 40, 0), W = v(-15, 20, 0), RP = v(0, -0.3, 0) } },
+		{ T = 0.55, Pose = { RS = v(130, -20, 0), LS = v(130, 10, 0), W = v(12, -15, 0), RP = v(0, 0.8, 0) } },
+		{ T = 1, Pose = { RS = v(100, 0, 0), LS = v(90, 0, 0), W = v(5, 0, 0) } },
+	} },
+	-- Scythes (wide, low sweeps)
+	Reap = { Duration = 0.42, Keys = {
+		{ T = 0, Pose = { RS = v(-25, -95, 0), LS = v(40, -40, 0), W = v(-10, -55, 0) } },
+		{ T = 0.6, Pose = { RS = v(-30, 90, 0), LS = v(30, 60, 0), W = v(-12, 50, 0) } },
+		{ T = 1, Pose = { RS = v(-20, 75, 0), LS = v(20, 45, 0), W = v(-6, 35, 0) } },
+	} },
+	ReapBack = { Duration = 0.42, Keys = {
+		{ T = 0, Pose = { RS = v(-25, 90, 0), LS = v(40, 50, 0), W = v(-10, 50, 0) } },
+		{ T = 0.6, Pose = { RS = v(-30, -95, 0), LS = v(30, -50, 0), W = v(-12, -55, 0) } },
+		{ T = 1, Pose = { RS = v(-20, -80, 0), LS = v(20, -40, 0), W = v(-6, -40, 0) } },
+	} },
+	-- Spears / halberds
+	Lunge = { Duration = 0.38, Keys = {
+		{ T = 0, Pose = { RS = v(0, -15, 0), LS = v(60, 20, 0), W = v(0, -40, 0), RP = v(0, 0, 0.8) } },
+		{ T = 0.45, Pose = { RS = v(5, 5, 0), LS = v(80, 0, 0), W = v(-10, 20, 0), RP = v(0, -0.3, -2.4) } },
+		{ T = 1, Pose = { RS = v(0, 0, 0), LS = v(60, 0, 0), W = v(0, 10, 0), RP = v(0, 0, -1) } },
+	} },
+	Dive = { Duration = 0.7, Keys = {
+		{ T = 0, Pose = { RS = v(60, 0, 0), LS = v(60, 0, 0) } },
+		{ T = 0.4, Pose = { RS = v(170, 0, 0), LS = v(170, 0, 0), W = v(15, 0, 0), N = v(20, 0, 0) } },
+		{ T = 0.75, Pose = { RS = v(-90, 0, 0), LS = v(-30, 0, 0), W = v(-35, 0, 0) } },
+		{ T = 1, Pose = { RS = v(-60, 0, 0), LS = v(0, 0, 0), W = v(-20, 0, 0) } },
+	} },
+	-- Katanas (very fast draws)
+	IaiSlash = { Duration = 0.18, Keys = {
+		{ T = 0, Pose = { RS = v(-40, -100, 0), W = v(0, -40, 0) } },
+		{ T = 0.5, Pose = { RS = v(10, 70, 0), W = v(0, 30, 0), RP = v(0, 0, -0.6) } },
+		{ T = 1, Pose = { RS = v(5, 55, 0), W = v(0, 20, 0) } },
+	} },
+	IaiReturn = { Duration = 0.18, Keys = {
+		{ T = 0, Pose = { RS = v(30, 70, 0), W = v(0, 30, 0) } },
+		{ T = 0.5, Pose = { RS = v(-20, -80, 0), W = v(0, -35, 0), RP = v(0, 0, -0.5) } },
+		{ T = 1, Pose = { RS = v(-10, -60, 0), W = v(0, -25, 0) } },
+	} },
+	Battojutsu = { Duration = 0.45, Keys = {
+		{ T = 0, Pose = { RS = v(-50, -110, 0), LS = v(20, 30, 0), W = v(0, -50, 0), RP = v(0, -0.5, 0.5) } },
+		{ T = 0.35, Pose = { RS = v(-50, -110, 0), LS = v(20, 30, 0), W = v(0, -50, 0), RP = v(0, -0.6, 0.5) } },
+		{ T = 0.55, Pose = { RS = v(20, 90, 0), LS = v(-10, -20, 0), W = v(0, 40, 0), RP = v(0, 0, -3) } },
+		{ T = 1, Pose = { RS = v(10, 70, 0), W = v(0, 25, 0), RP = v(0, 0, -2) } },
+	} },
+	Roar = { Duration = 0.6, Keys = {
+		{ T = 0, Pose = { RS = v(0, 0, 0), LS = v(0, 0, 0) } },
+		{ T = 0.4, Pose = { RS = v(30, 0, 60), LS = v(30, 0, -60), W = v(-15, 0, 0), N = v(25, 0, 0) } },
+		{ T = 1, Pose = { RS = v(20, 0, 40), LS = v(20, 0, -40), W = v(-8, 0, 0), N = v(10, 0, 0) } },
+	} },
 	-- Weapon skills (longer, showier)
 	Channel = { Duration = 0.8, Keys = {
 		{ T = 0, Pose = { RS = v(0, 0, 0), LS = v(0, 0, 0) } },
@@ -257,6 +313,77 @@ WeaponMoves.Combos = {
 		{ Anim = "Bless", Hit = "Shot", Damage = 1, Cooldown = 0.6 },
 		{ Anim = "Proclaim", Hit = "Smite", Damage = 2.2, Radius = 8, Cooldown = 1 },
 	} },
+	-- Axes
+	Ravager = { DisplayName = "Ravager", Steps = {
+		{ Anim = "HeavySwing", Hit = "Arc", Damage = 1.1, Cooldown = 0.55 },
+		{ Anim = "Cleave", Hit = "Arc", Damage = 1.25, Cooldown = 0.6 },
+		{ Anim = "SkillSpin", Hit = "Spin", Damage = 2.2, Range = 10, Cooldown = 1 },
+	} },
+	Lumberjack = { DisplayName = "Lumberjack", Steps = {
+		{ Anim = "Cleave", Hit = "Arc", Damage = 1.2, Cooldown = 0.6 },
+		{ Anim = "Upheaval", Hit = "Arc", Damage = 1.2, Cooldown = 0.6 },
+		{ Anim = "LeapSlam", Hit = "Slam", Damage = 2.5, Radius = 12, Cooldown = 1 },
+	} },
+	-- Greatswords
+	Crusader = { DisplayName = "Crusader", Steps = {
+		{ Anim = "HeavySwing", Hit = "Arc", Damage = 1.1, Cooldown = 0.7 },
+		{ Anim = "HeavyBackswing", Hit = "Arc", Damage = 1.1, Cooldown = 0.7 },
+		{ Anim = "Cleave", Hit = "Slam", Damage = 2.6, Radius = 13, Cooldown = 1.1 },
+	} },
+	Titan = { DisplayName = "Titan", Steps = {
+		{ Anim = "Upheaval", Hit = "Arc", Damage = 1.15, Cooldown = 0.7 },
+		{ Anim = "Spin", Hit = "Spin", Damage = 1.3, Range = 11, Cooldown = 0.7 },
+		{ Anim = "GroundPound", Hit = "Slam", Damage = 2.8, Radius = 14, Cooldown = 1.2 },
+	} },
+	-- Scythes
+	Reaper = { DisplayName = "Reaper", Steps = {
+		{ Anim = "Reap", Hit = "Arc", Damage = 1, Range = 10, Cooldown = 0.5 },
+		{ Anim = "ReapBack", Hit = "Arc", Damage = 1, Range = 10, Cooldown = 0.5 },
+		{ Anim = "SkillSpin", Hit = "Spin", Damage = 2, Range = 12, Cooldown = 0.95 },
+	} },
+	Harvester = { DisplayName = "Harvester", Steps = {
+		{ Anim = "Reap", Hit = "Arc", Damage = 1, Range = 10, Cooldown = 0.5 },
+		{ Anim = "Lunge", Hit = "Thrust", Damage = 1.2, Cooldown = 0.5 },
+		{ Anim = "ReapBack", Hit = "Arc", Damage = 1.1, Range = 10, Cooldown = 0.5 },
+		{ Anim = "Twirl", Hit = "Spin", Damage = 1.9, Range = 12, Cooldown = 0.95 },
+	} },
+	-- Spears
+	Impaler = { DisplayName = "Impaler", Steps = {
+		{ Anim = "Thrust", Hit = "Thrust", Damage = 1, Cooldown = 0.4 },
+		{ Anim = "Thrust", Hit = "Thrust", Damage = 1, Cooldown = 0.4 },
+		{ Anim = "Lunge", Hit = "Thrust", Damage = 2.2, Range = 15, Cooldown = 0.85 },
+	} },
+	Skewer = { DisplayName = "Skewer", Steps = {
+		{ Anim = "Thrust", Hit = "Thrust", Damage = 1.05, Cooldown = 0.4 },
+		{ Anim = "Twirl", Hit = "Spin", Damage = 1.1, Cooldown = 0.5 },
+		{ Anim = "Lunge", Hit = "Thrust", Damage = 1.3, Range = 13, Cooldown = 0.45 },
+		{ Anim = "Dive", Hit = "Slam", Damage = 2.3, Radius = 11, Cooldown = 1 },
+	} },
+	-- Katanas
+	Iaijutsu = { DisplayName = "Iaijutsu", Steps = {
+		{ Anim = "IaiSlash", Hit = "Arc", Damage = 0.9, Cooldown = 0.28 },
+		{ Anim = "IaiReturn", Hit = "Arc", Damage = 0.9, Cooldown = 0.28 },
+		{ Anim = "IaiSlash", Hit = "Arc", Damage = 0.95, Cooldown = 0.28 },
+		{ Anim = "Battojutsu", Hit = "Thrust", Damage = 2.4, Range = 14, Cooldown = 0.8 },
+	} },
+	Kenjutsu = { DisplayName = "Kenjutsu", Steps = {
+		{ Anim = "SlashRight", Hit = "Arc", Damage = 1, Cooldown = 0.35 },
+		{ Anim = "SlashLeft", Hit = "Arc", Damage = 1, Cooldown = 0.35 },
+		{ Anim = "Overhead", Hit = "Arc", Damage = 1.15, Cooldown = 0.4 },
+		{ Anim = "Uppercut", Hit = "Arc", Damage = 1.9, Cooldown = 0.75 },
+	} },
+	-- Halberds
+	Seraphic = { DisplayName = "Seraphic", Steps = {
+		{ Anim = "HeavySwing", Hit = "Arc", Damage = 1.1, Range = 10, Cooldown = 0.55 },
+		{ Anim = "Lunge", Hit = "Thrust", Damage = 1.2, Range = 13, Cooldown = 0.55 },
+		{ Anim = "Twirl", Hit = "Spin", Damage = 1.3, Range = 11, Cooldown = 0.55 },
+		{ Anim = "Dive", Hit = "Slam", Damage = 2.8, Radius = 14, Cooldown = 1.1 },
+	} },
+	Archangel = { DisplayName = "Archangel", Steps = {
+		{ Anim = "Cleave", Hit = "Arc", Damage = 1.2, Range = 10, Cooldown = 0.6 },
+		{ Anim = "Upheaval", Hit = "Arc", Damage = 1.2, Range = 10, Cooldown = 0.6 },
+		{ Anim = "GroundPound", Hit = "Slam", Damage = 3, Radius = 15, Cooldown = 1.1 },
+	} },
 } :: { [string]: { DisplayName: string, Steps: { Step } } }
 
 -- Which animation each weapon-skill mechanic plays.
@@ -298,8 +425,22 @@ WeaponMoves.AbilityAnims = {
 	HolyNova = "Proclaim",
 	DivineShield = "Proclaim",
 	ShadowStrike = "Thrust",
+	SwiftStep = "Backflip",
+	Vanish = "Backflip",
 	CoinBarrage = "CastSweep",
 	MidasTouch = "Proclaim",
+	Bloodlust = "Roar",
+	LeapSmash = "Dive",
+	Consecration = "Proclaim",
+	Judgment = "CastHigh",
+	RaiseDead = "Proclaim",
+	SoulHarvest = "Reap",
+	DragonDive = "Dive",
+	WyvernLance = "Lunge",
+	Iaido = "Battojutsu",
+	ThousandCuts = "SkillSpin",
+	HeavensWrath = "CastHigh",
+	Ascension = "Proclaim",
 }
 
 return WeaponMoves

@@ -27,8 +27,12 @@ local BACK_MODEL = "SheathedWeapon"
 local OFFHAND_MODEL = "OffhandWeapon"
 local BURN_COLOR = Color3.fromRGB(255, 140, 40)
 local FROST_COLOR = Color3.fromRGB(140, 220, 255)
-local DEFAULT_COMBO = { Sword = "Blademaster", Dagger = "Flurry", Mace = "Crusher", Staff = "Arcanist", Bow = "Marksman", Tome = "Psalm" }
+local DEFAULT_COMBO = {
+	Sword = "Blademaster", Dagger = "Flurry", Mace = "Crusher", Staff = "Arcanist", Bow = "Marksman", Tome = "Psalm",
+	Axe = "Ravager", Greatsword = "Crusader", Scythe = "Reaper", Spear = "Impaler", Katana = "Iaijutsu", Halberd = "Seraphic",
+}
 local PROJECTILE = { Bow = "Arrow", Staff = "Bolt", Tome = "Holy" }
+local HEAVY = { Mace = true, Axe = true, Greatsword = true, Halberd = true }
 
 local CombatService = {}
 
@@ -61,10 +65,16 @@ local function sanitizeAim(aim: unknown, root: BasePart): Vector3
 end
 
 local function rollDamage(player: Player, base: number): (number, boolean)
+	local class: any = PlayerService.GetClass(player)
 	local amount = base * PlayerService.GetDamageMultiplier(player) * (0.9 + math.random() * 0.2)
+	-- Berserker rage: more damage the lower your health
+	local humanoid = getAlive(player)
+	if class and class.Rage and humanoid then
+		amount *= 1 + class.Rage * (1 - humanoid.Health / humanoid.MaxHealth)
+	end
 	local isCrit = math.random() < PlayerService.GetCritChance(player)
 	if isCrit then
-		amount *= Config.CritMultiplier
+		amount *= Config.CritMultiplier + (if class then class.CritDamage or 0 else 0)
 	end
 	return amount, isCrit
 end
@@ -168,6 +178,12 @@ local function hit(player: Player, enemy: EnemyService.Enemy, baseDamage: number
 	local dealt = EnemyService.Damage(enemy, amount, isCrit, if isCrit then nil else color)
 	applyEffect(player, enemy, weapon.Effect, dealt)
 	healOnHit(player, dealt)
+	-- Necromancer passive: hits heal you
+	local class: any = PlayerService.GetClass(player)
+	local humanoid = getAlive(player)
+	if class and class.LifeSteal and humanoid and dealt > 0 then
+		humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + dealt * class.LifeSteal)
+	end
 	return dealt
 end
 
@@ -205,7 +221,8 @@ local function slashEffect(root: BasePart, aim: Vector3, range: number, color: C
 end
 
 local function meleeStep(player: Player, root: BasePart, aim: Vector3, weapon: Items.WeaponDef, step: WeaponMoves.Step)
-	local range = step.Range or weapon.Range
+	local class: any = PlayerService.GetClass(player)
+	local range = (step.Range or weapon.Range) * (if class then class.Reach or 1 else 1)
 	local damage = weapon.Damage * step.Damage
 	local color = weapon.Design.Trail or weapon.Color
 	if step.Hit == "Thrust" then
@@ -347,10 +364,10 @@ local function onAttack(player: Player, aim: unknown)
 
 	local direction = sanitizeAim(aim, root)
 	broadcastMove(player, step.Anim)
-	local melee = weapon.Type == "Sword" or weapon.Type == "Dagger" or weapon.Type == "Mace"
+	local melee = PROJECTILE[weapon.Type] == nil
 	local finisher = stepIndex == #combo.Steps
 	local sound = if melee then (if finisher then "Lunge" else "Swing") elseif weapon.Type == "Bow" then "BowShot" else "Cast"
-	Sfx.play(sound, root, if weapon.Type == "Mace" or finisher then 1.3 else 1)
+	Sfx.play(sound, root, if HEAVY[weapon.Type] or finisher then 1.3 else 1)
 	showTrail(player, (WeaponMoves.Animations[step.Anim] or { Duration = 0.3 }).Duration + 0.05)
 	if melee then
 		meleeStep(player, root, direction, weapon, step)
@@ -522,6 +539,77 @@ local function updateOffhand(player: Player, tool: Tool, weapon: Items.WeaponDef
 	end
 end
 
+-- Class looks: the Seraph has wings of light and a halo.
+local CLASS_LOOK = "ClassLook"
+local function applyClassLook(player: Player, character: Model)
+	local old = character:FindFirstChild(CLASS_LOOK)
+	if old then
+		old:Destroy()
+	end
+	local class = PlayerService.GetClass(player)
+	local torso: BasePart? = (character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")) :: any
+	local head = character:FindFirstChild("Head") :: BasePart?
+	if not class or not class.Revive or not torso or not head then
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = CLASS_LOOK
+	local function piece(name: string, size: Vector3, cframe: CFrame, to: BasePart, color: Color3, material: Enum.Material, shape: Enum.PartType?): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cframe
+		p.Color = color
+		p.Material = material
+		if shape then
+			p.Shape = shape
+		end
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = to
+		w.Part1 = p
+		w.Parent = p
+		p.Parent = model
+		return p
+	end
+	local gold = Color3.fromRGB(255, 225, 130)
+	local back = torso.CFrame * CFrame.new(0, 0.4, torso.Size.Z / 2 + 0.3)
+	for _, side in { -1, 1 } do
+		for i = 0, 4 do
+			local feather = piece("WingFeather", Vector3.new(2.6 - i * 0.35, 0.18, 0.7),
+				back * CFrame.new(side * (1 + i * 0.35), 0.9 - i * 0.45, 0.3 + i * 0.1) * CFrame.Angles(0, side * math.rad(-20), side * math.rad(25 - i * 14)),
+				torso, if i == 0 then gold else Color3.fromRGB(255, 255, 255), if i == 0 then Enum.Material.Neon else Enum.Material.SmoothPlastic)
+			feather.Transparency = 0.05
+			if i == 2 then
+				local e = Instance.new("ParticleEmitter")
+				e.Color = ColorSequence.new(gold)
+				e.LightEmission = 1
+				e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+				e.Size = NumberSequence.new(0.25, 0)
+				e.Lifetime = NumberRange.new(0.6, 1.2)
+				e.Rate = 8
+				e.Speed = NumberRange.new(0.5, 1)
+				e.Acceleration = Vector3.new(0, -1, 0)
+				e.Parent = feather
+			end
+		end
+	end
+	local haloCenter = head.CFrame * CFrame.new(0, head.Size.Y / 2 + 0.6, 0)
+	for i = 0, 11 do
+		local angle = i / 12 * math.pi * 2
+		piece("Halo", Vector3.new(0.16, 0.12, 0.42), haloCenter * CFrame.Angles(0, angle, 0) * CFrame.new(0.75, 0, 0), head, gold, Enum.Material.Neon)
+	end
+	local light = Instance.new("PointLight")
+	light.Color = gold
+	light.Range = 12
+	light.Brightness = 1.2
+	light.Parent = model:FindFirstChild("Halo")
+	model.Parent = character
+end
+
 local function applyLoadout(player: Player)
 	local humanoid = getAlive(player)
 	local character = player.Character
@@ -531,6 +619,7 @@ local function applyLoadout(player: Player)
 
 	local pieces, fullSet = PlayerService.GetArmor(player)
 	ArmorVisuals.apply(character, pieces, fullSet)
+	applyClassLook(player, character)
 
 	removeWeaponTools(player)
 	local weapon = PlayerService.GetWeapon(player)
@@ -631,6 +720,57 @@ local function barrage(player: Player, root: BasePart, aim: Vector3, weapon: Ite
 				end
 			end
 		end)
+	end
+end
+
+-- How far you can travel from `root` along `direction` before hitting a wall (dashes and
+-- leaps never put you inside scenery).
+local function clearDistance(root: BasePart, direction: Vector3, distance: number): number
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { root.Parent :: Instance }
+	local result = workspace:Raycast(root.Position, direction * distance, params)
+	if result and result.Instance.CanCollide then
+		return math.max(0, (result.Position - root.Position).Magnitude - 2.5)
+	end
+	return distance
+end
+
+-- Moves a character along an arc to `target` (leaps, dives). Runs in the background.
+local function leap(character: Model, root: BasePart, target: Vector3, height: number, duration: number, onLand: () -> ())
+	task.spawn(function()
+		local start = root.Position
+		local flat = (target - start) * Vector3.new(1, 0, 1)
+		local steps = math.max(6, math.floor(duration * 30))
+		for i = 1, steps do
+			if not character.Parent then
+				return
+			end
+			local t = i / steps
+			local p = start:Lerp(Vector3.new(target.X, start.Y, target.Z), t) + Vector3.new(0, math.sin(t * math.pi) * height, 0)
+			character:PivotTo(if flat.Magnitude > 0.1 then CFrame.lookAt(p, p + flat) else CFrame.new(p) * root.CFrame.Rotation)
+			task.wait(duration / steps)
+		end
+		root.AssemblyLinearVelocity = Vector3.zero
+		onLand()
+	end)
+end
+
+-- Where a leap should land: next to the aimed enemy, or partway along your aim.
+local function landingPoint(root: BasePart, aim: Vector3, range: number): Vector3
+	local target = findAimTarget(root.Position, aim, range, 0.5)
+	if target then
+		local offset = (target.Root.Position - root.Position) * Vector3.new(1, 0, 1)
+		local direction = if offset.Magnitude > 0.1 then offset.Unit else aim
+		local distance = math.max(0, offset.Magnitude - target.Radius - 2)
+		return root.Position + direction * clearDistance(root, direction, distance)
+	end
+	return root.Position + aim * clearDistance(root, aim, range * 0.5)
+end
+
+local function stunAround(center: Vector3, radius: number, duration: number)
+	for _, enemy in EnemyService.GetEnemiesNear(center, radius) do
+		EnemyService.Stun(enemy, duration)
 	end
 end
 
@@ -753,6 +893,268 @@ local abilityHandlers: { [string]: (Player, Humanoid, BasePart, Vector3, Items.W
 		highlight(root.Parent, ability.Color, 0.6, ability.Duration)
 		Effects.burst(root.Position, 6, ability.Color)
 	end,
+
+	-- Berserker
+	Bloodlust = function(player, _, root)
+		local ability = Config.Abilities.Bloodlust
+		PlayerService.AddBuff(player, ability.Buff, ability.Duration)
+		PlayerService.Heal(player, ability.HealPercent)
+		highlight(root.Parent, ability.Color, 0.55, ability.Duration)
+		Effects.burst(root.Position, 7, ability.Color)
+		Effects.sparks(root.Position, ability.Color, "Smoke", 25)
+	end,
+
+	LeapSmash = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.LeapSmash
+		leap(root.Parent :: Model, root, landingPoint(root, aim, ability.Range), 10, 0.5, function()
+			local ground = root.Position - Vector3.new(0, 2.5, 0)
+			Effects.ring(ground, ability.Radius, ability.Color, 0.4)
+			Effects.burst(ground, ability.Radius * 0.6, ability.Color, 0.3)
+			Effects.sparks(ground, Color3.fromRGB(140, 120, 100), "Smoke", 30)
+			for i = 1, 6 do
+				local angle = i / 6 * math.pi * 2
+				Effects.spike(ground + Vector3.new(math.cos(angle), 0, math.sin(angle)) * ability.Radius * 0.6, 3, Color3.fromRGB(120, 100, 85), Enum.Material.Rock)
+			end
+			Sfx.play("Slam", root, 1.2)
+			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
+			stunAround(root.Position, ability.Radius, ability.Stun)
+		end)
+	end,
+
+	-- Paladin
+	Consecration = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.Consecration
+		local center = root.Position - Vector3.new(0, 2.6, 0)
+		local zone = Effects.part({
+			Shape = Enum.PartType.Cylinder,
+			Color = ability.Color,
+			Transparency = 0.55,
+			Size = Vector3.new(0.3, ability.Radius * 2, ability.Radius * 2),
+			CFrame = CFrame.new(center) * CFrame.Angles(0, 0, math.rad(90)),
+		})
+		Debris:AddItem(zone, ability.Duration + 0.2)
+		task.spawn(function()
+			for _ = 1, ability.Duration do
+				Effects.ring(center, ability.Radius, ability.Color, 0.6)
+				Effects.sparks(center + Vector3.new(0, 1, 0), ability.Color, nil, 20)
+				damageAround(player, center, ability.Radius, ability.DamageMultiplier, weapon)
+				healPlayersNear(center, ability.Radius, ability.HealPercent)
+				task.wait(1)
+			end
+		end)
+	end,
+
+	Judgment = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.Judgment
+		local target = findAimTarget(root.Position, aim, ability.Range, 0.5)
+		local point = (if target then target.Root.Position else root.Position + aim * 20) - Vector3.new(0, 2.5, 0)
+		Effects.warning(point, ability.Radius, ability.Color, 0.5)
+		-- A giant sword of light drops from the sky
+		local sword = Effects.part({ Size = Vector3.new(1, 14, 3), Color = ability.Color, Transparency = 0.15, CFrame = CFrame.new(point + Vector3.new(0, 40, 0)) })
+		local guard = Effects.part({ Size = Vector3.new(1.2, 1, 7), Color = ability.Color, Transparency = 0.15, CFrame = sword.CFrame * CFrame.new(0, 7.5, 0) })
+		for _, part in { sword, guard } do
+			TweenService:Create(part, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = part.CFrame - Vector3.new(0, 33, 0) }):Play()
+			Debris:AddItem(part, 1.4)
+		end
+		task.delay(0.5, function()
+			Effects.pillar(point, ability.Radius * 0.6, ability.Color)
+			Effects.burst(point, ability.Radius, ability.Color, 0.4)
+			Sfx.play("Slam", point, 1.2)
+			damageAround(player, point, ability.Radius, ability.DamageMultiplier, weapon)
+			stunAround(point, ability.Radius, ability.Stun)
+			for _, part in { sword, guard } do
+				TweenService:Create(part, TweenInfo.new(0.8), { Transparency = 1 }):Play()
+			end
+		end)
+	end,
+
+	-- Necromancer
+	RaiseDead = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.RaiseDead
+		for i = 1, ability.Count do
+			local spirit = Effects.part({ Shape = Enum.PartType.Ball, Size = Vector3.one * 1.6, Color = ability.Color, Transparency = 0.3, Position = root.Position + Vector3.new(math.cos(i * 2.1) * 4, 2, math.sin(i * 2.1) * 4) })
+			local skull = Effects.part({ Shape = Enum.PartType.Ball, Size = Vector3.one * 1, Color = Color3.fromRGB(235, 230, 210), Material = Enum.Material.SmoothPlastic, Position = spirit.Position })
+			local fire = Instance.new("Fire")
+			fire.Color = ability.Color
+			fire.SecondaryColor = Color3.fromRGB(20, 80, 40)
+			fire.Size = 3
+			fire.Parent = spirit
+			Effects.sparks(spirit.Position, ability.Color, "Smoke", 12)
+			task.spawn(function()
+				local endsAt = os.clock() + ability.Duration
+				while os.clock() < endsAt and spirit.Parent do
+					local _, ownerRoot = getAlive(player)
+					if not ownerRoot then
+						break
+					end
+					local enemies = EnemyService.GetEnemiesNear(ownerRoot.Position, 45)
+					local enemy = enemies[math.random(math.max(#enemies, 1))]
+					local to = if enemy then enemy.Root.Position + Vector3.new(0, 1, 0) else ownerRoot.Position + Vector3.new(math.cos(i * 2.1 + os.clock()) * 4, 3, math.sin(i * 2.1 + os.clock()) * 4)
+					for _, part in { spirit, skull } do
+						TweenService:Create(part, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Position = to }):Play()
+					end
+					task.wait(0.4)
+					if enemy and not enemy.Dead then
+						hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+						Effects.sparks(to, ability.Color, nil, 10)
+					end
+					task.wait(0.3)
+				end
+				Effects.sparks(spirit.Position, ability.Color, "Smoke", 15)
+				spirit:Destroy()
+				skull:Destroy()
+			end)
+		end
+	end,
+
+	SoulHarvest = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.SoulHarvest
+		local enemies = EnemyService.GetEnemiesNear(root.Position, ability.Radius)
+		if #enemies == 0 then
+			return false
+		end
+		Effects.ring(root.Position - Vector3.new(0, 2.5, 0), ability.Radius, ability.Color, 0.5)
+		for _, enemy in enemies do
+			EnemyService.Pull(enemy, root.Position, 6)
+			hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+			Effects.projectile("Orb", enemy.Root.Position, root.Position, ability.Color, function() end, 60)
+		end
+		PlayerService.Heal(player, ability.HealPerEnemy * #enemies)
+		return true
+	end,
+
+	-- Dragoon
+	DragonDive = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.DragonDive
+		Effects.burst(root.Position, 5, ability.Color, 0.3)
+		leap(root.Parent :: Model, root, landingPoint(root, aim, ability.Range), 15, 0.8, function()
+			local ground = root.Position - Vector3.new(0, 2.5, 0)
+			Effects.pillar(ground, ability.Radius * 0.5, ability.Color, 0.6)
+			Effects.ring(ground, ability.Radius, ability.Color, 0.45)
+			Effects.sparks(ground, Color3.fromRGB(255, 150, 60), "Fire", 40)
+			Sfx.play("Slam", root, 1.3)
+			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
+		end)
+	end,
+
+	WyvernLance = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.WyvernLance
+		local start = root.Position
+		local distance = clearDistance(root, aim, ability.Range)
+		if distance < 3 then
+			return false -- facing a wall
+		end
+		local finish = start + aim * distance
+		Effects.beam(start, finish, ability.Color, 2.5, 0.35)
+		for _, enemy in EnemyService.GetEnemiesNear((start + finish) / 2, ability.Range / 2 + 3) do
+			local along = math.clamp((enemy.Root.Position - start):Dot(aim), 0, ability.Range)
+			if ((enemy.Root.Position - (start + aim * along)) * Vector3.new(1, 0, 1)).Magnitude <= 4 + enemy.Radius then
+				hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+				EnemyService.Knockback(enemy, start, 30)
+			end
+		end
+		local character = root.Parent :: Model
+		character:PivotTo(CFrame.lookAt(finish, finish + aim))
+		Effects.sparks(finish, ability.Color, nil, 20)
+		return true
+	end,
+
+	-- Ronin
+	Iaido = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.Iaido
+		local start = root.Position
+		local distance = clearDistance(root, aim, ability.Range)
+		if distance < 3 then
+			return false -- facing a wall
+		end
+		local finish = start + aim * distance
+		local cut = {}
+		for _, enemy in EnemyService.GetEnemiesNear((start + finish) / 2, ability.Range / 2 + 3) do
+			local along = math.clamp((enemy.Root.Position - start):Dot(aim), 0, ability.Range)
+			if ((enemy.Root.Position - (start + aim * along)) * Vector3.new(1, 0, 1)).Magnitude <= 4 + enemy.Radius then
+				table.insert(cut, enemy)
+				EnemyService.Stun(enemy, 0.7)
+			end
+		end
+		local character = root.Parent :: Model
+		character:PivotTo(CFrame.lookAt(finish, finish + aim))
+		local length = distance
+		local slash = Effects.part({ Size = Vector3.new(0.2, 0.2, length), Color = ability.Color, CFrame = CFrame.lookAt((start + finish) / 2, finish + aim * 0.01) })
+		TweenService:Create(slash, TweenInfo.new(0.6), { Transparency = 1, Size = Vector3.new(0.05, 3, length) }):Play()
+		Debris:AddItem(slash, 0.65)
+		-- The cut lands a moment after you sheathe
+		task.delay(0.6, function()
+			for _, enemy in cut do
+				if not enemy.Dead then
+					Effects.sparks(enemy.Root.Position, ability.Color, nil, 16)
+					hit(player, enemy, weapon.Damage * ability.DamageMultiplier, weapon)
+				end
+			end
+			Sfx.play("Lunge", root, 1.5)
+		end)
+		return true
+	end,
+
+	ThousandCuts = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.ThousandCuts
+		task.spawn(function()
+			for i = 1, ability.Ticks do
+				local _, liveRoot = getAlive(player)
+				if not liveRoot then
+					return
+				end
+				local angle = i * 2.4
+				local slash = Effects.part({
+					Size = Vector3.new(ability.Radius * 1.6, 0.15, 0.6),
+					Color = ability.Color,
+					Transparency = 0.2,
+					CFrame = CFrame.new(liveRoot.Position) * CFrame.Angles(0, angle, math.rad(math.random(-40, 40))),
+				})
+				TweenService:Create(slash, TweenInfo.new(0.15), { Transparency = 1 }):Play()
+				Debris:AddItem(slash, 0.2)
+				damageAround(player, liveRoot.Position, ability.Radius, ability.DamageMultiplier, weapon)
+				task.wait(0.12)
+			end
+		end)
+	end,
+
+	-- Seraph (Godly)
+	HeavensWrath = function(player, _, root, aim, weapon)
+		local ability = Config.Abilities.HeavensWrath
+		local target = findAimTarget(root.Position, aim, ability.Range, 0.5)
+		local center = (if target then target.Root.Position else root.Position + aim * 22) - Vector3.new(0, 2.5, 0)
+		Effects.warning(center, ability.Radius, ability.Color, 2)
+		task.spawn(function()
+			for _ = 1, ability.Count do
+				local point = center + Vector3.new(math.random(-ability.Radius, ability.Radius) * 0.7, 0, math.random(-ability.Radius, ability.Radius) * 0.7)
+				local spear = Effects.part({ Size = Vector3.new(0.6, 9, 0.6), Color = ability.Color, CFrame = CFrame.new(point + Vector3.new(0, 45, 0)) })
+				TweenService:Create(spear, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(point + Vector3.new(0, 3, 0)) }):Play()
+				Debris:AddItem(spear, 0.9)
+				task.delay(0.25, function()
+					Effects.burst(point, 4, ability.Color, 0.25)
+					damageAround(player, point, 6, ability.DamageMultiplier, weapon)
+					TweenService:Create(spear, TweenInfo.new(0.6), { Transparency = 1 }):Play()
+				end)
+				task.wait(0.15)
+			end
+		end)
+	end,
+
+	Ascension = function(player, _, root, _, weapon)
+		local ability = Config.Abilities.Ascension
+		local character = root.Parent :: Model
+		character:SetAttribute("InvulnerableUntil", os.clock() + ability.Duration + 0.5)
+		highlight(character, ability.Color, 0.4, ability.Duration + 0.5)
+		Effects.pillar(root.Position - Vector3.new(0, 2.5, 0), 4, ability.Color, ability.Duration)
+		leap(character, root, root.Position, 14, ability.Duration, function()
+			local ground = root.Position - Vector3.new(0, 2.5, 0)
+			Effects.burst(root.Position, ability.Radius, ability.Color, 0.5)
+			Effects.ring(ground, ability.Radius * 1.2, ability.Color, 0.5)
+			Sfx.play("Heal", root, 1.5)
+			damageAround(player, root.Position, ability.Radius, ability.DamageMultiplier, weapon)
+			healPlayersNear(root.Position, ability.Radius + 8, ability.HealPercent)
+		end)
+	end,
 }
 
 local ABILITY_SOUNDS = {
@@ -768,6 +1170,18 @@ local ABILITY_SOUNDS = {
 	Vanish = "Dodge",
 	CoinBarrage = "Coins",
 	MidasTouch = "Coins",
+	Bloodlust = "Slam",
+	LeapSmash = "Dodge",
+	Consecration = "Heal",
+	Judgment = "Cast",
+	RaiseDead = "Cast",
+	SoulHarvest = "Cast",
+	DragonDive = "Dodge",
+	WyvernLance = "Lunge",
+	Iaido = "Unsheath",
+	ThousandCuts = "Swing",
+	HeavensWrath = "Cast",
+	Ascension = "Heal",
 }
 
 local function onUseAbility(player: Player, abilityId: unknown, aim: unknown): (boolean, number)
@@ -809,6 +1223,11 @@ function CombatService.Start()
 		abilityReadyAt[player] = nil
 		attackState[player] = nil
 		applyLoadout(player)
+		-- Seraph passive: survive one killing blow per life (EnemyService checks this)
+		local class = PlayerService.GetClass(player)
+		if player.Character then
+			player.Character:SetAttribute("Revive", if class and class.Revive then true else nil)
+		end
 	end)
 	PlayerService.OnLoadoutChanged(applyLoadout)
 
@@ -819,6 +1238,20 @@ function CombatService.Start()
 	Players.PlayerRemoving:Connect(function(player)
 		attackState[player] = nil
 		abilityReadyAt[player] = nil
+	end)
+
+	-- Paladin passive: health regeneration
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			for _, player in Players:GetPlayers() do
+				local class = PlayerService.GetClass(player)
+				local humanoid = getAlive(player)
+				if class and class.Regen and humanoid and humanoid.Health < humanoid.MaxHealth then
+					humanoid.Health = math.min(humanoid.MaxHealth, humanoid.Health + humanoid.MaxHealth * class.Regen)
+				end
+			end
+		end
 	end)
 end
 

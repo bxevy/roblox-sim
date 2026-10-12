@@ -7,7 +7,10 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local WeaponMoves = require(ReplicatedStorage.Shared.WeaponMoves)
 local Util = require(script.Parent.Util)
 
-local CLASS_FOR_TYPE = { Sword = "Warrior", Staff = "Mage", Bow = "Ranger", Dagger = "Assassin", Tome = "Healer", Mace = "Treasurer" }
+local CLASS_FOR_TYPE = {}
+for _, classId in Config.ClassOrder do
+	CLASS_FOR_TYPE[Config.Classes[classId].WeaponType] = Config.Classes[classId].DisplayName
+end
 
 local Inventory = {}
 

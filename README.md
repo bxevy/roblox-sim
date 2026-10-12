@@ -4,10 +4,13 @@ A Roblox dungeon crawler (inspired by games like Dungeon Quest), managed as code
 
 ## The town
 
-You spawn in a walled medieval town: stone walls and towers, a gatehouse, the castle keep looming
-behind the dungeon portals, timber-framed houses, **The Rusty Tankard** tavern, a blacksmith's forge,
-a market, a fountain, and lamp-lit streets at golden hour. Townsfolk wander the streets and chat,
-guards watch the gate, and the notice board next to the spawn has quick tips.
+You spawn in a big walled medieval town: stone walls and towers, a gatehouse, the castle keep
+looming over a marble **portal terrace** with all six dungeon portals, a bronze statue of **The
+First Delver**, royal gardens with a pond and a glowing **mage tower**, a stained-glass **chapel**,
+a **market square** with stalls and a well, a **windmill farm**, timber-framed houses with smoking
+chimneys and flower boxes, **The Rusty Tankard** tavern, a blacksmith's forge, a fountain plaza,
+and lamp-lit streets at golden hour. Townsfolk wander the streets and chat, guards watch the gate,
+and the notice board next to the spawn has quick tips.
 
 Through the south gate are the **Training Grounds**: straw dummies that show your damage per
 second, an archery & magic range, and a sparring ring. It's all built from code in `HubService.luau`, so you can tweak it there or replace
@@ -17,14 +20,22 @@ pieces with hand-built models in Studio.
 
 1. **Roll a class** (your first roll is free; open the **Class** button to roll again for 2,500
    coins or Robux; a new roll replaces your class):
-   | Class     | Weapon  | Rarity / odds  | Passive                                 | Q / E                          |
-   | --------- | ------- | -------------- | --------------------------------------- | ------------------------------ |
-   | Warrior   | Sword   | Common 30%     | +30% health, +10% defense               | Whirlwind / Shield Wall        |
-   | Mage      | Staff   | Common 25%     | +25% damage, magic splashes             | Fireball / Healing Circle      |
-   | Ranger    | Bow     | Common 25%     | +15% speed, longest range               | Volley / Swift Step            |
-   | Healer    | Tome    | Rare 10%       | Hits heal the most hurt teammate        | Holy Nova / Divine Shield      |
-   | Assassin  | Daggers | Epic 7%        | +20% speed, +15% crit                   | Shadow Strike / Vanish         |
-   | Treasurer | Mace    | Legendary 3%   | 10% better loot drops                   | Coin Barrage / Midas Touch     |
+   | Class       | Weapon     | Rarity / odds    | Passive                                        | Q / E                            |
+   | ----------- | ---------- | ---------------- | ---------------------------------------------- | -------------------------------- |
+   | Warrior     | Sword      | Common 20%       | +30% health, +10% defense                      | Whirlwind / Shield Wall          |
+   | Mage        | Staff      | Common 18%       | +25% damage, magic splashes                    | Fireball / Healing Circle        |
+   | Ranger      | Bow        | Common 18%       | +15% speed, longest range                      | Volley / Swift Step              |
+   | Healer      | Tome       | Rare 8%          | Hits heal the most hurt teammate               | Holy Nova / Divine Shield        |
+   | Berserker   | Axe        | Rare 8%          | Rage: up to +40% damage as your health drops   | Bloodlust / Leap Smash           |
+   | Paladin     | Greatsword | Rare 8%          | +15% defense, regenerate 1.5% health/second    | Consecration / Judgment          |
+   | Assassin    | Daggers    | Epic 5%          | +20% speed, +15% crit                          | Shadow Strike / Vanish           |
+   | Necromancer | Scythe     | Epic 5%          | Hits heal you for 8% of damage                 | Raise Dead / Soul Harvest        |
+   | Dragoon     | Spear      | Epic 5%          | +25% melee reach, +10% speed                   | Dragon Dive / Wyvern Lance       |
+   | Treasurer   | Mace       | Legendary 2.5%   | 10% better loot drops                          | Coin Barrage / Midas Touch       |
+   | Ronin       | Katana     | Legendary 2.45%  | +10% crit, crits deal +50% damage              | Iaido / Thousand Cuts            |
+   | **Seraph**  | Halberd    | **GODLY 0.05%**  | +50% health & damage, +20% defense, wings and a halo, heals allies on hit, better loot, and **revives once per life** | Heaven's Wrath / Ascension |
+
+   Rolling the Godly Seraph is announced to the whole server.
 
    **Robux rolls:** create a Developer Product (Creator Dashboard > your experience > Monetization >
    Developer Products), then put its id in `Config.ClassRoll.RobuxProductId` and its price in
@@ -37,7 +48,7 @@ pieces with hand-built models in Studio.
    **R** for your weapon's own ability.
    Hold **Shift** to sprint and press **C** to dodge (you're immune to damage mid-dodge); both use
    the yellow stamina bar. Kill every enemy in a room to open the next door.
-   Watch for the boss's **red circle** and get out before it slams!
+   Halfway through each dungeon a **mini-boss** blocks the way, and the last room holds the boss.
 5. **Loot:** winning gives XP, Gold, and an item: a weapon for your class or a piece of armor.
    Equip gear with the **Gear** button (or **G**).
 
@@ -46,15 +57,40 @@ pieces with hand-built models in Studio.
 Each dungeon has Easy / Normal / Hard / Nightmare. Harder difficulties have tougher enemies,
 more XP and Gold, and drop **higher-tier loot**.
 
-| Dungeon        | Easy | Normal | Hard | Nightmare | Loot tiers (Easy to Nightmare) |
-| -------------- | ---- | ------ | ---- | --------- | -------------------------------- |
-| Crypt of Bones | Lv 1  | Lv 3  | Lv 6  | Lv 9  | T1-2, T2-3, T3-4, T4-5 |
-| Sunken Temple  | Lv 10 | Lv 13 | Lv 16 | Lv 19 | T3-4, T4-5, T5-6, T6-7 |
-| Frozen Keep    | Lv 20 | Lv 24 | Lv 28 | Lv 32 | T5-6, T6-7, T7-8, T7-8 |
+| Dungeon          | Easy  | Normal | Hard  | Nightmare | Loot tiers (Easy to Nightmare) |
+| ---------------- | ----- | ------ | ----- | --------- | ------------------------------ |
+| Crypt of Bones   | Lv 1  | Lv 3   | Lv 6  | Lv 9      | T1-2, T2-3, T3-4, T4-5          |
+| Witchwood Hollow | Lv 5  | Lv 8   | Lv 11 | Lv 14     | T2-3, T3-4, T4-5, T5-6          |
+| Sunken Temple    | Lv 12 | Lv 15  | Lv 18 | Lv 21     | T3-4, T4-5, T5-6, T6-7          |
+| Frozen Keep      | Lv 22 | Lv 25  | Lv 28 | Lv 31     | T5-6, T6-7, T7-8, T7-8          |
+| Infernal Forge   | Lv 33 | Lv 36  | Lv 39 | Lv 42     | T6-7, T7-8, T7-8, T8            |
+| Abyssal Rift     | Lv 40 | Lv 44  | Lv 47 | Lv 50     | T7-8, T8, T8, T8 (3x Mythic chance) |
+
+Every dungeon has 6 rooms of enemies (melee, fast beasts, and **ranged casters whose shots you can
+sidestep**), a **mini-boss** in room 4, and a boss.
+
+### Boss mechanics
+
+Bosses don't just hit you: they rotate through telegraphed attacks. **Red** on the floor means
+danger, **green** means safe, and the filling circle/lane shows when it lands.
+
+- **Slam** - a red circle around the boss. **Barrage** - a circle under every player: keep moving.
+- **Meteors** - circles rain across the arena. **Charge** - a lane toward a player, then the boss rushes down it.
+- **Cross** - beams in a + or x from the boss: stand between them. **Donut** - everything far away gets hit: get close.
+- **Wave** - a ring expands from the boss: **dodge [C] through it** (dodging makes you immune).
+- **Phases** at health thresholds: **summon** adds, **shield** themselves until you destroy their
+  totems (Hex Totems, Canopic Jars, Ice Crystals, Flame Braziers, Void Rifts), and **enrage**
+  (faster, harder hits, quicker mechanics).
+
+A boss health bar shows at the top of the screen (blue while shielded, orange when enraged).
+Bosses: The Bone King, The Hag Queen, The Cursed Pharaoh, The Frost Lord, Infernus the Molten
+King, and The Void Emperor. Each boss and mini-boss is defined in `shared/Enemies.luau`, so you
+can mix and tune mechanics there.
 
 ### Gear
 
-- **48 weapons:** 8 for each class (swords, staffs, bows, daggers, tomes, maces) across tiers 1-8
+- **96 weapons:** 8 for each class (swords, staffs, bows, tomes, axes, greatswords, daggers,
+  scythes, spears, maces, katanas and halberds) across tiers 1-8
   (Common to Legendary). Higher tiers have special effects: **Burn** (damage over time), **Frost**
   (slows enemies) or **Lifesteal**. Every weapon has:
   - **its own design and VFX** (blade shape, guard, head, glowing runes, particle aura, light, and a
@@ -125,8 +161,11 @@ API access; otherwise they rank the players in the current server.)
 ### Dungeon themes
 
 Each dungeon has its own look, lighting mood and music: the **Crypt** (coffins, skull shelves,
-cobwebs, green mist), the **Sunken Temple** (gold-capped columns, jackal statues, sand, treasure),
-and the **Frozen Keep** (glowing ice crystals, icicles, snowdrifts, falling snow).
+cobwebs, green mist), **Witchwood Hollow** (trees, glowing mushrooms, vines, fireflies, a witch's
+cauldron), the **Sunken Temple** (gold-capped columns, jackal statues, sand, treasure), the
+**Frozen Keep** (glowing ice crystals, icicles, snowdrifts, falling snow), the **Infernal Forge**
+(lava channels, forge pillars, anvils, embers, lavafalls) and the **Abyssal Rift** (void crystals,
+floating rocks, rune circles, rifts).
 
 ### Admin menu
 
@@ -136,6 +175,11 @@ Chat commands work too: `/giveall`, `/level 20`, `/gold 5000`, `/give Dragonfang
 
 Admins are: anyone testing in Studio, the game's owner (or rank 254+ in the owning group), and
 any user ids added to `Config.AdminUserIds`. The server checks every admin action.
+
+**Creator Rank (owner only):** the game's owner (and user ids in `Config.OwnerUserIds`) also gets
+a **CREATOR RANK** button: level **999**, prestige **999**, with its own Creator emblem, "The
+Creator" title, Creator's Realm card background and Creator frame. Press it again to go back to
+level 50 / prestige 10. Other admins don't see it.
 
 ### Music & sounds
 
@@ -166,7 +210,7 @@ src/
   shared/                 -> ReplicatedStorage.Shared
     Config.luau             leveling, classes, abilities, buffs, difficulties, potions
     Items.luau              every weapon and armor (tiers, stats, effects, colors)
-    Enemies.luau            every enemy and boss
+    Enemies.luau            every enemy, mini-boss and boss (with boss mechanics + phases)
     Dungeons.luau           dungeons: rooms, boss, rewards, unlock levels + loot per difficulty
     Cosmetics.luau          card backgrounds, titles, frames, prestige emblems, unlock rules
     CardUI.luau             draws emblems and player cards (client + server nameplates)
@@ -175,7 +219,7 @@ src/
   server/                 -> ServerScriptService.Server
     Main.server.luau        starts the services
     Build.luau              helpers for building scenery from parts
-    DungeonDecor.luau       themed decorations for Crypt / Temple / Ice rooms
+    DungeonDecor.luau       themed decorations for each dungeon style
     ArmorVisuals.luau       builds every armor piece's look and effects on the character
     Sfx.luau                plays sound effects in the world
     Effects.luau            VFX: projectiles, rings, beams, lightning, meteors...
@@ -185,7 +229,7 @@ src/
       DataService.luau      load/save player data
       PlayerService.luau    level, XP, gold, class, items, buffs, stats
       CombatService.luau    combos, weapon + class abilities, loadout (weapon/armor on you)
-      EnemyService.luau     builds enemies, AI, boss slam attack
+      EnemyService.luau     builds enemies, AI, ranged shots, boss mechanics
       DungeonService.luau   lobby portals, difficulty picking, parties, dungeon runs, loot
       ShopService.luau      potion shop stall, buying and drinking potions
       HubService.luau       builds the medieval town and sets the lighting

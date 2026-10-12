@@ -24,7 +24,7 @@ local Sfx = require(script.Parent.Parent.Sfx)
 -- Layout (studs)
 local ENTRY_ROOM_SIZE = 40
 local ROOM_SIZE = 64
-local BOSS_ROOM_SIZE = 90
+local BOSS_ROOM_SIZE = 110
 local CORRIDOR_LENGTH = 24
 local CORRIDOR_WIDTH = 14
 local WALL_HEIGHT = 22
@@ -33,7 +33,7 @@ local RUN_ORIGIN_X = 2000 -- dungeons are built far away from the lobby
 local RUN_SPACING = 600
 
 local LOBBY_SPAWN = Vector3.new(0, 4, 0)
-local PORTAL_Z = -45
+local PORTAL_Z = -92 -- on HubService's portal terrace
 local PORTAL_SPACING = 32
 
 local START_DELAY = 3
@@ -256,6 +256,7 @@ local function leaveRun(run: Run, player: Player)
 		return
 	end
 	Remotes.DungeonStatus:FireClient(player, nil)
+	Remotes.BossBar:FireClient(player, nil)
 	player:SetAttribute("InDungeon", nil)
 	run.Players[player] = nil
 	playerRun[player] = nil
@@ -334,7 +335,7 @@ local function winRun(run: Run)
 
 		-- Ultra-rare Mythic drop, rolled separately from the normal item.
 		local playerClass = PlayerService.GetClass(player)
-		local mythicChance = Config.MythicDrop.Chance * (1 + (if playerClass then (playerClass :: any).LootLuck or 0 else 0))
+		local mythicChance = Config.MythicDrop.Chance * (def.MythicMultiplier or 1) * (1 + (if playerClass then (playerClass :: any).LootLuck or 0 else 0))
 		if math.random() < mythicChance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
 			local mythic = Items.Weapons[Config.MythicDrop.Weapon]
 			for _, other in Players:GetPlayers() do
@@ -376,8 +377,13 @@ local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enem
 	for player in run.Players do
 		PlayerService.AddStat(player, "EnemiesKilled")
 		PlayerService.AddStat(player, `Kills_{enemyId}`)
-		if enemy.Def.Boss then
+		if enemy.Def.Boss and not enemy.Def.MiniBoss then
 			PlayerService.AddStat(player, "BossesKilled")
+		elseif enemy.Def.MiniBoss then
+			PlayerService.AddStat(player, "MiniBossesKilled")
+		end
+		if enemy.Def.Static then
+			PlayerService.AddStat(player, "TotemsDestroyed")
 		end
 		PlayerService.AddXP(player, enemy.Def.XP * multiplier)
 		PlayerService.AddGold(player, enemy.Def.Gold * multiplier, true)
@@ -395,7 +401,26 @@ local function onEnemyDied(run: Run, roomIndex: number, enemy: EnemyService.Enem
 	end
 end
 
-local function spawnInRoom(run: Run, roomIndex: number, enemyId: string, position: Vector3)
+-- Boss health bar at the top of everyone's screen.
+local function updateBossBar(run: Run, enemy: EnemyService.Enemy?)
+	local info = nil
+	if enemy and not enemy.Dead then
+		info = {
+			Name = enemy.Def.DisplayName,
+			Health = enemy.Humanoid.Health,
+			MaxHealth = enemy.Humanoid.MaxHealth,
+			Shielded = enemy.Shielded,
+			Enraged = enemy.EnrageDamage > 1,
+			Mini = enemy.Def.MiniBoss == true,
+		}
+	end
+	for player in run.Players do
+		Remotes.BossBar:FireClient(player, info)
+	end
+end
+
+local function spawnInRoom(run: Run, roomIndex: number, enemyId: string, position: Vector3): EnemyService.Enemy
+	local room = run.Rooms[roomIndex]
 	local enemy
 	enemy = EnemyService.Spawn(enemyId, {
 		HealthMultiplier = run.HealthMultiplier,
@@ -406,11 +431,42 @@ local function spawnInRoom(run: Run, roomIndex: number, enemyId: string, positio
 			return partyList(run)
 		end,
 		OnDied = function()
+			if enemy.Def.Boss then
+				updateBossBar(run, nil)
+				-- Its adds and totems fall with it
+				for _, add in enemy.Adds do
+					if not add.Dead then
+						add.Humanoid.Health = 0
+					end
+				end
+			end
 			onEnemyDied(run, roomIndex, enemy, enemyId)
+		end,
+		Arena = { Center = room.Center, Size = room.Size },
+		-- Adds a boss calls count toward clearing the room.
+		Summon = function(addId: string, at: Vector3)
+			if run.Ended then
+				return nil
+			end
+			return spawnInRoom(run, roomIndex, addId, at)
+		end,
+		Announce = function(text: string, color: Color3)
+			notifyRun(run, text, color)
 		end,
 	})
 	run.Enemies[enemy] = true
 	run.Remaining += 1
+	if enemy.Def.Boss then
+		local function refresh()
+			if not run.Ended then
+				updateBossBar(run, enemy)
+			end
+		end
+		enemy.Humanoid.HealthChanged:Connect(refresh)
+		enemy.Model:GetAttributeChangedSignal("Shielded"):Connect(refresh)
+		refresh()
+	end
+	return enemy
 end
 
 -- Spawns the enemies for a room. Room 1 is the safe entry room; the last room is the boss.
@@ -435,9 +491,15 @@ activateRoom = function(run: Run, index: number)
 	setStatus(run, `{title} - Room {index - 1}/{combatRooms}`)
 	local spread = room.Size / 2 - 8
 	for enemyId, count in def.Rooms[index - 1] do
+		local enemyDef = Enemies[enemyId]
 		for _ = 1, count do
-			local offset = Vector3.new(math.random(-spread, spread), 0, math.random(-spread, spread))
-			spawnInRoom(run, index, enemyId, room.Center + offset)
+			if enemyDef.MiniBoss then
+				notifyRun(run, `A mini-boss blocks the way: {enemyDef.DisplayName}!`, Color3.fromRGB(255, 160, 80))
+				spawnInRoom(run, index, enemyId, room.Center + Vector3.new(0, 0, room.Size / 4))
+			else
+				local offset = Vector3.new(math.random(-spread, spread), 0, math.random(-spread, spread))
+				spawnInRoom(run, index, enemyId, room.Center + offset)
+			end
 		end
 	end
 end

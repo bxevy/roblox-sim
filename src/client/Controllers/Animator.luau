@@ -15,34 +15,61 @@ local WeaponMoves = require(ReplicatedStorage.Shared.WeaponMoves)
 local BLEND_IN = 0.06
 local BLEND_OUT = 0.14
 
--- Pose key -> joint names (R15 first, then R6)
-local JOINTS = {
-	RS = { "RightUpperArm.RightShoulder", "Torso.Right Shoulder" },
-	LS = { "LeftUpperArm.LeftShoulder", "Torso.Left Shoulder" },
-	RE = { "RightLowerArm.RightElbow" },
-	LE = { "LeftLowerArm.LeftElbow" },
-	W = { "UpperTorso.Waist" },
-	N = { "Head.Neck", "Torso.Neck" },
-	R = { "LowerTorso.Root", "HumanoidRootPart.RootJoint" },
+-- Pose key -> the body part each joint moves (R15 first, then R6). Joints are found by the
+-- part they drive, so this works with classic Motor6D joints and with the newer
+-- AnimationConstraint joints (Roblox's avatar joint upgrade).
+local JOINT_PARTS = {
+	RS = { "RightUpperArm", "Right Arm" },
+	LS = { "LeftUpperArm", "Left Arm" },
+	RE = { "RightLowerArm" },
+	LE = { "LeftLowerArm" },
+	W = { "UpperTorso" },
+	N = { "Head" },
+	R = { "LowerTorso", "Torso" },
 }
 
 local Animator = {}
 
+-- A joint we can offset: Motor6D.C0, or an AnimationConstraint's first attachment
+-- (which plays the same role as C0).
+type Joint = { Get: () -> CFrame, Set: (CFrame) -> () }
+
 type Playing = {
 	Token: number,
-	Motors: { [string]: Motor6D },
-	Base: { [Motor6D]: CFrame },
+	Joints: { [string]: Joint },
+	Base: { [Joint]: CFrame },
 }
 local playing: { [Model]: Playing } = {}
 local token = 0
+local warned = false
 
-local function findMotor(character: Model, paths: { string }): Motor6D?
-	for _, path in paths do
-		local partName, jointName = string.match(path, "^(.-)%.(.+)$")
-		local part = character:FindFirstChild(partName :: string)
-		local motor = part and part:FindFirstChild(jointName :: string)
-		if motor and motor:IsA("Motor6D") then
-			return motor
+local function findJoint(character: Model, partNames: { string }): Joint?
+	for _, partName in partNames do
+		local part = character:FindFirstChild(partName)
+		if part then
+			for _, inst in character:GetDescendants() do
+				if inst:IsA("Motor6D") and inst.Part1 == part then
+					local motor = inst
+					return {
+						Get = function()
+							return motor.C0
+						end,
+						Set = function(cf)
+							motor.C0 = cf
+						end,
+					}
+				elseif inst:IsA("AnimationConstraint") and inst.Attachment1 and inst.Attachment1.Parent == part and inst.Attachment0 then
+					local attachment = inst.Attachment0 :: Attachment
+					return {
+						Get = function()
+							return attachment.CFrame
+						end,
+						Set = function(cf)
+							attachment.CFrame = cf
+						end,
+					}
+				end
+			end
 		end
 	end
 	return nil
@@ -81,22 +108,20 @@ end
 -- R15 and R6 rigs.
 local function applyPose(state: Playing, pose: WeaponMoves.Pose, weight: number)
 	local offset = (pose.RP or Vector3.zero) * weight
-	for key, motor in state.Motors do
-		local base = state.Base[motor]
+	for key, joint in state.Joints do
+		local base = state.Base[joint]
 		local rotation = (pose[key] or Vector3.zero) * weight
 		local rot = CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 		local position = if key == "R" then base.Position + offset else base.Position
-		motor.C0 = CFrame.new(position) * rot * base.Rotation
+		joint.Set(CFrame.new(position) * rot * base.Rotation)
 	end
 end
 
 local function restore(character: Model)
 	local state = playing[character]
 	if state then
-		for motor, base in state.Base do
-			if motor.Parent then
-				motor.C0 = base
-			end
+		for joint, base in state.Base do
+			joint.Set(base)
 		end
 		playing[character] = nil
 	end
@@ -115,13 +140,22 @@ function Animator.Play(character: Model?, animName: string?)
 	-- Starting a new move cancels the old one (back to the original joints first).
 	restore(character)
 	token += 1
-	local state: Playing = { Token = token, Motors = {}, Base = {} }
-	for key, paths in JOINTS do
-		local motor = findMotor(character, paths)
-		if motor then
-			state.Motors[key] = motor
-			state.Base[motor] = motor.C0
+	local state: Playing = { Token = token, Joints = {}, Base = {} }
+	local found = false
+	for key, parts in JOINT_PARTS do
+		local joint = findJoint(character, parts)
+		if joint then
+			state.Joints[key] = joint
+			state.Base[joint] = joint.Get()
+			found = true
 		end
+	end
+	if not found then
+		if not warned then
+			warned = true
+			warn("[Animator] No character joints found; weapon animations can't play")
+		end
+		return
 	end
 	playing[character] = state
 
