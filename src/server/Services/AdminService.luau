@@ -18,6 +18,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
 local DungeonService = require(script.Parent.DungeonService)
 local ClassService = require(script.Parent.ClassService)
+local StoreService = require(script.Parent.StoreService)
 
 local TOWN_SPAWN = Vector3.new(0, 4, 0)
 
@@ -214,6 +215,22 @@ local ACTIONS: { [string]: (Player, any) -> (boolean, string?) } = {
 		end
 		PlayerService.SetClass(player, match)
 		return true, `Class set to {match}`
+	end,
+
+	-- Testing the Robux Store without buying anything
+	TogglePerks = function(player)
+		local on = StoreService.TogglePerk(player, "Luck")
+		if StoreService.TogglePerk(player, "Coins") ~= on then
+			StoreService.TogglePerk(player, "Coins")
+		end
+		return true, if on then "2x Luck + 2x Coins ON" else "2x Luck + 2x Coins OFF"
+	end,
+
+	UnlockSlot = function(player)
+		if ClassService.UnlockSlot(player) then
+			return true, "Unlocked a class slot"
+		end
+		return false, "Every class slot is already unlocked"
 	end,
 
 	Heal = function(player)

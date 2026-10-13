@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local FOLDER_NAME = "Remotes"
 
 local EVENTS = { "Notify", "StateChanged", "DungeonStatus", "PortalUpdate", "OpenShop", "Attack", "SetSprint", "Dodge", "OpenCrates", "OpenSkills", "OpenQuests", "QuestsChanged", "ClassRolled", "PlayMove", "BossBar", "PartyInvite", "PartyChanged", "OpenEvent", "HalloweenCrateResult" }
-local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill", "PartyAction", "GetParty", "OpenHalloweenCrate", "EquipLimitedClass", "EquipPet" }
+local FUNCTIONS = { "GetState", "Equip", "RollClass", "UseAbility", "SetDifficulty", "BuyPotion", "UsePotion", "Admin", "OpenCrate", "GetLeaderboards", "Prestige", "UpgradeSkill", "ClaimQuest", "GetQuests", "SetCard", "GetCard", "UseWeaponSkill", "PartyAction", "GetParty", "OpenHalloweenCrate", "EquipLimitedClass", "EquipPet", "ClassSlot", "RobuxStore" }
 
 local folder: Folder
 if RunService:IsServer() then
@@ -76,5 +76,7 @@ return {
 	SetCard = get("SetCard") :: RemoteFunction, -- (field, value) -> (ok, err?)
 	GetCard = get("GetCard") :: RemoteFunction, -- (userId) -> card data -- () -> { [boardId]: { { Name, Value } } }
 	OpenCrate = get("OpenCrate") :: RemoteFunction, -- (crateId) -> (ok, result | err)
+	ClassSlot = get("ClassSlot") :: RemoteFunction, -- ("Select", slot) | ("Buy") -> (ok, message?)
+	RobuxStore = get("RobuxStore") :: RemoteFunction, -- ("Perk" | "Armor", id) -> (ok, message?) prompts a purchase
 	Admin = get("Admin") :: RemoteFunction, -- (action, arg?) -> (ok, message?)  admins only
 }

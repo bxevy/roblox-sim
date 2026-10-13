@@ -57,7 +57,7 @@ export type ArmorSetDef = {
 	DisplayName: string,
 	Rarity: string,
 	Tier: number,
-	Source: string, -- "Loot" (dungeon drops by tier) | "Crate" | "Event"
+	Source: string, -- "Loot" (dungeon drops by tier) | "Crate" | "Event" | "Robux"
 	Health: number, -- full-set totals, split across the pieces
 	Defense: number,
 	SetBonus: SetBonus,
@@ -619,6 +619,41 @@ local ARMOR_SETS = {
 			Material = M.SmoothPlastic, TrimMaterial = M.Metal,
 			Helmet = "Kabuto", Pauldron = "Sode", Emblem = "Lamellar", Skirt = "Kusazuri", Boots = "Tabi",
 			Vfx = { Kind = "Petals", Color = rgb(255, 175, 205), Rate = 8 },
+		},
+	},
+	-- Exclusive (Robux Store, Config.RobuxStore.Armor)
+	{
+		Id = "Starforged",
+		DisplayName = "Starforged Emperor",
+		Rarity = "Exclusive",
+		Tier = 10,
+		Source = "Robux",
+		Health = 720,
+		Defense = 0.32,
+		SetBonus = { Health = 150, Damage = 0.18, Speed = 0.12, Description = "+150 health, +18% damage, +12% speed, starlight wings" },
+		Names = { "Starforged Crown", "Starforged Cuirass", "Starforged Greaves", "Starforged Sabatons" },
+		Style = {
+			Primary = rgb(22, 26, 70), Secondary = rgb(235, 190, 70), Accent = rgb(90, 230, 255), Cloth = rgb(40, 20, 90),
+			Material = M.Metal, TrimMaterial = M.Metal,
+			Helmet = "Crowned", Pauldron = "Winged", Emblem = "Sun", Wings = "Angel", Cape = true, Skirt = "Tassets", Boots = "Plate",
+			Vfx = { Kind = "Sparkles", Color = rgb(120, 230, 255), Rate = 12, Light = true },
+		},
+	},
+	{
+		Id = "Frostbound",
+		DisplayName = "Frostbound Titan",
+		Rarity = "Exclusive",
+		Tier = 10,
+		Source = "Robux",
+		Health = 760,
+		Defense = 0.34,
+		SetBonus = { Health = 180, Damage = 0.15, Defense = 0.03, Description = "+180 health, +15% damage, +3% defense, frost aura" },
+		Names = { "Frostbound Horns", "Frostbound Plate", "Frostbound Tassets", "Frostbound Stompers" },
+		Style = {
+			Primary = rgb(170, 220, 245), Secondary = rgb(60, 95, 150), Accent = rgb(220, 250, 255), Cloth = rgb(30, 60, 110),
+			Material = M.Ice, TrimMaterial = M.Metal,
+			Helmet = "Horned", Pauldron = "Spiked", Emblem = "Cracks", Wings = "Dragon", Cape = true, Skirt = "Tassets", Boots = "Plate",
+			Vfx = { Kind = "Glint", Color = rgb(200, 245, 255), Rate = 10, Light = true },
 		},
 	},
 	-- Limited (Halloween event crate)

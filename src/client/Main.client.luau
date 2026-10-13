@@ -26,6 +26,7 @@ local SkillsWindow = require(UI.SkillsWindow)
 local CardWindow = require(UI.CardWindow)
 local PartyWindow = require(UI.PartyWindow)
 local EventWindow = require(UI.EventWindow)
+local RobuxStore = require(UI.RobuxStore)
 local CardUI = require(ReplicatedStorage.Shared.CardUI)
 local CollectionService = game:GetService("CollectionService")
 local RunService = game:GetService("RunService")
@@ -55,7 +56,7 @@ local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 })
 
 local state = nil
-local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow, questWindow, skillsWindow, cardWindow, partyWindow, eventWindow
+local hud, inventory, shop, classPicker, adminPanel, crateWindow, statsWindow, questWindow, skillsWindow, cardWindow, partyWindow, eventWindow, robuxStore
 
 -- Direction from your character toward the mouse (flat on the ground).
 local function getAim(): Vector3?
@@ -178,6 +179,9 @@ hud = Hud.new(gui, {
 	ToggleEvent = function()
 		eventWindow.Toggle()
 	end,
+	ToggleStore = function()
+		robuxStore.Toggle()
+	end,
 	ToggleWeapon = toggleWeapon,
 	ToggleMusic = Audio.ToggleMusic,
 	SetSprint = Movement.SetSprint,
@@ -267,9 +271,28 @@ end, function(result)
 	end
 end)
 
+local function classSlot(action: string, slot: number?)
+	local ok, message = Remotes.ClassSlot:InvokeServer(action, slot)
+	if message then
+		hud.Toast(message, if ok then Color3.fromRGB(150, 255, 150) else ERROR_COLOR)
+	end
+end
+
 classPicker = ClassRoller.new(gui, function(currency)
 	request(Remotes.RollClass, currency)
-end)
+end, classSlot)
+
+robuxStore = RobuxStore.new(gui, {
+	BuyPerk = function(perkId)
+		request(Remotes.RobuxStore, "Perk", perkId)
+	end,
+	BuyArmor = function(setId)
+		request(Remotes.RobuxStore, "Armor", setId)
+	end,
+	BuySlot = function()
+		classSlot("Buy")
+	end,
+})
 Remotes.ClassRolled.OnClientEvent:Connect(classPicker.ShowRoll)
 
 local portalPanel = PortalPanel.new(gui, function(difficultyId)
@@ -292,6 +315,7 @@ local function render(newState)
 	skillsWindow.Render(state)
 	cardWindow.Render(state)
 	classPicker.Render(state)
+	robuxStore.Render(state)
 end
 
 Remotes.StateChanged.OnClientEvent:Connect(render)
@@ -394,6 +418,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		partyWindow.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.K then
 		eventWindow.Toggle()
+	elseif input.KeyCode == Enum.KeyCode.B then
+		robuxStore.Toggle()
 	elseif input.KeyCode == Enum.KeyCode.P and player:GetAttribute("IsAdmin") then
 		adminPanel.Toggle()
 	end

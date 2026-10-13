@@ -36,6 +36,7 @@ export type Actions = {
 	ToggleCard: () -> (),
 	ToggleParty: () -> (),
 	ToggleEvent: () -> (),
+	ToggleStore: () -> (),
 	ToggleMusic: () -> boolean, -- returns whether music is now on
 	SetSprint: (on: boolean) -> (),
 	Dodge: () -> (),
@@ -144,7 +145,7 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	-- Menu sidebar (left) ------------------------------------------------------------------
 	local sidebar = Util.make("Frame", gui, {
 		Position = UDim2.fromOffset(14, 142),
-		Size = UDim2.fromOffset(56, 560),
+		Size = UDim2.fromOffset(56, 620),
 		BackgroundTransparency = 1,
 	})
 	Util.make("UIListLayout", sidebar, { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
@@ -192,7 +193,8 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	menuButton(5, "📊", "Stats & Leaderboards", "T", menuColor, actions.ToggleStats)
 	menuButton(6, "🏅", "Player Card", "H", menuColor, actions.ToggleCard)
 	menuButton(7, "👥", "Party", "O", menuColor, actions.ToggleParty)
-	local eventButton = menuButton(8, "🎃", "Halloween Event", "K", Color3.fromRGB(200, 95, 20), actions.ToggleEvent)
+	menuButton(8, "💎", "Robux Store", "B", Color3.fromRGB(30, 130, 75), actions.ToggleStore)
+	local eventButton = menuButton(9, "🎃", "Halloween Event", "K", Color3.fromRGB(200, 95, 20), actions.ToggleEvent)
 	eventButton.Visible = false
 	local eventIcon = Config.Events.Halloween.Icon
 	if eventIcon ~= "" then
@@ -206,7 +208,7 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	function self.SetEventButton(visible: boolean, _text: string?)
 		eventButton.Visible = visible
 	end
-	local adminButton = menuButton(9, "🛠", "Admin Menu", "P", Color3.fromRGB(150, 40, 45), actions.OpenAdmin)
+	local adminButton = menuButton(10, "🛠", "Admin Menu", "P", Color3.fromRGB(150, 40, 45), actions.OpenAdmin)
 	adminButton.Visible = player:GetAttribute("IsAdmin") == true
 	player:GetAttributeChangedSignal("IsAdmin"):Connect(function()
 		adminButton.Visible = player:GetAttribute("IsAdmin") == true

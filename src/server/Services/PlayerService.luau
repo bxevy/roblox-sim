@@ -187,6 +187,10 @@ local function buildState(player: Player, data)
 		Pets = data.Pets,
 		EquippedPet = data.EquippedPet,
 		LimitedClasses = data.LimitedClasses,
+		ClassSlots = data.ClassSlots,
+		SlotsUnlocked = data.SlotsUnlocked,
+		ActiveSlot = data.ActiveSlot,
+		Perks = { Luck = player:GetAttribute("Perk_Luck") == true, Coins = player:GetAttribute("Perk_Coins") == true },
 		MaxStamina = PlayerService.GetMaxStamina(player),
 		Buffs = activeBuffs, -- buff id -> seconds remaining
 		Stats = {
@@ -270,7 +274,7 @@ function PlayerService.GetArmor(player: Player): ({ [string]: Items.ArmorDef }, 
 	return getArmor(data)
 end
 
--- `isReward` applies prestige and Fortune bonuses (dungeon and quest rewards, not refunds).
+-- `isReward` applies prestige, Fortune and 2x Coins bonuses (dungeon and quest rewards, not refunds).
 function PlayerService.AddGold(player: Player, amount: number, isReward: boolean?)
 	local data = DataService.Get(player)
 	if not data then
@@ -278,6 +282,10 @@ function PlayerService.AddGold(player: Player, amount: number, isReward: boolean
 	end
 	if isReward then
 		amount *= 1 + data.Prestige * Config.Prestige.GoldBonus + skillBonus(data, "Fortune") + buffTotal(player, "Gold") + petBonus(data, "Gold")
+		-- 2x Coins (Robux Store perk) doubles the whole reward
+		if player:GetAttribute("Perk_Coins") then
+			amount *= 2
+		end
 	end
 	amount = math.floor(amount)
 	data.Gold += amount
@@ -502,6 +510,23 @@ local function onEquip(player: Player, kind: unknown, itemId: unknown): (boolean
 	return true
 end
 
+-- Puts on every owned piece of an armor set.
+function PlayerService.EquipArmorSet(player: Player, setId: string)
+	local data = DataService.Get(player)
+	local set = Items.ArmorSets[setId]
+	if not data or not set then
+		return
+	end
+	for slot, pieceId in set.Pieces do
+		if data.Armors[pieceId] then
+			data.Equipped[slot] = pieceId
+		end
+	end
+	PlayerService.RefreshStats(player)
+	PlayerService.Push(player)
+	fireLoadoutChanged(player)
+end
+
 -- Sets the player's class (classes are rolled by ClassService). Gives the class's starter
 -- weapon and equips their best weapon for it.
 function PlayerService.SetClass(player: Player, classId: string)
@@ -510,6 +535,10 @@ function PlayerService.SetClass(player: Player, classId: string)
 		return
 	end
 	data.Class = classId
+	-- Rolled classes live in the active class slot; limited classes are worn on top of it.
+	if not Config.Classes[classId].Limited then
+		data.ClassSlots[data.ActiveSlot] = classId
+	end
 	fixLoadout(data)
 	PlayerService.RefreshStats(player, true)
 	PlayerService.Push(player)
@@ -550,6 +579,26 @@ local function sanitize(data)
 	-- A limited class only stays equipped while you own it
 	if data.Class and Config.Classes[data.Class].Limited and not data.LimitedClasses[data.Class] then
 		data.Class = nil
+	end
+	-- Class slots: valid rolled classes only, and the old single class moves into slot 1
+	data.SlotsUnlocked = math.clamp(math.floor(tonumber(data.SlotsUnlocked) or 1), 1, Config.ClassSlots.Max)
+	for i = 1, Config.ClassSlots.Max do
+		local slotClass = data.ClassSlots[i]
+		if type(slotClass) ~= "string" or (slotClass ~= "" and (not Config.Classes[slotClass] or Config.Classes[slotClass].Limited)) then
+			data.ClassSlots[i] = ""
+		end
+	end
+	data.ActiveSlot = math.clamp(math.floor(tonumber(data.ActiveSlot) or 1), 1, data.SlotsUnlocked)
+	local anySlotFilled = false
+	for i = 1, Config.ClassSlots.Max do
+		anySlotFilled = anySlotFilled or data.ClassSlots[i] ~= ""
+	end
+	if not anySlotFilled and data.Class and not Config.Classes[data.Class].Limited then
+		-- Saves from before class slots: your class becomes slot 1
+		data.ClassSlots[1] = data.Class
+		data.ActiveSlot = 1
+	elseif not data.Class and data.ClassSlots[data.ActiveSlot] ~= "" then
+		data.Class = data.ClassSlots[data.ActiveSlot]
 	end
 	for petId in data.Pets do
 		if not Pets.Defs[petId] then

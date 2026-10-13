@@ -1,5 +1,6 @@
 -- Class rolling window. Classes are rolled, not picked: shows every class with its odds,
 -- then a reel that lands on what you rolled. First roll is free; then coins or Robux.
+-- A row of class slots lets you keep up to 3 classes and switch between them.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -17,13 +18,14 @@ local WIN_INDEX = 34
 local SPIN_TIME = 3.4
 
 -- roll(currency) asks the server; the result arrives through ShowRoll.
-function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
+-- slotAction("Select", slot) / slotAction("Buy") manages class slots.
+function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> (), slotAction: (action: string, slot: number?) -> ())
 	local self: any = {}
 	local state = nil
 	local spinning = false
 
 	local window, body
-	window, body = Util.window(gui, "Classes", Vector2.new(1040, 700), function()
+	window, body = Util.window(gui, "Classes", Vector2.new(1040, 770), function()
 		if state and state.Class and not spinning then
 			window.Visible = false
 		end
@@ -73,23 +75,51 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 		for i, abilityId in class.Abilities do
 			table.insert(abilities, `[{ABILITY_KEYS[i]}] {Config.Abilities[abilityId].DisplayName}`)
 		end
+		local details = `{class.WeaponType} | {class.Passive}\n{table.concat(abilities, "   ")}\n{class.Description}`
 		Util.text(card, {
 			Position = UDim2.fromOffset(0, 28),
 			Size = UDim2.new(1, 0, 1, -28),
 			TextScaled = false,
-			TextSize = 13,
+			TextSize = if #details > 170 then 12 else 13, -- the Godly class has a lot to say
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Top,
 			TextColor3 = Color3.fromRGB(215, 215, 225),
-			Text = `{class.WeaponType} | {class.Passive}\n{table.concat(abilities, "   ")}\n{class.Description}`,
+			Text = details,
 		})
 		cards[classId] = card
 	end
 
+	-- Class slots
+	local slotRow = Util.make("Frame", body, { Position = UDim2.fromOffset(0, 416), Size = UDim2.new(1, 0, 0, 60), BackgroundTransparency = 1 })
+	Util.make("UIListLayout", slotRow, { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder })
+	type SlotCard = { Button: TextButton, Title: TextLabel, Name: TextLabel }
+	local slotCards: { SlotCard } = {}
+	for i = 1, Config.ClassSlots.Max do
+		local button = Util.button(slotRow, {
+			LayoutOrder = i,
+			Size = UDim2.new(1 / Config.ClassSlots.Max, -8 * (Config.ClassSlots.Max - 1) / Config.ClassSlots.Max, 1, 0),
+			BackgroundColor3 = Util.Theme.PanelLight,
+			Text = "",
+		})
+		local title = Util.text(button, { Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 14, TextColor3 = Util.Theme.Muted, ZIndex = 3, Text = `SLOT {i}` })
+		local name = Util.text(button, { Position = UDim2.fromOffset(12, 24), Size = UDim2.new(1, -24, 0, 30), TextXAlignment = Enum.TextXAlignment.Left, Font = Util.TitleFont, TextScaled = false, TextSize = 22, ZIndex = 3, Text = "" })
+		button.Activated:Connect(function()
+			if spinning or not state then
+				return
+			end
+			if i > (state.SlotsUnlocked or 1) then
+				slotAction("Buy")
+			elseif i ~= state.ActiveSlot then
+				slotAction("Select", i)
+			end
+		end)
+		slotCards[i] = { Button = button, Title = title, Name = name }
+	end
+
 	-- Reel
 	local reel = Util.panel(body, {
-		Position = UDim2.fromOffset(0, 420),
+		Position = UDim2.fromOffset(0, 484),
 		Size = UDim2.new(1, 0, 0, 90),
 		BackgroundColor3 = Color3.fromRGB(15, 13, 18),
 		BackgroundTransparency = 0,
@@ -108,7 +138,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 		BorderSizePixel = 0,
 		ZIndex = 5,
 	})
-	local status = Util.text(body, { Position = UDim2.fromOffset(0, 516), Size = UDim2.new(1, 0, 0, 34), Text = "" })
+	local status = Util.text(body, { Position = UDim2.fromOffset(0, 582), Size = UDim2.new(1, 0, 0, 34), Text = "" })
 
 	local coinButton = Util.button(body, {
 		AnchorPoint = Vector2.new(1, 1),
@@ -191,22 +221,52 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 		if not state then
 			return
 		end
-		local free = state.Class == nil
+		local slots = state.ClassSlots or { state.Class or "" }
+		local activeSlot = state.ActiveSlot or 1
+		local unlocked = state.SlotsUnlocked or 1
+		for i, card in slotCards do
+			local classId = slots[i] or ""
+			local isActive = i == activeSlot and not (state.Class and Config.Classes[state.Class].Limited)
+			if i > unlocked then
+				card.Name.TextColor3 = Util.Theme.Muted
+				card.Name.Text = if i == unlocked + 1 then `🔒 Unlock - {Config.ClassSlots.RobuxPriceLabel}` else "🔒 Locked"
+				card.Button.BackgroundColor3 = Color3.fromRGB(28, 26, 36)
+				Util.stroke(card.Button, Color3.new(0, 0, 0), 0.55, 1.5)
+			elseif classId == "" then
+				card.Name.TextColor3 = Util.Theme.Success
+				card.Name.Text = "Empty - free roll!"
+				card.Button.BackgroundColor3 = Util.Theme.PanelLight
+				Util.stroke(card.Button, if isActive then Util.Theme.Gold else Color3.new(0, 0, 0), if isActive then 0 else 0.55, if isActive then 3 else 1.5)
+			else
+				local class = Config.Classes[classId]
+				card.Name.TextColor3 = class.Color
+				card.Name.Text = `{class.DisplayName}  ({class.Rarity})`
+				card.Button.BackgroundColor3 = if isActive then Color3.fromRGB(50, 80, 55) else Util.Theme.PanelLight
+				Util.stroke(card.Button, if isActive then Util.Theme.Gold else Color3.new(0, 0, 0), if isActive then 0 else 0.55, if isActive then 3 else 1.5)
+			end
+			card.Title.Text = if isActive then `SLOT {i}  -  ACTIVE` else `SLOT {i}`
+		end
+
+		local free = (slots[activeSlot] or "") == ""
 		coinButton.Text = if free then "FREE ROLL!" else `Roll ({Config.ClassRoll.CoinCost} coins)`
 		robuxButton.Visible = not free
 		for classId, card in cards do
 			card.BackgroundColor3 = if state.Class == classId then Color3.fromRGB(50, 90, 55) else Util.ButtonColor
 		end
-		if free then
-			window.Visible = true
-			if not spinning then
+		local luck = if state.Perks and state.Perks.Luck then "   🍀 2x Luck" else ""
+		if not spinning then
+			if state.Class == nil then
+				window.Visible = true
 				status.TextColor3 = Color3.new(1, 1, 1)
-				status.Text = "Roll for your class! Your first roll is free."
+				status.Text = `Roll for your class! Your first roll is free.{luck}`
+			elseif free then
+				status.TextColor3 = Util.Theme.Success
+				status.Text = `Slot {activeSlot} is empty - your first roll in it is free!{luck}`
+			else
+				local class = Config.Classes[slots[activeSlot]]
+				status.TextColor3 = class.Color
+				status.Text = `Slot {activeSlot}: {class.Rarity} {class.DisplayName}. Rolling again replaces it.{luck}`
 			end
-		elseif not spinning and status.Text == "" then
-			local class = Config.Classes[state.Class]
-			status.TextColor3 = class.Color
-			status.Text = `Your class: {class.Rarity} {class.DisplayName}. Rolling again replaces it.`
 		end
 	end
 

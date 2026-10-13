@@ -14,6 +14,7 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local PlayerService = require(script.Parent.PlayerService)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Luck = require(script.Parent.Parent.Luck)
 
 local SHRINE_POSITION = Vector3.new(-40, 0, 29)
 
@@ -22,15 +23,24 @@ local CrateService = {}
 local rgb = Color3.fromRGB
 local M = Enum.Material
 
-local function rollRarity(crate): string
+local function rollEntry(crate)
 	local roll = math.random()
 	for _, entry in crate.Odds do
 		roll -= entry.Chance
 		if roll <= 0 then
-			return entry.Rarity
+			return entry
 		end
 	end
-	return crate.Odds[#crate.Odds].Rarity
+	return crate.Odds[#crate.Odds]
+end
+
+-- 2x Luck keeps the rarer of two rolls.
+local function rollRarity(player: Player, crate): string
+	return Luck.Roll(player, function()
+		return rollEntry(crate)
+	end, function(a, b)
+		return a.Chance < b.Chance
+	end).Rarity
 end
 
 local function pickPiece(crate, rarity: string): Items.ArmorDef?
@@ -56,7 +66,7 @@ local function onOpenCrate(player: Player, crateId: unknown)
 	end
 
 	PlayerService.AddStat(player, "CratesOpened")
-	local rarity = rollRarity(crate)
+	local rarity = rollRarity(player, crate)
 	local piece = pickPiece(crate, rarity)
 	if not piece then
 		PlayerService.AddGold(player, crate.Price)

@@ -20,6 +20,7 @@ local PlayerService = require(script.Parent.PlayerService)
 local PetService = require(script.Parent.PetService)
 local Receipts = require(script.Parent.Parent.Receipts)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Luck = require(script.Parent.Parent.Luck)
 
 local EVENT_ID = "Halloween"
 local PLAZA_POSITION = Vector3.new(40, 0, -20)
@@ -40,8 +41,9 @@ local function isActive(): boolean
 end
 
 -- Rolling --------------------------------------------------------------------------
+-- (rollEntry, below rollOnce, applies 2x Luck: the rarer of two rolls)
 
-local function rollEntry()
+local function rollOnce()
 	local roll = math.random()
 	for _, entry in crate.Odds do
 		roll -= entry.Chance
@@ -50,6 +52,12 @@ local function rollEntry()
 		end
 	end
 	return crate.Odds[#crate.Odds]
+end
+
+local function rollEntry(player: Player)
+	return Luck.Roll(player, rollOnce, function(a, b)
+		return a.Chance < b.Chance
+	end)
 end
 
 local function announce(player: Player, text: string, color: Color3)
@@ -71,7 +79,7 @@ local function openCrate(player: Player)
 		return nil
 	end
 	PlayerService.AddStat(player, "EventCratesOpened")
-	local entry = rollEntry()
+	local entry = rollEntry(player)
 	local result = { Kind = entry.Kind, Id = entry.Id, IsNew = true, Refund = 0, DisplayName = "", Rarity = "Common" }
 
 	if entry.Kind == "Class" then

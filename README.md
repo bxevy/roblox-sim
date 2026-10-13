@@ -40,6 +40,12 @@ pieces with hand-built models in Studio.
    **Robux rolls:** create a Developer Product (Creator Dashboard > your experience > Monetization >
    Developer Products), then put its id in `Config.ClassRoll.RobuxProductId` and its price in
    `RobuxPriceLabel`. Purchases are recorded per receipt so a roll is never granted twice.
+
+   **Class slots:** keep up to **3** rolled classes and switch between them in town from the
+   slot row in the Classes window. Slot 1 is free; slots 2 and 3 cost **125 Robux** each, and
+   every new slot comes with a free roll. Rolling replaces only the active slot's class.
+   Create a 125 Robux Developer Product and put its id in `Config.ClassSlots.RobuxProductId`
+   (`Config.ClassSlots.Max` sets how many slots there are).
 2. **Buy potions** at the potion shop in the lobby (press **F** at the counter). Drink them with **2-6**.
 3. **Pick a dungeon & difficulty:** stand on a portal pad and choose a difficulty from the panel.
    After a 10 second countdown, everyone on the pad (up to 4 players) goes in together, and so
@@ -114,6 +120,23 @@ jack-o'-lantern east of the fountain, and a 7th portal.
   event window. Pets are defined in `shared/Pets.luau`.
 - **Limited armor:** Pumpkin Reaper (jack-o'-lantern helm, cape, embers) and Vampire Lord
   (high collar, bat wings, blood mist).
+
+### Robux Store (B, or the 💎 button)
+
+| Item | Type | Price | What it does |
+|------|------|-------|--------------|
+| **2x Luck** | Game Pass | R$ 249 | Class rolls, Crate Shrine crates, Halloween crates and dungeon drops roll twice and keep the rarer result; Mythic drop chance x2 |
+| **2x Coins** | Game Pass | R$ 199 | Doubles every coin reward (dungeons, quests, ...) |
+| **Starforged Emperor** | Developer Product | R$ 499 | Exclusive 4-piece armor: crown, angel wings, starlight sparkles. +150 health, +18% damage, +12% speed set bonus |
+| **Frostbound Titan** | Developer Product | R$ 399 | Exclusive 4-piece ice armor: horns, dragon wings, frost aura. +180 health, +15% damage, +3% defense set bonus |
+| **Class slot** | Developer Product | R$ 125 | Unlocks the next class slot (see above) |
+
+Set up: create the two passes (Creator Dashboard > your experience > Monetization > Passes) and
+put their ids in `Config.RobuxStore.Perks.Luck/Coins.GamePassId`. Create the armor products and
+put their ids in `Config.RobuxStore.Armor.<Set>.ProductId`. Prices on Roblox are whatever you set
+there; the `PriceLabel`s only change what the store shows. Until an id is set, the button says
+which config field is missing. Admins can test with **Toggle 2x Luck/Coins** and **+1 Class Slot**
+in the admin menu.
 
 #### Event art
 
@@ -287,6 +310,7 @@ src/
     ArmorVisuals.luau       builds every armor piece's look and effects on the character
     Sfx.luau                plays sound effects in the world
     Receipts.luau           Robux purchases (one ProcessReceipt for every product)
+    Luck.luau               2x Luck: roll twice, keep the rarer result
     Effects.luau            VFX: projectiles, rings, beams, lightning, meteors...
     WeaponModels.luau       builds every weapon's model, glow, aura and swing trail
     WeaponSkills.luau       weapon abilities (R)
@@ -307,17 +331,18 @@ src/
       QuestService.luau     story + daily quests, Quest Board
       ProgressionService.luau  prestige, skills, Skill Sanctum
       CardService.luau      player card customization, nameplates
-      ClassService.luau     class rolling (coins / Robux developer product)
+      ClassService.luau     class rolling (coins / Robux) and class slots
       PartyService.luau     parties, invites, friend invites
       PetService.luau       pet models that follow you
       HalloweenService.luau Halloween event: candies, Halloween Crate, event plaza
+      StoreService.luau     Robux Store: 2x Luck / 2x Coins passes, exclusive armor
   client/                 -> StarterPlayer.StarterPlayerScripts.Client
-    Main.client.luau        input (attack, 1, Q/E, R, 2-6, G, T, J, H, O, K, P) and wiring
+    Main.client.luau        input (attack, 1, Q/E, R, 2-6, G, T, J, H, O, K, B, P) and wiring
     Controllers/            Movement (sprint/dodge), Audio (music + dungeon lighting),
                             Animator (smooth weapon animations, leaps and dashes), Pets
     UI/                     Hud, Inventory, Shop, PortalPanel, AdminPanel,
                             CrateWindow, StatsWindow, QuestWindow, SkillsWindow, CardWindow,
-                            ClassRoller
+                            ClassRoller, PartyWindow, EventWindow, RobuxStore
 ```
 
 ### Adding content

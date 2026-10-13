@@ -21,6 +21,7 @@ local CombatService = require(script.Parent.CombatService)
 local PartyService = require(script.Parent.PartyService)
 local DungeonDecor = require(script.Parent.Parent.DungeonDecor)
 local Sfx = require(script.Parent.Parent.Sfx)
+local Luck = require(script.Parent.Parent.Luck)
 
 -- Layout (studs)
 local ENTRY_ROOM_SIZE = 40
@@ -297,7 +298,12 @@ end
 -- Rolls one item for a player: a weapon for their class (60%) or armor (40%).
 local function rollLoot(player: Player, run: Run): (string, string)
 	local settings = run.Def.Difficulties[run.DifficultyId]
-	local tier = pickWeighted(settings.Loot)
+	-- 2x Luck: the better of two tier rolls
+	local tier = Luck.Roll(player, function()
+		return pickWeighted(settings.Loot)
+	end, function(a, b)
+		return a > b
+	end)
 	local class = PlayerService.GetClass(player)
 	-- Treasurer passive: a chance for the drop to be one tier better
 	local luck = class and (class :: any).LootLuck
@@ -343,7 +349,7 @@ local function winRun(run: Run)
 
 		-- Ultra-rare Mythic drop, rolled separately from the normal item.
 		local playerClass = PlayerService.GetClass(player)
-		local mythicChance = Config.MythicDrop.Chance * (def.MythicMultiplier or 1) * (1 + (if playerClass then (playerClass :: any).LootLuck or 0 else 0))
+		local mythicChance = Config.MythicDrop.Chance * (def.MythicMultiplier or 1) * (1 + (if playerClass then (playerClass :: any).LootLuck or 0 else 0)) * Luck.Multiplier(player)
 		if math.random() < mythicChance and PlayerService.GiveItem(player, "Weapon", Config.MythicDrop.Weapon) then
 			local mythic = Items.Weapons[Config.MythicDrop.Weapon]
 			for _, other in Players:GetPlayers() do

@@ -34,6 +34,10 @@ Config.DefaultData = {
 	Pets = {}, -- set of owned pet ids
 	-- EquippedPet = nil
 	LimitedClasses = {}, -- limited-time classes you own (switch to them any time)
+	ClassSlots = { "", "", "" }, -- rolled class in each slot ("" = empty)
+	SlotsUnlocked = 1, -- slot 1 is free; more are bought with Robux (Config.ClassSlots)
+	ActiveSlot = 1,
+	Perks = {}, -- Robux Store perks granted outside game passes (admin gifts): perk id -> true
 	Card = {
 		Background = "Parchment",
 		Title = "Adventurer",
@@ -296,7 +300,7 @@ Config.Classes = {
 	},
 	Seraph = {
 		DisplayName = "Seraph",
-		Description = "GODLY. A winged warrior of heaven wielding holy halberds. Cheats death.",
+		Description = "GODLY. A winged warrior of heaven. Cheats death.",
 		WeaponType = "Halberd",
 		StarterWeapon = "AcolyteHalberd",
 		HealthMultiplier = 1.5,
@@ -349,6 +353,49 @@ Config.ClassRoll = {
 	-- your experience > Monetization > Developer Products) and paste its id here.
 	RobuxProductId = 0,
 	RobuxPriceLabel = "R$ 25",
+}
+
+-- Class slots: keep several rolled classes and switch between them in town (Classes
+-- window). Slot 1 is free; each extra slot is a Robux Developer Product. A newly unlocked
+-- slot comes with a free roll.
+Config.ClassSlots = {
+	Max = 3,
+	-- Create a Developer Product priced at 125 Robux (Creator Dashboard > your experience >
+	-- Monetization > Developer Products) and paste its id here. It's bought once per slot.
+	RobuxProductId = 0,
+	RobuxPriceLabel = "R$ 125",
+}
+
+-- Robux Store ----------------------------------------------------------------
+-- Perks are Game Passes (bought once, kept forever). Create each pass (Creator Dashboard >
+-- your experience > Monetization > Passes), set its price, and paste its id here.
+-- Exclusive armor sets are Developer Products that grant the full 4-piece set.
+Config.RobuxStore = {
+	Perks = {
+		Luck = {
+			DisplayName = "2x Luck",
+			Glyph = "🍀",
+			Description = "Every class roll, crate and dungeon drop rolls twice and keeps the rarer result. Mythic drop chance doubled.",
+			GamePassId = 0,
+			PriceLabel = "R$ 249",
+			Color = Color3.fromRGB(70, 200, 100),
+		},
+		Coins = {
+			DisplayName = "2x Coins",
+			Glyph = "💰",
+			Description = "Double coins from dungeons, quests and every other reward, forever.",
+			GamePassId = 0,
+			PriceLabel = "R$ 199",
+			Color = Color3.fromRGB(240, 190, 50),
+		},
+	},
+	PerkOrder = { "Luck", "Coins" },
+	-- Exclusive armor (Items.luau sets with Source = "Robux")
+	Armor = {
+		Starforged = { ProductId = 0, PriceLabel = "R$ 499" },
+		Frostbound = { ProductId = 0, PriceLabel = "R$ 399" },
+	},
+	ArmorOrder = { "Starforged", "Frostbound" },
 }
 
 -- Abilities -----------------------------------------------------------------
@@ -662,6 +709,7 @@ Config.Rarities = {
 	Mythic = Color3.fromRGB(130, 150, 255),
 	Godly = Color3.fromRGB(255, 60, 120),
 	Limited = Color3.fromRGB(255, 120, 20), -- limited-time event items
+	Exclusive = Color3.fromRGB(40, 220, 255), -- Robux Store exclusives
 }
 
 -- Crates (Crate Shrine in town). Godly armor only comes from these. Each roll picks a

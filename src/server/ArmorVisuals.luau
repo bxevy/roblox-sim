@@ -856,6 +856,10 @@ local function aura(ctx: Ctx, character: Model, setId: string)
 		fire.Parent = field
 	elseif setId == "ShogunsOath" then
 		emitter(field, "Sparkles", ctx.Style.Accent, 6, true)
+	elseif setId == "Starforged" then
+		emitter(field, "Holy", ctx.Style.Secondary, 8, true)
+	elseif setId == "Frostbound" then
+		emitter(field, "Motes", Color3.new(1, 1, 1), 10, true)
 	end
 end
 
