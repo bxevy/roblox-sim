@@ -48,8 +48,8 @@ function Viewport.Creature(
 		local radius = math.max(size.X, size.Y, size.Z)
 		local camera = Instance.new("Camera")
 		camera.FieldOfView = 30
-		local root = model.PrimaryPart :: BasePart
-		root.CFrame = CFrame.Angles(0, math.rad(200), 0)
+		-- PivotTo moves every part (welds don't update positions inside a ViewportFrame).
+		model:PivotTo(CFrame.Angles(0, math.rad(200), 0))
 		camera.CFrame = CFrame.lookAt(Vector3.new(0, radius * 0.35, -radius * 2.6), Vector3.new(0, 0, 0))
 		camera.Parent = frame
 		frame.CurrentCamera = camera
@@ -124,9 +124,10 @@ RunService.RenderStepped:Connect(function()
 		if not s.Frame.Parent then
 			table.remove(spinners, i)
 		elseif s.Frame.Visible and s.Model.PrimaryPart and not Theme.ReducedMotion then
-			local root = s.Model.PrimaryPart :: BasePart
-			root.CFrame = CFrame.Angles(0, math.rad(200) + math.sin(t * s.Speed) * 0.7, 0)
-				* CFrame.new(0, math.abs(math.sin(t * 2.2)) * 0.15, 0)
+			s.Model:PivotTo(
+				CFrame.Angles(0, math.rad(200) + math.sin(t * s.Speed) * 0.7, 0)
+					* CFrame.new(0, math.abs(math.sin(t * 2.2)) * 0.15, 0)
+			)
 		end
 	end
 end)

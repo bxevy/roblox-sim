@@ -783,6 +783,9 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 	end
 	root.Parent = model
 	model.PrimaryPart = root
+	-- Imported models keep the position they had in Studio (often far from the origin).
+	-- Built-in models start at the origin, and portraits rely on that.
+	model:PivotTo(CFrame.new())
 	model.Name = source.Name
 	local lift = (model:GetAttribute("HeightOffset") :: number?) or 0
 	model:SetAttribute("Height", box.Y / 2 + lift + (if floating then height * 0.3 else 0))
