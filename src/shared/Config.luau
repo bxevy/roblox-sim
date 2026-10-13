@@ -351,7 +351,7 @@ Config.ClassRoll = {
 	CoinCost = 10000,
 	-- Robux rolls: create a Developer Product priced at 150 Robux on your game's page (Creator Dashboard >
 	-- your experience > Monetization > Developer Products) and paste its id here.
-	RobuxProductId = 0,
+	RobuxProductId = 3718280437,
 	RobuxPriceLabel = "R$ 150",
 }
 
@@ -362,7 +362,7 @@ Config.ClassSlots = {
 	Max = 3,
 	-- Create a Developer Product priced at 125 Robux (Creator Dashboard > your experience >
 	-- Monetization > Developer Products) and paste its id here. It's bought once per slot.
-	RobuxProductId = 0,
+	RobuxProductId = 3718280298,
 	RobuxPriceLabel = "R$ 125",
 }
 
@@ -392,8 +392,8 @@ Config.RobuxStore = {
 	PerkOrder = { "Luck", "Coins" },
 	-- Exclusive armor (Items.luau sets with Source = "Robux")
 	Armor = {
-		Starforged = { ProductId = 0, PriceLabel = "R$ 499" },
-		Frostbound = { ProductId = 0, PriceLabel = "R$ 399" },
+		Starforged = { ProductId = 3718280148, PriceLabel = "R$ 499" },
+		Frostbound = { ProductId = 3718280194, PriceLabel = "R$ 399" },
 	},
 	ArmorOrder = { "Starforged", "Frostbound" },
 }
@@ -813,7 +813,7 @@ Config.Events = {
 			CandyCost = 1000,
 			-- Robux: create a Developer Product (Creator Dashboard > your experience >
 			-- Monetization > Developer Products) priced at 100 Robux and paste its id here.
-			RobuxProductId = 0,
+			RobuxProductId = 3718280467,
 			RobuxPriceLabel = "R$ 100",
 			DuplicateRefund = 150, -- candies back for an item you already own
 			-- What a crate can give. Chances add up to 1 (100%); shown to players in the crate window.
