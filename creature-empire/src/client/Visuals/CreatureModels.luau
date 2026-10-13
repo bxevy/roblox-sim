@@ -4,8 +4,9 @@
 -- welded to an anchored "Root", so moving Root.CFrame moves the whole creature in one
 -- write. Parts never collide, never block raycasts and cast no shadow (cheap to render).
 --
--- To use hand-made art instead, put a Model named after the species in
--- ReplicatedStorage/Assets/Creatures with a PrimaryPart "Root"; it is used automatically.
+-- To use hand-made art instead (for example an imported FBX), put a Model named after the
+-- species in ReplicatedStorage/Assets/Creatures (see "Hand-made models" below and
+-- docs/ASSETS.md); it is used automatically everywhere the creature appears.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -720,21 +721,89 @@ local function applyMutation(model: Model, mutation: string, size: number)
 	model:SetAttribute("Mutation", mutation)
 end
 
+-- Hand-made models ---------------------------------------------------------------------------
+-- ReplicatedStorage/Assets/Creatures/<SpeciesId> (or <SpeciesId>_2 / _3 for a different
+-- model per evolution stage). Any imported model works: it is resized to the species'
+-- height, welded to a fresh invisible Root, and made non-colliding. Optional attributes on
+-- the model: Facing (degrees to turn it so its face points the way the creature walks),
+-- KeepSize (true = don't resize; evolution still scales it), HeightOffset (studs to lift it).
+
+function CreatureModels.FindCustom(speciesId: string, stage: number): Model?
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	local folder = assets and assets:FindFirstChild("Creatures")
+	if not folder then
+		return nil
+	end
+	for s = stage, 1, -1 do
+		local name = if s == 1 then speciesId else `{speciesId}_{s}`
+		local model = folder:FindFirstChild(name)
+		if model and model:IsA("Model") then
+			return model
+		end
+	end
+	return nil
+end
+
+local function prepareCustom(source: Model, height: number, stageScale: number, floating: boolean): Model
+	local model = source:Clone()
+	-- Resize so it stands `height` studs tall (like the built-in creatures).
+	local _, size = model:GetBoundingBox()
+	if model:GetAttribute("KeepSize") ~= true and size.Y > 0 then
+		model:ScaleTo(model:GetScale() * height / size.Y)
+	elseif model:GetAttribute("KeepSize") == true and stageScale ~= 1 then
+		model:ScaleTo(model:GetScale() * stageScale)
+	end
+	local boxCF, box = model:GetBoundingBox()
+	-- Replace any existing root with our own: anchored, invisible, at the model's centre.
+	for _, d in model:GetDescendants() do
+		if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then
+			d:Destroy()
+		end
+	end
+	local facing = math.rad((model:GetAttribute("Facing") :: number?) or 0)
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanQuery = false
+	root.CanTouch = false
+	root.Transparency = 1
+	root.Size = Vector3.new(box.X, box.Y, box.Z) * 0.8
+	root.CFrame = CFrame.new(boxCF.Position) * CFrame.Angles(0, facing, 0)
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = false
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Massless = true
+			d.CastShadow = false
+			weld(root, d)
+		end
+	end
+	root.Parent = model
+	model.PrimaryPart = root
+	model.Name = source.Name
+	local lift = (model:GetAttribute("HeightOffset") :: number?) or 0
+	model:SetAttribute("Height", box.Y / 2 + lift + (if floating then height * 0.3 else 0))
+	model:SetAttribute("Floating", floating)
+	return model
+end
+
 function CreatureModels.Build(speciesId: string, stage: number?, mutation: string?): Model
 	local species = CreatureConfig.Species[speciesId]
 	assert(species, `Unknown species {speciesId}`)
 	local evolution = species.Evolution[stage or 1] or species.Evolution[1]
 
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	local custom = assets and assets:FindFirstChild("Creatures") and assets.Creatures:FindFirstChild(speciesId)
-	if custom and custom:IsA("Model") and custom.PrimaryPart then
-		local clone = custom:Clone()
-		clone:ScaleTo(evolution.ScaleMultiplier)
+	local custom = CreatureModels.FindCustom(speciesId, stage or 1)
+	if custom then
+		local height = species.Appearance.Size * evolution.ScaleMultiplier
+		local floating = table.find(species.Appearance.Features, "Floating") ~= nil
+		local model = prepareCustom(custom, height, evolution.ScaleMultiplier, floating)
 		if mutation then
-			applyMutation(clone, mutation, species.Appearance.Size)
+			applyMutation(model, mutation, species.Appearance.Size)
 		end
-		clone:SetAttribute("Height", clone.PrimaryPart.Size.Y / 2)
-		return clone
+		return model
 	end
 
 	local look = species.Appearance

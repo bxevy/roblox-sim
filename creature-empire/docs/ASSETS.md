@@ -68,3 +68,25 @@ Provide one model per level, or one model with level-specific parts toggled by t
 ## Particle textures
 
 These use textures that ship with the Roblox client (`rbxasset://textures/particles/...`). They can be replaced with custom leaf, ember, glint and bubble sprites (64×64 PNG, white on transparent, so the colour comes from the emitter).
+
+## Creature models (replacing the code-built look)
+
+Any species can use a hand-made 3D model instead of the code-built one. The game picks it up automatically everywhere the creature appears: plots, wild, companions, portraits, reveals and trades.
+
+**From an FBX:**
+1. Open `creature-empire.rbxl` in Roblox Studio.
+2. Go to the **Home** tab and choose **Import 3D**, then pick your `.fbx`. Keep "Import as Model" on and include the textures. This uploads the meshes to your Roblox account.
+3. Rename the imported model to the species id, for example **`Sproutling`**.
+4. Make sure its face points the way the creature should walk. It should face −Z: in Studio's front view, the face looks away from the camera's default direction. If it faces backwards, add a number attribute **`Facing` = `180`** to the model. Use `90` or `-90` for sideways.
+5. Test it straight away: put the model in **ReplicatedStorage › Assets › Creatures** and press Play.
+6. Keep it in the project: right-click the model, choose **Save to File…**, save it as `Sproutling.rbxm` and put it in `creature-empire/assets/Creatures/`. Rojo builds then include it every time.
+
+**What the game does with it (`client/Visuals/CreatureModels.luau`, `prepareCustom`):**
+- Resizes it to the species' height (`Appearance.Size`, ×1.3 at Mature and ×1.6 at Ascended). Add a boolean attribute **`KeepSize` = true** to keep your own size; evolution still scales it.
+- Welds every part to a new invisible anchored `Root` at the model's centre. Existing welds, Motor6Ds and anchoring are replaced.
+- Makes it non-colliding and massless.
+- Applies mutations as a recolour plus sparkle. SurfaceAppearance textures keep their look, but parts with plain colours get tinted.
+- Uses optional extra models per stage: `Sproutling_2` (Mature) and `Sproutling_3` (Ascended). Without them, the stage-1 model is scaled up.
+- An optional number attribute **`HeightOffset`** lifts the model if it sinks into the ground.
+
+**Ownership:** uploaded meshes belong to the account that imported them. Publish the game from the same account (or from a group that owns the meshes), or they won't load in the live game.
