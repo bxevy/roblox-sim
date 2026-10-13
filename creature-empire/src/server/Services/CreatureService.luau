@@ -213,7 +213,7 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		return false, `{ability.Name} is ready in {creature.AbilityReadyAt - now}s.`
 	end
 	local buildingId = creature.Assignment
-	if ability.RequiresAssignment and not buildingId then
+	if (ability.RequiresAssignment or ability.Kind ~= "GoldFind") and not buildingId then
 		return false, `Assign {displayName(creature)} to a job first.`
 	end
 	local strength = (species.BaseStats.AbilityStrength or 10) / 10

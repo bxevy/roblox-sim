@@ -185,7 +185,7 @@ function Hud.new(ctx: any)
 
 	State.OnChanged("Quests", function(q: any)
 		local step = q.Step
-		tracker.Visible = step ~= nil and step.Kind ~= "ChooseStarter"
+		tracker.Visible = step ~= nil and (step.Kind ~= "ChooseStarter" or q.Claimable)
 		if not step then
 			return
 		end
@@ -354,7 +354,7 @@ function Hud.new(ctx: any)
 				slots[id] = nil
 			end
 		end
-		bar.Visible = count > 0
+		bar.Visible = count > 0 and not Placement.IsActive()
 	end)
 
 	-- Cooldown text ticks locally from the server's "ready in" value.

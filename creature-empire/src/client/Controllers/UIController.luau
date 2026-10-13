@@ -87,7 +87,7 @@ function UIController.Notify(message: string, kind: string?)
 		end
 	end
 	table.sort(toasts, function(a, b)
-		return a.LayoutOrder > b.LayoutOrder
+		return a.LayoutOrder < b.LayoutOrder -- newest first (LayoutOrder is -time)
 	end)
 	for i = 4, #toasts do
 		toasts[i]:Destroy()

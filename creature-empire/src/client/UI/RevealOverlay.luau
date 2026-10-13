@@ -121,6 +121,8 @@ function RevealOverlay.new(ctx: any)
 		orb.Visible = not fast
 		glow.Visible = not fast
 		crack.Text = ""
+		orb.Size = UDim2.fromOffset(120, 120)
+		orb.Rotation = 0
 
 		if not fast then
 			-- 1-2: the orb reacts and light gathers around it.

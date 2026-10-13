@@ -7,7 +7,7 @@
 | Project builds into a place file | `rojo build` | ✔ |
 | Type checking of all code against the Roblox API definitions | `luau-lsp analyze` with a Rojo sourcemap | ✔ no errors |
 | Formatting | `stylua --check src tests` | ✔ |
-| Logic tests (63): formulas, bonus caps, grid placement, production rates, slots, XP, rate limiting, schema defaults, migrations, repair, session locking (live and abandoned locks, lock loss, transient and persistent errors, double transforms, unrecognised data), profile size, config integrity, economy pacing | Lune (`lune run tests/run`) | ✔ all pass |
+| Logic tests (65): formulas, bonus caps, grid placement, production rates, slots, XP, rate limiting, schema defaults, migrations, repair, session locking (live and abandoned locks, lock loss, transient and persistent errors, double transforms, unrecognised data), profile size, config integrity, economy pacing | Lune (`lune run tests/run`) | ✔ all pass |
 | Running inside Roblox (server, client, UI, rendering, DataStore) | Roblox Studio | **Not done yet.** No Studio was available where this was built. Use the manual checklist below. |
 
 Selene is configured (`selene.toml`) but wasn't run, because generating its Roblox standard library needs a download that wasn't reachable. Run `selene generate-roblox-std && selene src` locally.

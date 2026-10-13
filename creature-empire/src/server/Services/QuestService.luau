@@ -85,6 +85,26 @@ local function progressOf(data: Types.PlayerData, step: Types.QuestStep): number
 	return math.min(evaluate(data, step), step.Amount)
 end
 
+local function grantReward(player: Player, data: Types.PlayerData, reward: Types.QuestReward)
+	if reward.Gold then
+		EconomyService.Add(player, "Gold", reward.Gold, "Quest")
+	end
+	if reward.Essence then
+		EconomyService.Add(player, "Essence", reward.Essence, "Quest")
+	end
+	if reward.Shards then
+		EconomyService.Add(player, "EmpireShards", reward.Shards, "Quest")
+	end
+	if reward.Creature then
+		local speciesId = if reward.Creature == "NextStarter"
+			then CreatureService.NextStarter(data)
+			else reward.Creature
+		if speciesId then
+			CreatureService.Grant(player, speciesId, "Quest", false)
+		end
+	end
+end
+
 -- Re-checks the current step and marks it claimable when done.
 local function refresh(player: Player)
 	local data = PlayerDataService.GetData(player)
@@ -92,6 +112,15 @@ local function refresh(player: Player)
 		return
 	end
 	local step = currentStep(data)
+	if step and step.Kind == "ChooseStarter" and progressOf(data, step) >= step.Amount then
+		-- Picking a partner is its own reward; move straight on to the next step.
+		data.Quests.Tutorial += 1
+		data.Quests.Progress = 0
+		data.Quests.Claimable = false
+		PlayerDataService.MarkDirty(player)
+		grantReward(player, data, step.Reward)
+		step = currentStep(data)
+	end
 	if step and not data.Quests.Claimable and progressOf(data, step) >= step.Amount then
 		data.Quests.Claimable = true
 		PlayerDataService.MarkDirty(player)
@@ -112,26 +141,6 @@ local function addCounter(player: Player, kind: string, target: string?, amount:
 	data.Quests.Progress = math.min(data.Quests.Progress + amount, step.Amount)
 	PlayerDataService.MarkDirty(player)
 	refresh(player)
-end
-
-local function grantReward(player: Player, data: Types.PlayerData, reward: Types.QuestReward)
-	if reward.Gold then
-		EconomyService.Add(player, "Gold", reward.Gold, "Quest")
-	end
-	if reward.Essence then
-		EconomyService.Add(player, "Essence", reward.Essence, "Quest")
-	end
-	if reward.Shards then
-		EconomyService.Add(player, "EmpireShards", reward.Shards, "Quest")
-	end
-	if reward.Creature then
-		local speciesId = if reward.Creature == "NextStarter"
-			then CreatureService.NextStarter(data)
-			else reward.Creature
-		if speciesId then
-			CreatureService.Grant(player, speciesId, "Quest", false)
-		end
-	end
 end
 
 local function claim(player: Player): (boolean, any)

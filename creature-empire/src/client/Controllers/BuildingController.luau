@@ -221,9 +221,6 @@ local function watchPlot(plot: Instance)
 	buildings.ChildAdded:Connect(function(model)
 		task.wait() -- let the model's descendants replicate
 		track(model, owned())
-		if owned() and model:IsA("Model") then
-			EffectsController.Construct(model)
-		end
 	end)
 	buildings.ChildRemoved:Connect(function(model)
 		tracked[model :: Model] = nil
@@ -289,8 +286,15 @@ function BuildingController.Start()
 	Remotes.Events.GameEvent.OnClientEvent:Connect(function(name, payload)
 		if name == "BuildingUpgraded" or name == "BuildingPlaced" then
 			AudioController.Play(if name == "BuildingPlaced" then "Place" else "Upgrade")
+			-- The new model replicates shortly after the event; play the effect on it.
+			task.delay(0.3, function()
+				for model, t in tracked do
+					if t.Owned and t.Id == payload.Id and model.Parent then
+						EffectsController.Construct(model)
+					end
+				end
+			end)
 		end
-		local _ = payload
 	end)
 end
 

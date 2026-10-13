@@ -110,7 +110,7 @@ creature-empire/
     UI/                     Theme, Window, Hud, CreaturesWindow, BuildingPanel, BuildMenu,
                             StarterSelect, RevealOverlay, SettingsWindow, QuestJournal, InspectWindow
     Visuals/CreatureModels  code-built creature models
-  tests/                    Lune test suite (63 tests): `lune run tests/run`
+  tests/                    Lune test suite (65 tests): `lune run tests/run`
   docs/
 ```
 

@@ -213,7 +213,20 @@ function CreaturesWindow.new(ctx: any)
 				Size = UDim2.fromOffset(220, 36),
 			}
 		)
-		Theme.SetEnabled(use, info.AbilityReadyIn <= 0)
+		-- Count down locally from the server's "ready in" value.
+		local readyAt = os.clock() + info.AbilityReadyIn - State.Age("Creatures")
+		local function tickButton()
+			local remaining = readyAt - os.clock()
+			use.Text = if remaining > 0 then `Ready in {Format.Duration(remaining)}` else "Use " .. active.Name
+			Theme.SetEnabled(use, remaining <= 0)
+		end
+		tickButton()
+		task.spawn(function()
+			while use.Parent and readyAt > os.clock() do
+				task.wait(0.5)
+				tickButton()
+			end
+		end)
 		use.Activated:Connect(function()
 			if use:GetAttribute("Disabled") then
 				return

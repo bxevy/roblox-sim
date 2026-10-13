@@ -50,6 +50,7 @@ PlayerDataService.Loaded = Signal.new() :: Signal.Signal<Player, Profile>
 PlayerDataService.BeforeRelease = Signal.new() :: Signal.Signal<Player, Profile>
 
 local profiles: { [Player]: Profile } = {}
+local releasing: { [number]: boolean } = {} -- user ids whose leave-save is in progress
 local core: ProfileCore.ProfileCore? = nil
 local unsavedMode = false
 
@@ -70,6 +71,8 @@ local function makeCore()
 		JobId = if game.JobId ~= "" then game.JobId else "studio-" .. HttpService:GenerateGUID(false),
 		Now = os.time,
 		Wait = task.wait,
+		-- In Studio a failure is almost always "API access off": don't spend 15 s retrying.
+		Attempts = if RunService:IsStudio() then 1 else nil,
 		Log = function(level, message, fields)
 			if level == "Warn" then
 				Log.Warn("Data", message, fields)
@@ -132,6 +135,15 @@ local function load(player: Player)
 	end
 
 	local key = keyFor(player.UserId)
+	-- Rejoining the same server: wait for the previous session's release save, otherwise
+	-- this load could see that session's lock as ours and read stale data.
+	local deadline = os.clock() + 30
+	while releasing[player.UserId] and os.clock() < deadline do
+		task.wait(0.25)
+	end
+	if not player.Parent then
+		return
+	end
 	local status, result = (core :: ProfileCore.ProfileCore):Load(key)
 
 	if status == "Error" and RunService:IsStudio() then
@@ -157,6 +169,7 @@ local function load(player: Player)
 		Log.Info("Data", "New profile", { user = player.UserId })
 	elseif type(data) ~= "table" then
 		Log.Warn("Data", "Profile is not a table; refusing to load", { user = player.UserId })
+		core:Release(key)
 		kick(player, "Your save data needs attention. Nothing was changed. Please contact the developers.")
 		return
 	end
@@ -165,6 +178,7 @@ local function load(player: Player)
 	if not migrated then
 		-- Newer data than this server understands: release our lock untouched and stop.
 		Log.Warn("Data", "Refusing newer profile", { user = player.UserId, reason = reason })
+		core:Release(key)
 		kick(player, "This server is out of date. Please rejoin to get the newest version.")
 		return
 	end
@@ -187,6 +201,10 @@ local function save(player: Player, profile: Profile, release: boolean): boolean
 	end
 	while profile.Saving do
 		task.wait()
+	end
+	-- Another save (e.g. the release on leave) may have finished while we waited.
+	if not profile.CanSave or profile.Released then
+		return true
 	end
 	profile.Saving = true
 	local data = profile.Data
@@ -281,9 +299,11 @@ function PlayerDataService.Start()
 		if not profile then
 			return
 		end
+		releasing[player.UserId] = true
 		PlayerDataService.BeforeRelease:Fire(player, profile)
 		save(player, profile, true)
 		profiles[player] = nil
+		releasing[player.UserId] = nil
 	end)
 
 	task.spawn(function()

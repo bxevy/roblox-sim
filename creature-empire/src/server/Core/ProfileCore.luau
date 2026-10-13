@@ -34,6 +34,7 @@ export type SaveStatus = "Ok" | "LockLost" | "Error"
 export type ProfileCore = {
 	Load: (self: ProfileCore, key: string) -> (LoadStatus, any, boolean),
 	Save: (self: ProfileCore, key: string, data: any, release: boolean) -> (SaveStatus, string?),
+	Release: (self: ProfileCore, key: string) -> SaveStatus,
 }
 
 local ProfileCore = {}
@@ -155,6 +156,25 @@ function ProfileCore.new(options: Options): ProfileCore
 			return "LockLost", "another server owns this profile"
 		end
 		return "Ok", nil
+	end
+
+	-- Gives up our lock without touching the stored data (used when we refuse to load a
+	-- profile, so other servers aren't blocked until the lock times out).
+	function self.Release(_, key: string): SaveStatus
+		local ok = protected("Release", key, function()
+			return store:UpdateAsync(key, function(record: any)
+				if type(record) ~= "table" or type(record.Meta) ~= "table" then
+					return nil
+				end
+				local lock = record.Meta.Lock
+				if type(lock) ~= "table" or lock.JobId ~= jobId then
+					return nil
+				end
+				record.Meta.Lock = nil
+				return record
+			end)
+		end)
+		return if ok then "Ok" else "Error"
 	end
 
 	return self :: any
