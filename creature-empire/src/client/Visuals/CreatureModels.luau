@@ -570,6 +570,41 @@ features.BarkPlates = function(ctx)
 	end
 end
 
+features.FlowerCrown = function(ctx)
+	local h = ctx.HeadSize
+	for i = 0, 5 do
+		local a = math.rad(i * 60)
+		ball(
+			ctx,
+			h * 0.18,
+			ctx.HeadCF * CFrame.new(math.cos(a) * h * 0.32, h * 0.42, math.sin(a) * h * 0.32),
+			Color3.fromRGB(255, 190, 220)
+		)
+	end
+	ball(ctx, h * 0.16, ctx.HeadCF * CFrame.new(0, h * 0.5, 0), Color3.fromRGB(255, 230, 120), Enum.Material.Neon)
+end
+
+-- Evolved creatures shimmer: a slow ring of sparkles in the family colour.
+features.Aura = function(ctx)
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "AuraAttachment"
+	attachment.Parent = ctx.Root
+	local aura = Instance.new("ParticleEmitter")
+	aura.Name = "Aura"
+	aura.Texture = AssetConfig.Particles.Default
+	aura.Color = ColorSequence.new(ctx.Look.Glow or ctx.Look.Secondary)
+	aura.LightEmission = 0.8
+	aura.Size = NumberSequence.new(ctx.S * 0.15, 0)
+	aura.Lifetime = NumberRange.new(1, 1.6)
+	aura.Speed = NumberRange.new(0.2, 0.5)
+	aura.SpreadAngle = Vector2.new(180, 180)
+	aura.Rate = 6
+	aura.Shape = Enum.ParticleEmitterShape.Sphere
+	aura.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+	aura.Transparency = NumberSequence.new(0.2, 1)
+	aura.Parent = attachment
+end
+
 features.Floating = function(_ctx)
 	-- Handled by the animator (hover instead of hop); nothing to build.
 end
@@ -662,7 +697,14 @@ function CreatureModels.Build(speciesId: string, stage: number?): Model
 	local buildBody = bodies[look.Body] or bodies.Round
 	buildBody(ctx)
 	eyes(ctx)
-	for _, name in look.Features do
+	local featureList = table.clone(look.Features)
+	local stageFeatures: { string } = evolution.Features or {}
+	for _, name in stageFeatures do
+		if not table.find(featureList, name) then
+			table.insert(featureList, name)
+		end
+	end
+	for _, name in featureList do
 		local feature = features[name]
 		if feature then
 			feature(ctx)

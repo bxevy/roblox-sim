@@ -18,8 +18,18 @@ local BiomeConfig = shared("BiomeConfig")
 local AssetConfig = shared("AssetConfig")
 local GameConfig = shared("GameConfig")
 
-local QUEST_KINDS =
-	{ "ChooseStarter", "Assign", "Collect", "Sell", "BuildingLevel", "BuildingCount", "UseAbility", "EarnGold" }
+local QUEST_KINDS = {
+	"ChooseStarter",
+	"Assign",
+	"Collect",
+	"Sell",
+	"BuildingLevel",
+	"BuildingCount",
+	"UseAbility",
+	"EarnGold",
+	"Hatch",
+	"Evolve",
+}
 local PHASE1_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true }
 
 describe("Creatures", function()

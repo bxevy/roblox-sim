@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
+local EggConfig = require(Shared.Config.EggConfig)
 local Theme = require(script.Parent.Theme)
 local Viewport = require(script.Parent.Viewport)
 
@@ -121,12 +122,18 @@ function RevealOverlay.new(ctx: any)
 		orb.Visible = not fast
 		glow.Visible = not fast
 		crack.Text = ""
-		orb.Size = UDim2.fromOffset(120, 120)
+		local egg = entry.Egg and EggConfig.Eggs[entry.Egg]
+		local evolving = entry.Kind == "Evolve"
+		-- Eggs are taller than they are wide; evolutions start from a glowing silhouette.
+		orb.Size = if egg then UDim2.fromOffset(110, 140) else UDim2.fromOffset(120, 120)
 		orb.Rotation = 0
 
 		if not fast then
-			-- 1-2: the orb reacts and light gathers around it.
-			orb.BackgroundColor3 = family.Color:Lerp(Color3.new(1, 1, 1), 0.6)
+			-- 1-2: the egg (or orb) reacts and light gathers around it.
+			orb.BackgroundColor3 = if egg
+				then egg.Color
+				elseif evolving then Color3.new(1, 1, 1)
+				else family.Color:Lerp(Color3.new(1, 1, 1), 0.6)
 			glow.BackgroundColor3 = rarity.Color
 			glow.Size = UDim2.fromOffset(40, 40)
 			TweenService:Create(
@@ -148,7 +155,7 @@ function RevealOverlay.new(ctx: any)
 				{ Size = UDim2.fromOffset(160, 160) }
 			):Play()
 			task.wait(0.35)
-			Audio.Play("CreatureObtain")
+			Audio.Play(if evolving then "Evolve" elseif egg then "Hatch" else "CreatureObtain")
 			orb.Visible = false
 			TweenService:Create(glow, TweenInfo.new(0.6), { BackgroundTransparency = 0.85 }):Play()
 		else
@@ -157,15 +164,25 @@ function RevealOverlay.new(ctx: any)
 
 		-- 4-5: the creature emerges with its details.
 		portrait.Visible = true
-		Viewport.Creature(portrait, entry.Species, nil, { Spin = true })
+		Viewport.Creature(portrait, entry.Species, nil, { Spin = true, Stage = entry.Stage })
 		Theme.PopIn(portrait)
 		info.Visible = true
-		if entry.NewDiscovery then
+		if evolving then
+			Theme.Chip(info, "✦ EVOLVED", Theme.Colors.Primary, { LayoutOrder = 0 })
+		elseif entry.NewDiscovery then
 			Theme.Chip(info, "★ NEW DISCOVERY · added to your journal", Theme.Colors.Gold, { LayoutOrder = 0 })
+		end
+		if egg then
+			Theme.Chip(
+				info,
+				`Hatched from a {egg.Name}` .. (if entry.Pity then " · pity guarantee" else ""),
+				egg.Color,
+				{ LayoutOrder = 0 }
+			)
 		end
 		Theme.Text(
 			info,
-			species.Name,
+			if evolving then entry.Name else species.Name,
 			40,
 			{ FontFace = Theme.Heavy, TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 1 }
 		)
@@ -174,6 +191,16 @@ function RevealOverlay.new(ctx: any)
 		Theme.List(chips, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 		Theme.Chip(chips, RarityConfig.Label(species.Rarity), rarity.Color)
 		Theme.Chip(chips, family.Glyph .. " " .. family.Name, family.Color)
+		if evolving then
+			for i, unlock in entry.Unlocks or {} do
+				Theme.Text(
+					info,
+					"✦ " .. unlock,
+					16,
+					{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 2 + i / 10 }
+				)
+			end
+		end
 		Theme.Text(
 			info,
 			`<b>⚡ {species.Active.Name}</b> · {species.Active.Description}`,

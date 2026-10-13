@@ -172,23 +172,42 @@ local function species(def: { [string]: any }): Types.SpeciesDef
 		(idle :: any)[k] = v
 	end
 
-	local names = def.StageNames or { def.Name, def.Name, def.Name }
+	-- Evolution: each stage is bigger, works better (StatBonus, category "Stage"), has a
+	-- stronger active ability, can change job skills (StageAffinity) and adds visual
+	-- features (StageFeatures). The Unlocks text is generated from those numbers so it
+	-- can never promise something that isn't implemented.
+	local names = def.StageNames or { def.Name, "Mature " .. def.Name, "Ascended " .. def.Name }
+	local stageAffinity = def.StageAffinity or {}
+	local stageFeatures = def.StageFeatures or { [2] = { "Aura" }, [3] = { "Aura", "Halo" } }
+	local function stage(n: number, scale: number, statBonus: number, abilityMultiplier: number, requirements: any)
+		local unlocks = {
+			`+{math.floor(statBonus * 100)}% work speed and yield`,
+			`{def.Active.Name} is {math.floor((abilityMultiplier - 1) * 100)}% stronger`,
+		}
+		for job, value in stageAffinity[n] or {} do
+			table.insert(unlocks, `{job} skill becomes {math.floor(value * 100)}%`)
+		end
+		table.insert(unlocks, "A new look")
+		return {
+			Stage = n,
+			Name = names[n],
+			ScaleMultiplier = scale,
+			StatBonus = statBonus,
+			AbilityMultiplier = abilityMultiplier,
+			Affinity = stageAffinity[n],
+			Features = stageFeatures[n],
+			Requirements = requirements,
+			Unlocks = unlocks,
+		}
+	end
 	local evolution = {
-		{ Stage = 1, Name = names[1], ScaleMultiplier = 1 },
-		{
-			Stage = 2,
-			Name = names[2],
-			ScaleMultiplier = 1.35,
-			Requirements = def.Evolve2 or { { Kind = "Level", Amount = 10 }, { Kind = "Essence", Amount = 50 } },
-			Unlocks = def.Unlocks2 or { "Stronger active ability" },
-		},
-		{
-			Stage = 3,
-			Name = names[3],
-			ScaleMultiplier = 1.7,
-			Requirements = def.Evolve3 or { { Kind = "Level", Amount = 25 }, { Kind = "Essence", Amount = 400 } },
-			Unlocks = def.Unlocks3 or { "New synergy" },
-		},
+		{ Stage = 1, Name = names[1], ScaleMultiplier = 1, StatBonus = 0, AbilityMultiplier = 1 },
+		stage(2, 1.3, 0.15, 1.5, def.Evolve2 or { { Kind = "Level", Amount = 8 }, { Kind = "Essence", Amount = 40 } }),
+		stage(3, 1.6, 0.3, 2, def.Evolve3 or {
+			{ Kind = "Level", Amount = 20 },
+			{ Kind = "Essence", Amount = 300 },
+			{ Kind = "Resource", Target = "RefinedCrystal", Amount = 30 },
+		}),
 	}
 
 	local key = string.lower(def.Id)
@@ -225,10 +244,12 @@ local list: { Types.SpeciesDef } = {
 		Starter = true,
 		Phase = 1,
 		Description = "A round little seed-pod with a leaf that twitches when it is happy. Born to farm.",
+		StageFeatures = { [2] = { "FlowerCrown" }, [3] = { "FlowerCrown", "LeafCrown" } },
+		StageAffinity = { [2] = { Farmer = 1.15 }, [3] = { Farmer = 1.3 } },
 		Discovery = "Starter creature.",
 		StageNames = { "Sproutling", "Bloomling", "Gardenheart" },
 		Stats = { WorkSpeed = 11, Yield = 12, Luck = 9, CombatPower = 6 },
-		Jobs = { Farmer = 1, Breeder = 0.5 },
+		Jobs = { Farmer = 1, Alchemist = 0.4, Breeder = 0.5 },
 		Active = {
 			Id = "BloomBurst",
 			Name = "Bloom Burst",
@@ -244,10 +265,16 @@ local list: { Types.SpeciesDef } = {
 			Description = "+15% yield while farming.",
 			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.15, Job = "Farmer" } },
 		},
-		Evolve2 = { { Kind = "Level", Amount = 10 }, { Kind = "WorkCycles", Target = "Farmer", Amount = 300 } },
-		Unlocks2 = { "Bloom Burst adds 10 harvests", "Can work as a Breeder at full efficiency" },
-		Evolve3 = { { Kind = "Level", Amount = 25 }, { Kind = "CropTypes", Amount = 3 } },
-		Unlocks3 = { "New ability: Verdant Canopy (nearby farms +10% speed)" },
+		Evolve2 = {
+			{ Kind = "Level", Amount = 8 },
+			{ Kind = "WorkCycles", Target = "Farmer", Amount = 150 },
+			{ Kind = "Essence", Amount = 25 },
+		},
+		Evolve3 = {
+			{ Kind = "Level", Amount = 20 },
+			{ Kind = "WorkCycles", Target = "Farmer", Amount = 1500 },
+			{ Kind = "Essence", Amount = 200 },
+		},
 		Appearance = {
 			Body = "Round",
 			Size = 2.4,
@@ -265,20 +292,25 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Uncommon",
 		Phase = 2,
 		Description = "A mossy boulder with a big friendly mouth. Plants grow wherever it naps.",
-		Discovery = "Hatches from Grove Eggs.",
+		Discovery = "Hatches from Meadow Eggs.",
 		Stats = { Yield = 13, WorkSpeed = 8, Capacity = 13 },
-		Jobs = { Farmer = 0.9, Courier = 0.6 },
+		Jobs = { Farmer = 0.9, Alchemist = 0.5, Courier = 0.6 },
 		Active = {
 			Id = "Compost",
 			Name = "Compost",
-			Description = "Turns spare crops into fertiliser.",
+			Description = "Fertilises its building: workers there are 50% faster for 20 seconds.",
 			Cooldown = 120,
 			Kind = "SpeedBurst",
 			Power = 0.5,
 			Duration = 20,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Mulch", Name = "Mulch", Description = "+10% farm storage.", Modifiers = {} },
+		Passive = {
+			Id = "Mulch",
+			Name = "Mulch",
+			Description = "+10% yield while farming.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.1, Job = "Farmer" } },
+		},
 		Appearance = {
 			Body = "Block",
 			Size = 2.8,
@@ -294,21 +326,27 @@ local list: { Types.SpeciesDef } = {
 		Name = "Bloomhart",
 		Family = "Verdant",
 		Rarity = "Rare",
-		Phase = 3,
+		Phase = 2,
 		Description = "A deer-like creature whose antlers flower in the moonlight. Heals tired workers.",
-		Discovery = "Seen in Verdant Reach meadows on clear nights.",
+		Discovery = "Rare from Meadow Eggs. Wild ones are said to appear on clear nights.",
 		Stats = { AbilityStrength = 14, WorkSpeed = 11 },
-		Jobs = { Farmer = 0.8, Breeder = 0.9 },
+		Jobs = { Farmer = 1, Alchemist = 0.7, Breeder = 0.9 },
 		Active = {
-			Id = "Restore",
-			Name = "Restore",
-			Description = "Removes fatigue from nearby creatures.",
-			Cooldown = 180,
-			Kind = "Heal",
-			Power = 1,
-			RequiresAssignment = false,
+			Id = "BlossomSong",
+			Name = "Blossom Song",
+			Description = "Sings to its building: workers there are 60% faster for 25 seconds.",
+			Cooldown = 150,
+			Kind = "SpeedBurst",
+			Power = 0.6,
+			Duration = 25,
+			RequiresAssignment = true,
 		},
-		Passive = { Id = "Calm", Name = "Calming Aura", Description = "Nearby creatures tire slower.", Modifiers = {} },
+		Passive = {
+			Id = "Calm",
+			Name = "Calming Aura",
+			Description = "+20% yield while farming.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.2, Job = "Farmer" } },
+		},
 		Appearance = {
 			Body = "Long",
 			Size = 3.2,
@@ -364,6 +402,8 @@ local list: { Types.SpeciesDef } = {
 		Starter = true,
 		Phase = 1,
 		Description = "A fluffy cub with a flame for a tail. Keeps everything around it warm, and gets restless when it is not working.",
+		StageFeatures = { [2] = { "FlameTuft" }, [3] = { "FlameTuft", "Wings" } },
+		StageAffinity = { [2] = { Smelter = 1.15, PowerOperator = 0.9 }, [3] = { Smelter = 1.3, PowerOperator = 1 } },
 		Discovery = "Starter creature.",
 		StageNames = { "Cindercub", "Blazefang", "Infernolion" },
 		Stats = { WorkSpeed = 13, Yield = 8, CombatPower = 12, EnergyEfficiency = 12 },
@@ -384,10 +424,16 @@ local list: { Types.SpeciesDef } = {
 			Description = "+10% work speed at any job.",
 			Modifiers = { { Stat = "WorkSpeed", Category = "Passive", Value = 0.1 } },
 		},
-		Evolve2 = { { Kind = "Level", Amount = 10 }, { Kind = "WorkCycles", Target = "Smelter", Amount = 200 } },
-		Unlocks2 = { "Kindle lasts 30 seconds", "Smelting synergy with Crystalkin" },
-		Evolve3 = { { Kind = "Level", Amount = 25 }, { Kind = "Expeditions", Amount = 5 } },
-		Unlocks3 = { "New ability: Firestorm (combat)" },
+		Evolve2 = {
+			{ Kind = "Level", Amount = 8 },
+			{ Kind = "WorkCycles", Target = "Smelter", Amount = 150 },
+			{ Kind = "Essence", Amount = 25 },
+		},
+		Evolve3 = {
+			{ Kind = "Level", Amount = 20 },
+			{ Kind = "WorkCycles", Target = "Smelter", Amount = 1500 },
+			{ Kind = "Essence", Amount = 200 },
+		},
 		Appearance = {
 			Body = "Pear",
 			Size = 2.5,
@@ -417,14 +463,19 @@ local list: { Types.SpeciesDef } = {
 		Active = {
 			Id = "Sweep",
 			Name = "Sweep",
-			Description = "Clears a jammed machine.",
+			Description = "Clears the furnace: workers there are 40% faster for 15 seconds.",
 			Cooldown = 90,
 			Kind = "SpeedBurst",
 			Power = 0.4,
 			Duration = 15,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Ashen", Name = "Ashen Coat", Description = "Immune to heat hazards.", Modifiers = {} },
+		Passive = {
+			Id = "AshSweep",
+			Name = "Ash Sweep",
+			Description = "+10% work speed while smelting.",
+			Modifiers = { { Stat = "WorkSpeed", Category = "Passive", Value = 0.1, Job = "Smelter" } },
+		},
 		Appearance = {
 			Body = "Long",
 			Size = 2.6,
@@ -439,19 +490,19 @@ local list: { Types.SpeciesDef } = {
 		Name = "Magmaul",
 		Family = "Emberkin",
 		Rarity = "Rare",
-		Phase = 3,
+		Phase = 2,
 		Description = "A molten boulder that smashes rock as easily as it melts it.",
-		Discovery = "Rescued from cooling lava pools in Emberfall Basin.",
+		Discovery = "Rare from Ember Eggs. Wild ones rest in Emberfall lava pools.",
 		Stats = { CombatPower = 15, Yield = 12, WorkSpeed = 8 },
 		Jobs = { Smelter = 1, Miner = 0.7, Guardian = 0.9 },
 		Active = {
 			Id = "Eruption",
 			Name = "Eruption",
-			Description = "Area damage burst.",
+			Description = "Erupts with heat: adds 5 work cycles of output to its building.",
 			Cooldown = 150,
-			Kind = "Attack",
-			Power = 3,
-			RequiresAssignment = false,
+			Kind = "InstantHarvest",
+			Power = 5,
+			RequiresAssignment = true,
 		},
 		Passive = {
 			Id = "Molten",
@@ -510,13 +561,13 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Common",
 		Phase = 2,
 		Description = "A puppy that crackles when you pet it. Chases its own sparks.",
-		Discovery = "Hatches from Storm Eggs.",
+		Discovery = "Hatches from Ember Eggs.",
 		Stats = { WorkSpeed = 13, EnergyEfficiency = 12 },
-		Jobs = { PowerOperator = 1, Courier = 0.5 },
+		Jobs = { PowerOperator = 1, Smelter = 0.6, Miner = 0.4, Courier = 0.5 },
 		Active = {
 			Id = "Overcharge",
 			Name = "Overcharge",
-			Description = "Machines run faster for a short time.",
+			Description = "Overcharges its building: workers there are 60% faster for 20 seconds.",
 			Cooldown = 120,
 			Kind = "SpeedBurst",
 			Power = 0.6,
@@ -574,21 +625,27 @@ local list: { Types.SpeciesDef } = {
 		Name = "Stormstrider",
 		Family = "Voltbeast",
 		Rarity = "Rare",
-		Phase = 3,
+		Phase = 2,
 		Description = "A long-legged bird that walks across storm clouds.",
-		Discovery = "Only appears during thunderstorms.",
+		Discovery = "Rare from Ember Eggs. Wild ones walk the Tempest Isles in storms.",
 		Stats = { Exploration = 14, WorkSpeed = 12 },
-		Jobs = { Explorer = 0.9, PowerOperator = 0.8 },
+		Jobs = { Smelter = 0.8, Alchemist = 0.6, PowerOperator = 0.8, Explorer = 0.9 },
 		Active = {
 			Id = "Chain",
 			Name = "Chain Lightning",
-			Description = "Hits several enemies.",
-			Cooldown = 120,
-			Kind = "Attack",
-			Power = 2,
-			RequiresAssignment = false,
+			Description = "Electrifies its building: workers there are 80% faster for 20 seconds.",
+			Cooldown = 150,
+			Kind = "SpeedBurst",
+			Power = 0.8,
+			Duration = 20,
+			RequiresAssignment = true,
 		},
-		Passive = { Id = "Stormborn", Name = "Stormborn", Description = "Stronger during storms.", Modifiers = {} },
+		Passive = {
+			Id = "Stormborn",
+			Name = "Stormborn",
+			Description = "+15% work speed at any job.",
+			Modifiers = { { Stat = "WorkSpeed", Category = "Passive", Value = 0.15 } },
+		},
 		Appearance = {
 			Body = "Pear",
 			Size = 3.2,
@@ -641,6 +698,8 @@ local list: { Types.SpeciesDef } = {
 		Starter = true,
 		Phase = 1,
 		Description = "A pebble with crystal spikes on its back. Digs everywhere and sometimes digs up gold.",
+		StageFeatures = { [2] = { "GemCore" }, [3] = { "GemCore", "CrystalBack" } },
+		StageAffinity = { [2] = { Miner = 1.15, Farmer = 0.85 }, [3] = { Miner = 1.3, Farmer = 0.9 } },
 		Discovery = "Starter creature.",
 		StageNames = { "Pebblit", "Geodite", "Prismarch" },
 		Stats = { Yield = 11, WorkSpeed = 9, Luck = 13, DiscoveryChance = 12, Capacity = 12 },
@@ -660,10 +719,16 @@ local list: { Types.SpeciesDef } = {
 			Description = "+10% yield at any job.",
 			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.1 } },
 		},
-		Evolve2 = { { Kind = "Level", Amount = 10 }, { Kind = "WorkCycles", Target = "Miner", Amount = 250 } },
-		Unlocks2 = { "Rockseek also finds raw crystals", "Smelting synergy with Emberkin" },
-		Evolve3 = { { Kind = "Level", Amount = 25 }, { Kind = "Relics", Amount = 3 } },
-		Unlocks3 = { "New ability: Geode Pulse (reveals hidden ore)" },
+		Evolve2 = {
+			{ Kind = "Level", Amount = 8 },
+			{ Kind = "WorkCycles", Target = "Miner", Amount = 150 },
+			{ Kind = "Essence", Amount = 25 },
+		},
+		Evolve3 = {
+			{ Kind = "Level", Amount = 20 },
+			{ Kind = "WorkCycles", Target = "Miner", Amount = 1500 },
+			{ Kind = "Resource", Target = "RawCrystal", Amount = 200 },
+		},
 		Appearance = {
 			Body = "Block",
 			Size = 2.3,
@@ -688,13 +753,18 @@ local list: { Types.SpeciesDef } = {
 		Active = {
 			Id = "ShellOut",
 			Name = "Shell Out",
-			Description = "Dumps a stash of crystals.",
+			Description = "Shakes loose a stash: adds 4 work cycles of output to its building.",
 			Cooldown = 150,
 			Kind = "InstantHarvest",
 			Power = 4,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Sturdy", Name = "Sturdy", Description = "Carries 20% more.", Modifiers = {} },
+		Passive = {
+			Id = "Sturdy",
+			Name = "Sturdy",
+			Description = "+10% yield while mining.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.1, Job = "Miner" } },
+		},
 		Appearance = {
 			Body = "Round",
 			Size = 2.7,
@@ -710,21 +780,26 @@ local list: { Types.SpeciesDef } = {
 		Name = "Geodon",
 		Family = "Crystalkin",
 		Rarity = "Rare",
-		Phase = 3,
+		Phase = 2,
 		Description = "Split it open (it does not mind) to find a glittering cave inside.",
-		Discovery = "Hidden deep in the Crystal Hollows.",
+		Discovery = "Rare from Geode Eggs. Wild ones hide deep in the Crystal Hollows.",
 		Stats = { Luck = 15, DiscoveryChance = 14 },
 		Jobs = { Miner = 1.1, RelicInvestigator = 0.6 },
 		Active = {
-			Id = "Geode",
-			Name = "Geode Pulse",
-			Description = "Reveals hidden ore.",
-			Cooldown = 200,
-			Kind = "Reveal",
-			Power = 1,
+			Id = "GeodeCrack",
+			Name = "Geode Crack",
+			Description = "Cracks itself open and finds a gold-filled geode.",
+			Cooldown = 180,
+			Kind = "GoldFind",
+			Power = 60,
 			RequiresAssignment = false,
 		},
-		Passive = { Id = "Gemsense", Name = "Gemsense", Description = "Better rare ore chance.", Modifiers = {} },
+		Passive = {
+			Id = "Gemsense",
+			Name = "Gemsense",
+			Description = "+20% yield while mining.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.2, Job = "Miner" } },
+		},
 		Appearance = {
 			Body = "Round",
 			Size = 3,
@@ -741,9 +816,9 @@ local list: { Types.SpeciesDef } = {
 		Name = "Prismaw",
 		Family = "Crystalkin",
 		Rarity = "Epic",
-		Phase = 4,
+		Phase = 2,
 		Description = "Its crystal jaw splits light into every colour.",
-		Discovery = "Guardian of the Crystal Hollows.",
+		Discovery = "Epic from Geode Eggs. A wild one guards the Crystal Hollows.",
 		Stats = { Yield = 16, CombatPower = 14 },
 		Jobs = { Miner = 1.2, Guardian = 0.7 },
 		Active = {
@@ -781,20 +856,25 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Common",
 		Phase = 2,
 		Description = "A floating puff of starlight that loves books.",
-		Discovery = "Hatches from Astral Eggs.",
+		Discovery = "Hatches from Geode Eggs.",
 		Stats = { AbilityStrength = 13, DiscoveryChance = 12 },
-		Jobs = { Researcher = 1, RelicInvestigator = 0.6 },
+		Jobs = { Alchemist = 1, Researcher = 1, RelicInvestigator = 0.6 },
 		Active = {
 			Id = "Insight",
 			Name = "Insight",
-			Description = "Speeds up research.",
+			Description = "Inspires its building: workers there are 50% faster for 20 seconds.",
 			Cooldown = 120,
 			Kind = "SpeedBurst",
 			Power = 0.5,
 			Duration = 20,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Studious", Name = "Studious", Description = "+10% research speed.", Modifiers = {} },
+		Passive = {
+			Id = "Studious",
+			Name = "Studious",
+			Description = "+15% yield as an alchemist.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.15, Job = "Alchemist" } },
+		},
 		Appearance = {
 			Body = "Round",
 			Size = 2,
@@ -905,19 +985,24 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Common",
 		Phase = 2,
 		Description = "A kitten-shaped shadow that steals shiny things.",
-		Discovery = "Hatches from Dusk Eggs.",
+		Discovery = "Hatches from Meadow Eggs (it hides in the grass).",
 		Stats = { Luck = 13, DiscoveryChance = 12 },
-		Jobs = { RelicInvestigator = 0.8, Courier = 0.6 },
+		Jobs = { Miner = 0.7, RelicInvestigator = 0.8, Courier = 0.6 },
 		Active = {
 			Id = "Pilfer",
 			Name = "Pilfer",
-			Description = "Finds a little gold.",
+			Description = "Snatches something shiny: finds a little gold.",
 			Cooldown = 150,
 			Kind = "GoldFind",
 			Power = 30,
 			RequiresAssignment = false,
 		},
-		Passive = { Id = "Shadowstep", Name = "Shadowstep", Description = "Moves unseen.", Modifiers = {} },
+		Passive = {
+			Id = "GlintEye",
+			Name = "Glint Eye",
+			Description = "+10% yield while mining.",
+			Modifiers = { { Stat = "Yield", Category = "Passive", Value = 0.1, Job = "Miner" } },
+		},
 		Appearance = {
 			Body = "Pear",
 			Size = 2.2,
@@ -1027,20 +1112,25 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Common",
 		Phase = 2,
 		Description = "A fish that decided legs were a good idea.",
-		Discovery = "Hatches from Tide Eggs.",
+		Discovery = "Hatches from Meadow Eggs.",
 		Stats = { WorkSpeed = 11, Yield = 11 },
-		Jobs = { Farmer = 0.7, Smelter = 0.4 },
+		Jobs = { Farmer = 0.7, Alchemist = 0.8, Smelter = 0.4 },
 		Active = {
 			Id = "Splash",
 			Name = "Splash",
-			Description = "Waters a farm, speeding it up.",
+			Description = "Waters its building: workers there are 50% faster for 20 seconds.",
 			Cooldown = 120,
 			Kind = "SpeedBurst",
 			Power = 0.5,
 			Duration = 20,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Hydrate", Name = "Hydrate", Description = "Synergy with Verdants (Phase 4).", Modifiers = {} },
+		Passive = {
+			Id = "Hydrate",
+			Name = "Hydrate",
+			Description = "+10% work speed while farming.",
+			Modifiers = { { Stat = "WorkSpeed", Category = "Passive", Value = 0.1, Job = "Farmer" } },
+		},
 		Appearance = {
 			Body = "Pear",
 			Size = 2.2,
@@ -1150,20 +1240,25 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Common",
 		Phase = 2,
 		Description = "A wind-up critter that never stops carrying things.",
-		Discovery = "Hatches from Clockwork Eggs.",
+		Discovery = "Hatches from Ember Eggs.",
 		Stats = { Capacity = 14, WorkSpeed = 11 },
-		Jobs = { Courier = 1, Smelter = 0.4 },
+		Jobs = { Courier = 1, Miner = 0.6, Smelter = 0.4 },
 		Active = {
 			Id = "Wind",
 			Name = "Wind Up",
-			Description = "Hauls twice as fast briefly.",
+			Description = "Winds up its building: workers there are twice as fast for 15 seconds.",
 			Cooldown = 120,
 			Kind = "SpeedBurst",
 			Power = 1,
 			Duration = 15,
 			RequiresAssignment = true,
 		},
-		Passive = { Id = "Reliable", Name = "Reliable", Description = "Never gets tired.", Modifiers = {} },
+		Passive = {
+			Id = "Reliable",
+			Name = "Reliable",
+			Description = "+10% work speed at any job.",
+			Modifiers = { { Stat = "WorkSpeed", Category = "Passive", Value = 0.1 } },
+		},
 		Appearance = {
 			Body = "Block",
 			Size = 2.2,
@@ -1279,6 +1374,13 @@ for _, def in list do
 	if def.Starter then
 		table.insert(CreatureConfig.Starters, def.Id)
 	end
+end
+
+-- Job skill of a species at an evolution stage (stage overrides replace the base value).
+function CreatureConfig.Affinity(species: Types.SpeciesDef, stage: number, job: string): number
+	local evolution = species.Evolution[stage]
+	local override = evolution and evolution.Affinity and evolution.Affinity[job]
+	return override or species.JobAffinity[job] or 0
 end
 
 -- Experience needed to go from `level` to `level + 1`.

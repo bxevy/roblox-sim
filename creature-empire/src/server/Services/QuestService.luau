@@ -70,6 +70,12 @@ local Evaluators: { [string]: Evaluator } = {
 	EarnGold = function(data)
 		return data.Quests.Progress
 	end,
+	Hatch = function(data)
+		return data.Quests.Progress
+	end,
+	Evolve = function(data)
+		return data.Quests.Progress
+	end,
 }
 QuestService.Evaluators = Evaluators
 
@@ -213,6 +219,12 @@ function QuestService.Start()
 	end)
 	Events.AbilityUsed:Connect(function(player)
 		addCounter(player, "UseAbility", nil, 1)
+	end)
+	Events.Hatched:Connect(function(player)
+		addCounter(player, "Hatch", nil, 1)
+	end)
+	Events.Evolved:Connect(function(player)
+		addCounter(player, "Evolve", nil, 1)
 	end)
 	Events.CurrencyEarned:Connect(function(player, currency, amount, reason)
 		-- Quest rewards don't count towards "earn gold" steps.

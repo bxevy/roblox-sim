@@ -361,7 +361,7 @@ builders.TradingPost = function(ctx)
 	workSpot(ctx, 1, 0, 0)
 end
 
-builders.Habitat = function(ctx)
+local function habitatBase(ctx: Ctx)
 	local w, d = ctx.W, ctx.D
 	block(ctx, Vector3.new(w, 0.2, d), at(ctx, 0, 0.1, 0), Color3.fromRGB(120, 190, 90), Enum.Material.Grass)
 	-- Low fence with a gap at the front
@@ -433,7 +433,344 @@ builders.Habitat = function(ctx)
 		Parts.Cylinder(ctx.Model, at(ctx, offset[1], 0.5, offset[2]), 1, 0.4, { Color = C.Cloth2 })
 		Parts.Ball(ctx.Model, (at(ctx, offset[1], 1.1, offset[2])).Position, 1.2 - i * 0.2, { Color = C.Cloth1 })
 	end
-	Parts.Label(ctx.Base, "Creature Habitat", { Offset = Vector3.new(0, 6, 0), MaxDistance = 60 })
+	Parts.Label(ctx.Base, "Creature Habitat · Lv " .. ctx.Level, { Offset = Vector3.new(0, 6, 0), MaxDistance = 60 })
+end
+
+builders.Habitat = function(ctx)
+	habitatBase(ctx)
+	local level, d = ctx.Level, ctx.D
+	if level >= 2 then
+		local cf = at(ctx, 0, 0, d / 2 - 3)
+		block(ctx, Vector3.new(3.5, 2.6, 3), cf * CFrame.new(0, 1.3, 0), C.Wood, Enum.Material.WoodPlanks)
+		block(
+			ctx,
+			Vector3.new(4, 0.4, 3.4),
+			cf * CFrame.new(0, 2.8, 0),
+			Color3.fromRGB(90, 140, 210),
+			Enum.Material.Fabric,
+			true
+		)
+	end
+	if level >= 3 then
+		local rim = Parts.Cylinder(
+			ctx.Model,
+			at(ctx, 1, 0.2, -1),
+			0.4,
+			7.5,
+			{ Color = C.Stone, Material = Enum.Material.Cobblestone }
+		)
+		rim.CanCollide = false
+	end
+	if level >= 4 then
+		local cf = at(ctx, -7, 0, -3)
+		block(ctx, Vector3.new(0.5, 6, 0.5), cf * CFrame.new(-1, 3, -1), C.DarkWood, Enum.Material.Wood)
+		block(ctx, Vector3.new(0.5, 6, 0.5), cf * CFrame.new(1, 3, 1), C.DarkWood, Enum.Material.Wood)
+		block(ctx, Vector3.new(3, 0.4, 3), cf * CFrame.new(0, 4, 0), C.Wood, Enum.Material.WoodPlanks)
+		block(
+			ctx,
+			Vector3.new(1, 0.2, 5),
+			cf * CFrame.new(2, 2, 0) * CFrame.Angles(math.rad(-40), 0, 0),
+			C.Cloth1,
+			Enum.Material.SmoothPlastic,
+			true
+		)
+	end
+	if level >= 5 then
+		local tree = at(ctx, 7, 0, -3)
+		Parts.Cylinder(
+			ctx.Model,
+			tree * CFrame.new(0, 3, 0),
+			6,
+			1,
+			{ Color = C.DarkWood, Material = Enum.Material.Wood }
+		)
+		local crown = Parts.Ball(ctx.Model, (tree * CFrame.new(0, 7, 0)).Position, 5, {
+			Color = Color3.fromRGB(140, 230, 160),
+			Material = Enum.Material.Neon,
+			Transparency = 0.35,
+		})
+		Parts.Light(crown, Color3.fromRGB(150, 255, 180), 14, 0.8)
+	end
+end
+
+local function crystal(ctx: Ctx, cf: CFrame, height: number, color: Color3): BasePart
+	local part = block(
+		ctx,
+		Vector3.new(height * 0.35, height, height * 0.35),
+		cf * CFrame.new(0, height / 2, 0),
+		color,
+		Enum.Material.Glass,
+		true
+	)
+	part.Transparency = 0.15
+	return part
+end
+
+builders.CrystalMine = function(ctx)
+	local level, w, d = ctx.Level, ctx.W, ctx.D
+	-- Rocky outcrop with crystals poking out
+	block(ctx, Vector3.new(w - 2, 3, d / 2), at(ctx, 0, 1.5, d / 4), C.DarkStone, Enum.Material.Rock)
+	block(
+		ctx,
+		Vector3.new(w / 2, 5, d / 3),
+		at(ctx, -2, 2.5, d / 3) * CFrame.Angles(0, 0.3, 0.1),
+		C.Stone,
+		Enum.Material.Rock
+	)
+	-- Tunnel mouth
+	block(
+		ctx,
+		Vector3.new(4, 3.2, 0.6),
+		at(ctx, 1, 1.6, 0.2),
+		Color3.fromRGB(25, 22, 30),
+		Enum.Material.SmoothPlastic,
+		true
+	)
+	for _, x in { -1.2, 3.2 } do
+		block(ctx, Vector3.new(0.5, 3.6, 0.5), at(ctx, x, 1.8, -0.1), C.Wood, Enum.Material.Wood)
+	end
+	block(ctx, Vector3.new(5, 0.5, 0.6), at(ctx, 1, 3.7, -0.1), C.Wood, Enum.Material.Wood)
+	local count = 3 + level
+	for i = 1, count do
+		local a = i / count * math.pi * 1.6
+		local glow = crystal(
+			ctx,
+			at(ctx, math.cos(a) * 4 - 1, 2.5, d / 4 + math.sin(a) * 2) * CFrame.Angles(0.3 * math.sin(i), a, 0.25),
+			1.6 + (i % 3) * 0.6,
+			C.Crystal
+		)
+		if i == 1 then
+			Parts.Light(glow, C.Crystal, 10, 0.7)
+		end
+	end
+	workSpot(ctx, 1, 1, -2)
+	workSpot(ctx, 2, -4, -2)
+	workSpot(ctx, 3, 5, -2)
+	if level >= 3 then
+		-- Mine cart on rails
+		block(ctx, Vector3.new(0.3, 0.2, d / 2), at(ctx, -5.5, 0.1, -d / 4), C.Copper, Enum.Material.Metal, true)
+		block(ctx, Vector3.new(0.3, 0.2, d / 2), at(ctx, -4.5, 0.1, -d / 4), C.Copper, Enum.Material.Metal, true)
+		block(ctx, Vector3.new(1.8, 1.2, 2.2), at(ctx, -5, 0.9, -d / 3), C.DarkWood, Enum.Material.WoodPlanks)
+		crystal(ctx, at(ctx, -5, 1.4, -d / 3), 0.9, C.Crystal)
+	end
+	if level >= 4 then
+		for _, x in { -w / 2 + 0.5, w / 2 - 0.5 } do
+			block(ctx, Vector3.new(0.3, 3.5, 0.3), at(ctx, x, 1.75, -d / 2 + 0.5), C.DarkWood, Enum.Material.Wood)
+			local lamp = Parts.Ball(
+				ctx.Model,
+				(at(ctx, x, 3.7, -d / 2 + 0.5)).Position,
+				0.8,
+				{ Color = C.Crystal, Material = Enum.Material.Neon }
+			)
+			Parts.Light(lamp, C.Crystal, 10, 0.8)
+		end
+	end
+	if level >= 5 then
+		local big = crystal(ctx, at(ctx, 3, 3, d / 4), 6, Color3.fromRGB(180, 140, 255))
+		big.Material = Enum.Material.Neon
+	end
+	Parts.Label(ctx.Base, "Crystal Mine · Lv " .. level, { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
+end
+
+builders.CrystalSmelter = function(ctx)
+	local level = ctx.Level
+	-- Stone furnace with a glowing mouth and a chimney
+	block(ctx, Vector3.new(7, 4, 6), at(ctx, 0, 2, 1), C.DarkStone, Enum.Material.Brick)
+	local mouth = block(
+		ctx,
+		Vector3.new(2.6, 1.8, 0.4),
+		at(ctx, 0, 1.4, -2.05),
+		Color3.fromRGB(255, 120, 40),
+		Enum.Material.Neon,
+		true
+	)
+	Parts.Light(mouth, Color3.fromRGB(255, 140, 60), 14, 1.2)
+	local fire = Instance.new("ParticleEmitter")
+	fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+	fire.Color = ColorSequence.new(Color3.fromRGB(255, 200, 90), Color3.fromRGB(255, 80, 20))
+	fire.Size = NumberSequence.new(0.8, 0)
+	fire.Lifetime = NumberRange.new(0.3, 0.6)
+	fire.Rate = 12
+	fire.Speed = NumberRange.new(1, 2)
+	fire.LightEmission = 1
+	fire.Parent = mouth
+	local chimneys: { number } = if level >= 4 then { -2, 2 } else { 2 }
+	for _, x in chimneys do
+		block(ctx, Vector3.new(1.4, 5, 1.4), at(ctx, x, 6, 2.5), C.Stone, Enum.Material.Brick)
+		local top = block(ctx, Vector3.new(1.6, 0.4, 1.6), at(ctx, x, 8.7, 2.5), C.DarkStone, Enum.Material.Slate)
+		local smoke = Instance.new("ParticleEmitter")
+		smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
+		smoke.Color = ColorSequence.new(Color3.fromRGB(120, 120, 130))
+		smoke.Size = NumberSequence.new(1, 3)
+		smoke.Transparency = NumberSequence.new(0.5, 1)
+		smoke.Lifetime = NumberRange.new(2, 3)
+		smoke.Rate = 3
+		smoke.Speed = NumberRange.new(2, 3)
+		smoke.Parent = top
+	end
+	-- Crucible and ingots
+	Parts.Cylinder(ctx.Model, at(ctx, 3, 0.8, -2.5), 1.6, 1.6, { Color = C.Copper, Material = Enum.Material.Metal })
+	for i = 0, level - 1 do
+		block(ctx, Vector3.new(0.6, 0.4, 1.2), at(ctx, -3 + i * 0.8, 0.2, -3), C.Crystal, Enum.Material.Neon, true)
+	end
+	if level >= 3 then
+		block(ctx, Vector3.new(1.2, 1.4, 2), at(ctx, -3.4, 0.7, 1), C.DarkWood, Enum.Material.Leather)
+	end
+	if level >= 5 then
+		local core = Parts.Ball(
+			ctx.Model,
+			(at(ctx, 0, 4.8, 1)).Position,
+			1.6,
+			{ Color = Color3.fromRGB(255, 240, 200), Material = Enum.Material.Neon }
+		)
+		core:SetAttribute("BobHeight", 0.3)
+		CollectionService:AddTag(core, "CE_Bob")
+	end
+	workSpot(ctx, 1, 0, -4)
+	workSpot(ctx, 2, -3, -4)
+	workSpot(ctx, 3, 3, -4)
+	Parts.Label(ctx.Base, "Crystal Smelter · Lv " .. level, { Offset = Vector3.new(0, 10, 0), MaxDistance = 60 })
+end
+
+builders.EssenceCondenser = function(ctx)
+	local level = ctx.Level
+	Parts.Cylinder(ctx.Model, at(ctx, 0, 0.5, 0), 1, 8, { Color = C.DarkStone, Material = Enum.Material.Slate })
+	Parts.Cylinder(ctx.Model, at(ctx, 0, 1.8, 0), 1.6, 3, { Color = C.Gold, Material = Enum.Material.Metal })
+	local orb = Parts.Ball(ctx.Model, (at(ctx, 0, 4.2, 0)).Position, 3, {
+		Color = Color3.fromRGB(180, 130, 255),
+		Material = Enum.Material.Neon,
+		Transparency = 0.2,
+	})
+	orb:SetAttribute("BobHeight", 0.25)
+	CollectionService:AddTag(orb, "CE_Bob")
+	Parts.Light(orb, Color3.fromRGB(180, 130, 255), 16, 1.2)
+	local coils = math.min(level + 1, 4)
+	for i = 1, coils do
+		local a = i / coils * math.pi * 2
+		block(
+			ctx,
+			Vector3.new(0.4, 4.5, 0.4),
+			at(ctx, math.cos(a) * 3, 2.25, math.sin(a) * 3),
+			C.Copper,
+			Enum.Material.Metal
+		)
+		Parts.Ball(
+			ctx.Model,
+			(at(ctx, math.cos(a) * 3, 4.7, math.sin(a) * 3)).Position,
+			0.7,
+			{ Color = C.Crystal, Material = Enum.Material.Neon }
+		)
+	end
+	if level >= 4 then
+		local ring = spinner(ctx, "Rings", at(ctx, 0, 4.2, 0), 50, "Y")
+		for i = 0, 7 do
+			local a = math.rad(i * 45)
+			Parts.Ball(
+				ring,
+				(at(ctx, math.cos(a) * 2.6, 4.2, math.sin(a) * 2.6)).Position,
+				0.4,
+				{ Color = C.Gold, Material = Enum.Material.Neon }
+			)
+		end
+	end
+	workSpot(ctx, 1, 0, -5)
+	workSpot(ctx, 2, -4.5, 0)
+	workSpot(ctx, 3, 4.5, 0)
+	Parts.Label(ctx.Base, "Essence Condenser · Lv " .. level, { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
+end
+
+builders.Hatchery = function(ctx)
+	-- A straw nest under a little roof, warmed by a lamp, with eggs on display.
+	Parts.Cylinder(
+		ctx.Model,
+		at(ctx, 0, 0.4, 0),
+		0.8,
+		9,
+		{ Color = Color3.fromRGB(200, 170, 100), Material = Enum.Material.Fabric }
+	)
+	Parts.Cylinder(
+		ctx.Model,
+		at(ctx, 0, 0.6, 0),
+		0.8,
+		7,
+		{ Color = Color3.fromRGB(170, 140, 80), Material = Enum.Material.Fabric }
+	)
+	local colors = { Color3.fromRGB(190, 230, 150), Color3.fromRGB(255, 160, 90), Color3.fromRGB(170, 200, 255) }
+	for i, color in colors do
+		local a = i / #colors * math.pi * 2
+		local egg = Parts.Decor(ctx.Model, {
+			Name = "DisplayEgg",
+			Size = Vector3.new(1.4, 1.8, 1.4),
+			CFrame = at(ctx, math.cos(a) * 1.8, 1.8, math.sin(a) * 1.8) * CFrame.Angles(0, 0, 0.1 * i),
+			Color = color,
+			Material = Enum.Material.SmoothPlastic,
+		})
+		local mesh = Instance.new("SpecialMesh")
+		mesh.MeshType = Enum.MeshType.Sphere
+		mesh.Parent = egg
+	end
+	for _, x in { -4, 4 } do
+		block(ctx, Vector3.new(0.5, 6, 0.5), at(ctx, x, 3, 4), C.Wood, Enum.Material.Wood)
+	end
+	block(
+		ctx,
+		Vector3.new(10, 0.4, 5),
+		at(ctx, 0, 6.2, 2.5) * CFrame.Angles(math.rad(15), 0, 0),
+		C.Cloth1,
+		Enum.Material.Fabric,
+		true
+	)
+	local lamp = Parts.Ball(
+		ctx.Model,
+		(at(ctx, 0, 5.2, 2)).Position,
+		1,
+		{ Color = Color3.fromRGB(255, 200, 120), Material = Enum.Material.Neon }
+	)
+	Parts.Light(lamp, Color3.fromRGB(255, 190, 110), 14, 1)
+	workSpot(ctx, 1, 0, -5)
+	Parts.Label(ctx.Base, "Hatchery", { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
+end
+
+builders.EvolutionChamber = function(ctx)
+	Parts.Cylinder(ctx.Model, at(ctx, 0, 0.3, 0), 0.6, 15, { Color = C.Stone, Material = Enum.Material.Marble })
+	local rune = Parts.Cylinder(
+		ctx.Model,
+		at(ctx, 0, 0.62, 0),
+		0.05,
+		8,
+		{ Color = Color3.fromRGB(150, 255, 200), Material = Enum.Material.Neon }
+	)
+	rune.Transparency = 0.4
+	rune.CanCollide = false
+	for i = 0, 5 do
+		local a = math.rad(i * 60)
+		local stone = block(
+			ctx,
+			Vector3.new(1.2, 5 + (i % 2), 0.8),
+			at(ctx, math.cos(a) * 6, 2.8, math.sin(a) * 6) * CFrame.Angles(0, -a, 0),
+			C.DarkStone,
+			Enum.Material.Slate
+		)
+		local glyph = block(
+			ctx,
+			Vector3.new(0.6, 0.6, 0.1),
+			stone.CFrame * CFrame.new(0, 1, -0.45),
+			Color3.fromRGB(150, 255, 200),
+			Enum.Material.Neon,
+			true
+		)
+		glyph.Transparency = 0.2
+	end
+	local motes = spinner(ctx, "Motes", at(ctx, 0, 4, 0), 25, "Y")
+	for i = 0, 5 do
+		local a = math.rad(i * 60 + 30)
+		Parts.Ball(motes, (at(ctx, math.cos(a) * 3, 3.5 + (i % 2), math.sin(a) * 3)).Position, 0.5, {
+			Color = Color3.fromRGB(180, 255, 220),
+			Material = Enum.Material.Neon,
+		})
+	end
+	workSpot(ctx, 1, 0, 0)
+	Parts.Label(ctx.Base, "Evolution Chamber", { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
 end
 
 builders.ResearchStation = function(ctx)

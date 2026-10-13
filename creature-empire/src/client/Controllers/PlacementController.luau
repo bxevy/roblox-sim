@@ -28,12 +28,13 @@ local PlacementController = {}
 -- Hooks set by the UI.
 PlacementController.OnStateChanged = function(
 	_active: boolean,
-	_info: { Type: string, Valid: boolean, Reason: string? }?
+	_info: { Type: string, Valid: boolean, Reason: string?, Moving: boolean? }?
 )
 end
 PlacementController.Notify = function(_message: string, _kind: string) end
 
-local active: { Type: string, Rot: number, X: number, Z: number, Valid: boolean, Reason: string? }? = nil
+local active: { Type: string, Rot: number, X: number, Z: number, Valid: boolean, Reason: string?, MoveId: string? }? =
+	nil
 local ghost: Model? = nil
 local ghostParts: { BasePart } = {}
 local renderConnection: RBXScriptConnection? = nil
@@ -131,20 +132,16 @@ local function update()
 	if not plot or not ray then
 		return
 	end
-	local ground = plot:FindFirstChild("Ground")
-	local floor = ground and ground:FindFirstChild("Floor")
-	if not floor then
-		return
-	end
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { floor }
-	local result = Workspace:Raycast(ray.Origin, ray.Direction * 500, params)
-	if not result then
-		return
-	end
+	-- Aim at the plot's floor plane (works over expansion land and empty ground alike).
 	local origin = plot:GetAttribute("Origin") :: CFrame
-	local localPos = origin:PointToObjectSpace(result.Position)
+	if ray.Direction.Y > -0.01 then
+		return
+	end
+	local t = (origin.Position.Y - ray.Origin.Y) / ray.Direction.Y
+	if t <= 0 or t > 600 then
+		return
+	end
+	local localPos = origin:PointToObjectSpace(ray.Origin + ray.Direction * t)
 	local def = BuildingConfig[active.Type]
 	local sx, sz = Grid.Rotated(def.Footprint, active.Rot)
 	-- Centre the footprint on the cursor.
@@ -154,10 +151,11 @@ local function update()
 
 	local buildings = StateController.Get("Buildings")
 	local list = buildings and buildings.List or {}
-	local occupancy = Grid.Occupancy(list, footprints())
-	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, cx, cz, active.Rot)
+	local occupancy = Grid.Occupancy(list, footprints(), active.MoveId)
+	local empire = StateController.Get("Empire")
+	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, cx, cz, active.Rot, empire and empire.Expansions)
 	local limits = buildings and buildings.Limits and buildings.Limits[active.Type]
-	if ok and limits and limits.Owned >= limits.Limit then
+	if ok and not active.MoveId and limits and limits.Owned >= limits.Limit then
 		ok, reason = false, "Upgrade the Empire Core to build more."
 	end
 	local changed = ok ~= active.Valid or reason ~= active.Reason
@@ -170,7 +168,10 @@ local function update()
 		part.Color = if ok then VALID else INVALID
 	end
 	if changed then
-		PlacementController.OnStateChanged(true, { Type = active.Type, Valid = ok, Reason = reason })
+		PlacementController.OnStateChanged(
+			true,
+			{ Type = active.Type, Valid = ok, Reason = reason, Moving = active.MoveId ~= nil }
+		)
 	end
 end
 
@@ -218,7 +219,12 @@ function PlacementController.Confirm()
 		return
 	end
 	busy = true
-	local ok, result = StateController.Request("PlaceBuilding", active.Type, active.X, active.Z, active.Rot)
+	local ok, result
+	if active.MoveId then
+		ok, result = StateController.Request("MoveBuilding", active.MoveId, active.X, active.Z, active.Rot)
+	else
+		ok, result = StateController.Request("PlaceBuilding", active.Type, active.X, active.Z, active.Rot)
+	end
 	busy = false
 	if ok then
 		PlacementController.Cancel()
@@ -227,13 +233,15 @@ function PlacementController.Confirm()
 	end
 end
 
-function PlacementController.Begin(typeId: string)
+-- `options.MoveId` moves an existing building instead of placing a new one.
+function PlacementController.Begin(typeId: string, options: { MoveId: string?, Rot: number? }?)
 	PlacementController.Cancel()
 	if not myPlot() then
 		PlacementController.Notify("Your plot is still loading.", "Error")
 		return
 	end
-	active = { Type = typeId, Rot = 0, X = 0, Z = 0, Valid = false, Reason = nil }
+	local opts: { MoveId: string?, Rot: number? } = options or {}
+	active = { Type = typeId, Rot = opts.Rot or 0, X = 0, Z = 0, Valid = false, Reason = nil, MoveId = opts.MoveId }
 	buildGhost(typeId)
 	renderConnection = RunService.RenderStepped:Connect(update)
 
@@ -268,7 +276,10 @@ function PlacementController.Begin(typeId: string)
 		return Enum.ContextActionResult.Sink
 	end, false, 3000, Enum.KeyCode.X, Enum.KeyCode.ButtonB)
 
-	PlacementController.OnStateChanged(true, { Type = typeId, Valid = false, Reason = nil })
+	PlacementController.OnStateChanged(
+		true,
+		{ Type = typeId, Valid = false, Reason = nil, Moving = opts.MoveId ~= nil }
+	)
 end
 
 function PlacementController.Start()

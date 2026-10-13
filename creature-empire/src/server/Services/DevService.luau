@@ -7,6 +7,9 @@
 --   client script in Studio):
 --   gold <n>            add gold
 --   petals <n>          add moonpetals (up to silo capacity)
+--   essence <n>         add essence
+--   crystals <n>        add raw and refined crystal (up to silo capacity)
+--   levelup             +5 levels and +200 work cycles per job for every creature
 --   grant <speciesId>   add a creature
 --   offline <minutes>   pretend you were away (sets LastOnline back; rejoin to apply)
 --   fillstorage         fill every production building's storage
@@ -49,6 +52,33 @@ end
 commands.petals = function(player, n)
 	local amount = tonumber(n) or 100
 	return true, `Added {EconomyService.Add(player, "Moonpetal", amount, "Dev")} moonpetals.`
+end
+
+commands.essence = function(player, n)
+	local amount = tonumber(n) or 100
+	return true, `Added {EconomyService.Add(player, "Essence", amount, "Dev")} essence.`
+end
+
+commands.crystals = function(player, n)
+	local amount = tonumber(n) or 50
+	local raw = EconomyService.Add(player, "RawCrystal", amount, "Dev")
+	local refined = EconomyService.Add(player, "RefinedCrystal", amount, "Dev")
+	return true, `Added {raw} raw and {refined} refined crystal (up to silo capacity).`
+end
+
+commands.levelup = function(player)
+	local data = PlayerDataService.GetData(player)
+	if not data then
+		return false, "Not loaded."
+	end
+	for _, creature in data.Creatures do
+		creature.Level = math.min(creature.Level + 5, 30)
+		for _, job in { "Farmer", "Miner", "Smelter", "Alchemist" } do
+			creature.JobCycles[job] = (creature.JobCycles[job] or 0) + 200
+		end
+	end
+	ProductionService.Invalidate(player)
+	return true, "Every creature gained 5 levels and 200 work cycles in each job."
 end
 
 commands.grant = function(player, speciesId)

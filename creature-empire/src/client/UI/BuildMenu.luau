@@ -18,12 +18,12 @@ local CATEGORIES = {
 	{
 		Id = "Production",
 		Name = "Production",
-		Later = { "Crystal Mine", "Smelter", "Essence Condenser", "Alchemy Lab" },
+		Later = { "Alchemy Lab" },
 	},
 	{
 		Id = "Creatures",
 		Name = "Creature care",
-		Later = { "Training Grounds", "Evolution Chamber", "Breeding Sanctuary", "Recovery Station" },
+		Later = { "Training Grounds", "Breeding Sanctuary", "Recovery Station" },
 	},
 	{
 		Id = "Automation",
@@ -78,7 +78,9 @@ function BuildMenu.new(ctx: any)
 					end
 					Theme.Text(
 						row,
-						`Built {owned} / {limit} (Empire Core tier sets the limit)`,
+						if limit > 0
+							then `Built {owned} / {limit} (Empire Core tier sets the limit)`
+							else `Unlocks at Empire Core tier {limits and limits.UnlockTier or "?"}`,
 						13,
 						{ TextColor3 = Theme.Colors.Muted }
 					)
@@ -92,7 +94,9 @@ function BuildMenu.new(ctx: any)
 					if def.Phase > GameConfig.Phase then
 						reason = "Coming soon."
 					elseif owned >= limit then
-						reason = "Upgrade the Empire Core to build more."
+						reason = if limit == 0
+							then `Unlocks at Empire Core tier {limits and limits.UnlockTier or "?"}.`
+							else "Upgrade the Empire Core to build more."
 					elseif not affordable then
 						reason = "Not enough gold yet."
 					end

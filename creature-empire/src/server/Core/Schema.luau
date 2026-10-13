@@ -18,7 +18,7 @@ local QuestConfig = require(Shared.Config.QuestConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 1
+Schema.CURRENT_VERSION = 2
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -88,6 +88,8 @@ function Schema.Default(now: number): Types.PlayerData
 		LastOnline = now,
 		Ascension = { Count = 0, Shards = 0 },
 		Receipts = {},
+		Pity = {},
+		Expansions = {},
 	}
 end
 
@@ -100,6 +102,20 @@ Schema.Migrations = {
 			data.Currencies.Gold = (data.Currencies.Gold or 0) + data.Coins
 			data.Coins = nil
 		end
+	end,
+	-- v1 -> v2 (update 2): per-job work counts for evolution, egg pity, land expansions.
+	-- Every v1 work cycle was farming (the only job in update 1).
+	[1] = function(data: { [string]: any })
+		if type(data.Creatures) == "table" then
+			for _, creature in data.Creatures do
+				if type(creature) == "table" and type(creature.JobCycles) ~= "table" then
+					local cycles = if type(creature.WorkCycles) == "number" then creature.WorkCycles else 0
+					creature.JobCycles = if cycles > 0 then { Farmer = cycles } else {}
+				end
+			end
+		end
+		data.Pity = if type(data.Pity) == "table" then data.Pity else {}
+		data.Expansions = if type(data.Expansions) == "table" then data.Expansions else {}
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
@@ -154,9 +170,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		end
 	end
 	data.Currencies.Gold = math.floor(data.Currencies.Gold)
-	for id, value in data.Resources do
-		data.Resources[id] = math.floor(value)
-	end
+	-- Materials may be fractional: smelters and condensers consume them continuously.
 
 	-- Buildings
 	if type(data.Buildings) ~= "table" then
@@ -173,8 +187,9 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		local def = BuildingConfig[record.Type]
 		local maxLevel = if def then #def.Levels else 1
 		record.Level = cleanInteger(record.Level, 1, maxLevel, 1)
-		record.X = cleanInteger(record.X, 0, PlotConfig.GridX - 1, 0)
-		record.Z = cleanInteger(record.Z, 0, PlotConfig.GridZ - 1, 0)
+		-- Expansion zones extend the grid by 4 cells west, east and north.
+		record.X = cleanInteger(record.X, -4, PlotConfig.GridX + 3, 0)
+		record.Z = cleanInteger(record.Z, 0, PlotConfig.GridZ + 3, 0)
 		record.Rot = cleanInteger(record.Rot, 0, 3, 0)
 		if type(record.Stored) ~= "table" then
 			record.Stored = {}
@@ -212,6 +227,16 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		record.Xp = cleanAmount(record.Xp)
 		record.Stage = cleanInteger(record.Stage, 1, 3, 1)
 		record.WorkCycles = cleanAmount(record.WorkCycles)
+		if type(record.JobCycles) ~= "table" then
+			record.JobCycles = {}
+		end
+		for job, count in record.JobCycles do
+			if type(job) ~= "string" then
+				record.JobCycles[job] = nil
+			else
+				record.JobCycles[job] = cleanAmount(count)
+			end
+		end
 		record.AbilityReadyAt = if isFiniteNumber(record.AbilityReadyAt)
 			then math.min(record.AbilityReadyAt, now + 3600)
 			else 0
@@ -236,7 +261,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 				and def.Job ~= nil
 				and def.Locked == nil
 				and species ~= nil
-				and (species.JobAffinity[def.Job] or 0) > 0
+				and CreatureConfig.Affinity(species, record.Stage, def.Job) > 0
 				and level ~= nil
 				and (slotsUsed[assignment] or 0) < (level.Slots or 0)
 			if valid then
@@ -280,7 +305,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	if data.StarterChosen ~= nil and type(data.StarterChosen) ~= "string" then
 		data.StarterChosen = nil
 	end
-	for _, key in { "Collection", "Stats", "Receipts" } do
+	for _, key in { "Collection", "Stats", "Receipts", "Pity", "Expansions" } do
 		if type(data[key]) ~= "table" then
 			data[key] = (defaults :: any)[key]
 			fix(key .. " missing")
@@ -288,6 +313,15 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	end
 	for key, value in data.Stats do
 		data.Stats[key] = cleanAmount(value)
+	end
+	for eggId, count in data.Pity do
+		data.Pity[eggId] = cleanInteger(count, 0, 1000, 0)
+	end
+	for zoneId, owned in data.Expansions do
+		if owned ~= true or not PlotConfig.Zone(zoneId) then
+			data.Expansions[zoneId] = nil
+			fix(`Expansion {tostring(zoneId)} removed`)
+		end
 	end
 	if type(data.Ascension) ~= "table" then
 		data.Ascension = defaults.Ascension

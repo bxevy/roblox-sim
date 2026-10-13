@@ -21,6 +21,10 @@ return {
 	CreatureObtained = Signal.new() :: Signal.Signal<Player, string, string>,
 	-- (player, creatureId, newLevel)
 	CreatureLeveled = Signal.new() :: Signal.Signal<Player, string, number>,
+	-- (player, eggId, speciesId)
+	Hatched = Signal.new() :: Signal.Signal<Player, string, string>,
+	-- (player, creatureId, newStage)
+	Evolved = Signal.new() :: Signal.Signal<Player, string, number>,
 	-- (player, speciesId)
 	StarterChosen = Signal.new() :: Signal.Signal<Player, string>,
 }

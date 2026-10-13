@@ -12,6 +12,7 @@ local RarityConfig = require(Shared.Config.RarityConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local Production = require(Shared.Util.Production)
+local Evolution = require(Shared.Util.Evolution)
 local Format = require(Shared.Util.Format)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
@@ -62,7 +63,7 @@ function CreaturesWindow.new(ctx: any)
 		local fakeData: any = { Buildings = { core = { Level = coreLevel } } }
 		local worker = Production.WorkerAt(
 			fakeData,
-			{ Id = info.Id, Species = info.Species, Level = info.Level } :: any,
+			{ Id = info.Id, Species = info.Species, Level = info.Level, Stage = info.Stage } :: any,
 			{ Type = building.Type, Level = building.Level } :: any,
 			nil
 		)
@@ -146,7 +147,7 @@ function CreaturesWindow.new(ctx: any)
 			for _, id in ids do
 				local b = buildings.List[id]
 				local def = BuildingConfig[b.Type]
-				local affinity = species.JobAffinity[def.Job :: string] or 0
+				local affinity = CreatureConfig.Affinity(species, info.Stage, def.Job :: string)
 				local row = Window.Row(jobCard, 40)
 				local here = info.Assignment == id
 				local used = #b.Assigned
@@ -255,16 +256,18 @@ function CreaturesWindow.new(ctx: any)
 		for jobId in species.JobAffinity do
 			table.insert(jobIds, jobId)
 		end
+		local function skill(jobId: string): number
+			return CreatureConfig.Affinity(species, info.Stage, jobId)
+		end
 		table.sort(jobIds, function(a, b)
-			return species.JobAffinity[a] > species.JobAffinity[b]
+			return skill(a) > skill(b)
 		end)
 		for _, jobId in jobIds do
 			local job = JobConfig[jobId]
 			local later = job and job.Phase > GameConfig.Phase
 			Theme.Chip(
 				jobRow,
-				`{job and job.Name or jobId} {Format.Percent(species.JobAffinity[jobId])}`
-					.. (if later then " · soon" else ""),
+				`{job and job.Name or jobId} {Format.Percent(skill(jobId))}` .. (if later then " · soon" else ""),
 				if later then Theme.Colors.Muted else Theme.Colors.Primary
 			)
 		end
@@ -309,23 +312,75 @@ function CreaturesWindow.new(ctx: any)
 
 		-- Evolution preview
 		local evo = Window.Section(column, "EVOLUTION", 6)
-		local nextStage = species.Evolution[info.Stage + 1]
+		local wallet = State.Get("Wallet")
+		local check = Evolution.Check(
+			wallet,
+			{
+				Species = info.Species,
+				Stage = info.Stage,
+				Level = info.Level,
+				JobCycles = info.JobCycles or {},
+				WorkCycles = info.WorkCycles,
+			} :: any
+		)
+		local nextStage = check.NextStage
 		if nextStage then
 			Theme.Text(evo, `Next form: <b>{nextStage.Name}</b> ({CreatureConfig.StageNames[nextStage.Stage]})`, 15)
-			local requirements: { any } = nextStage.Requirements or {}
-			for _, req in requirements do
-				local text = if req.Kind == "Level"
-					then `Reach level {req.Amount}`
-					elseif req.Kind == "WorkCycles" then `Complete {req.Amount} work cycles as {req.Target}`
-					elseif req.Kind == "Essence" then `{req.Amount} Essence`
-					else `{req.Kind} ×{req.Amount}`
-				Theme.Text(evo, "• " .. text, 14, { TextColor3 = Theme.Colors.Muted })
+			for _, req in check.Requirements do
+				local progress = if req.Kind == "Level"
+						or req.Kind == "WorkCycles"
+						or req.Cost
+					then `  ({Format.Number(math.min(req.Have, req.Amount))} / {Format.Number(req.Amount)})`
+					else ""
+				Theme.Text(
+					evo,
+					(if req.Met then "✔ " else "○ ")
+						.. req.Label
+						.. progress
+						.. (if req.Cost then " · used up" else ""),
+					14,
+					{ TextColor3 = if req.Met then Theme.Colors.Success else Theme.Colors.Muted }
+				)
 			end
 			local unlocks: { string } = nextStage.Unlocks or {}
 			for _, unlock in unlocks do
 				Theme.Text(evo, "✦ " .. unlock, 14, { TextColor3 = Theme.Colors.Primary })
 			end
-			Theme.Text(evo, "Evolution chambers open in the next update.", 12, { TextColor3 = Theme.Colors.Warning })
+			local allBuildings = State.Get("Buildings")
+			local hasChamber = false
+			for _, b in allBuildings and allBuildings.List or {} do
+				if b.Type == "EvolutionChamber" then
+					hasChamber = true
+				end
+			end
+			local evolve =
+				Theme.Button(evo, "Evolve into " .. nextStage.Name, "Gold", { Size = UDim2.fromOffset(280, 40) })
+			Theme.SetEnabled(evolve, check.Ready and hasChamber)
+			if not hasChamber then
+				Theme.Text(evo, "Build an Evolution Chamber (Empire Core tier 2) to evolve creatures.", 12, {
+					TextColor3 = Theme.Colors.Warning,
+				})
+			end
+			evolve.Activated:Connect(function()
+				if evolve:GetAttribute("Disabled") then
+					ctx.Notify(
+						if hasChamber then "Not all requirements are met yet." else "Build an Evolution Chamber first.",
+						"Error"
+					)
+					return
+				end
+				local ok, result = ctx.Request("Evolve", info.Id)
+				if not ok then
+					ctx.Notify(result, "Error")
+				end
+			end)
+		else
+			Theme.Text(
+				evo,
+				"Fully evolved: " .. species.Evolution[info.Stage].Name .. ".",
+				15,
+				{ TextColor3 = Theme.Colors.Success }
+			)
 		end
 		Theme.Text(
 			column,
@@ -513,10 +568,22 @@ function CreaturesWindow.new(ctx: any)
 	local function signature(): string
 		local parts = {}
 		local creatures = State.Get("Creatures")
+		local wallet = State.Get("Wallet")
 		for id, info in creatures and creatures.List or {} do
+			local ready = wallet ~= nil
+				and Evolution.Check(
+					wallet,
+					{
+						Species = info.Species,
+						Stage = info.Stage,
+						Level = info.Level,
+						JobCycles = info.JobCycles or {},
+						WorkCycles = info.WorkCycles,
+					} :: any
+				).Ready
 			table.insert(
 				parts,
-				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}`
+				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}`
 			)
 		end
 		local buildings = State.Get("Buildings")
@@ -537,6 +604,7 @@ function CreaturesWindow.new(ctx: any)
 	end
 	State.OnChanged("Creatures", markDirty)
 	State.OnChanged("Buildings", markDirty)
+	State.OnChanged("Wallet", markDirty)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)

@@ -65,7 +65,11 @@ export type EvolutionStage = {
 	Stage: number, -- 1 Juvenile, 2 Mature, 3 Ascended
 	Name: string,
 	ScaleMultiplier: number,
-	-- Requirements are data only in Phase 1; EvolutionService (Phase 2) reads them.
+	StatBonus: number, -- added to WorkSpeed and Yield (bonus category "Stage")
+	AbilityMultiplier: number, -- active ability Power and Duration multiplier
+	Affinity: { [string]: number }?, -- job skill overrides at this stage
+	Features: { string }?, -- extra model features at this stage
+	-- Kinds: Level, WorkCycles (Target = job), Essence, Resource (Target = resource id).
 	Requirements: { { Kind: string, Target: string?, Amount: number } }?,
 	Unlocks: { string }?,
 }
@@ -101,6 +105,8 @@ export type BuildingLevel = {
 	Storage: number?,
 	-- Storage buildings
 	Capacity: { [string]: number }?,
+	-- Habitat
+	CreatureCapacity: number?,
 	-- Empire Core
 	BuildingLimits: { [string]: number }?,
 	EmpireBonus: number?,
@@ -177,7 +183,8 @@ export type CreatureRecord = {
 	Source: string,
 	ObtainedAt: number,
 	Tradable: boolean,
-	WorkCycles: number, -- lifetime count, used by evolution requirements
+	WorkCycles: number, -- lifetime count
+	JobCycles: { [string]: number }, -- work cycles per job, used by evolution requirements
 	AbilityReadyAt: number, -- os.time when the active ability can be used again (saved so rejoining does not reset it)
 }
 
@@ -214,12 +221,14 @@ export type PlayerData = {
 	Buildings: { [string]: BuildingRecord },
 	StarterChosen: string?,
 	Quests: QuestState,
-	Collection: { [string]: { FirstAt: number, Count: number } },
+	Collection: { [string]: { FirstAt: number, Count: number, BestStage: number? } },
 	Settings: Settings,
 	Stats: { [string]: number },
 	LastOnline: number,
 	Ascension: { Count: number, Shards: number },
 	Receipts: { [string]: number },
+	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
+	Expansions: { [string]: boolean }, -- purchased expansion zone ids
 }
 
 return nil

@@ -60,6 +60,23 @@ function BuildingService.Limit(data: Types.PlayerData, typeId: string): number
 	return level and level.BuildingLimits and level.BuildingLimits[typeId] or 0
 end
 
+-- The first Empire Core tier that allows at least one of a building type.
+function BuildingService.UnlockTier(typeId: string): number?
+	for tier, level in BuildingConfig.EmpireCore.Levels do
+		if level.BuildingLimits and (level.BuildingLimits[typeId] or 0) > 0 then
+			return tier
+		end
+	end
+	return nil
+end
+
+-- How many creatures the habitat holds.
+function BuildingService.CreatureCapacity(data: Types.PlayerData): number
+	local habitat = data.Buildings.habitat
+	local level = habitat and BuildingConfig.Habitat.Levels[habitat.Level]
+	return level and level.CreatureCapacity or 6
+end
+
 -- Why a building cannot be upgraded right now (nil = it can, cost permitting).
 function BuildingService.UpgradeBlocker(data: Types.PlayerData, record: Types.BuildingRecord): string?
 	local def = BuildingConfig[record.Type]
@@ -129,7 +146,7 @@ local function place(player: Player, typeId: string, x: number, z: number, rot: 
 		return false, `Your Empire Core allows {limit} of these. Upgrade it to build more.`
 	end
 	local occupancy = Grid.Occupancy(data.Buildings, footprints)
-	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, x, z, rot)
+	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, x, z, rot, data.Expansions)
 	if not ok then
 		return false, reason
 	end
@@ -149,6 +166,55 @@ local function place(player: Player, typeId: string, x: number, z: number, rot: 
 	Events.BuildingChanged:Fire(player, id, "Placed")
 	Log.Info("Building", "Placed", { user = player.UserId, type = typeId, x = x, z = z, rot = rot })
 	return true, id
+end
+
+local function move(player: Player, buildingId: string, x: number, z: number, rot: number): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local record = data.Buildings[buildingId]
+	local def = record and BuildingConfig[record.Type]
+	if not record or not def then
+		return false, "That building isn't yours."
+	end
+	if not def.Placeable then
+		return false, "This building can't be moved."
+	end
+	local occupancy = Grid.Occupancy(data.Buildings, footprints, buildingId)
+	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, x, z, rot, data.Expansions)
+	if not ok then
+		return false, reason
+	end
+	ProductionService.Flush(player)
+	record.X, record.Z, record.Rot = x, z, rot
+	PlayerDataService.MarkDirty(player)
+	spawnModel(player, record)
+	StateService.Push(player, "Buildings")
+	Remotes.Events.GameEvent:FireClient(player, "BuildingPlaced", { Id = buildingId, Type = record.Type, Moved = true })
+	Log.Info("Building", "Moved", { user = player.UserId, type = record.Type, x = x, z = z, rot = rot })
+	return true, buildingId
+end
+
+local function buyExpansion(player: Player, zoneId: string): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local zone = PlotConfig.Zone(zoneId)
+	if not zone then
+		return false, "Unknown land."
+	end
+	if data.Expansions[zoneId] then
+		return false, "You already own that land."
+	end
+	if coreTier(data) < zone.CoreTier then
+		return false, `Upgrade the Empire Core to tier {zone.CoreTier} first.`
+	end
+	if not EconomyService.Spend(player, zone.Cost, "Expansion " .. zoneId) then
+		return false, "You need " .. Format.Cost(zone.Cost, ResourceConfig) .. "."
+	end
+	data.Expansions[zoneId] = true
+	PlayerDataService.MarkDirty(player)
+	PlotService.RefreshBounds(player)
+	StateService.Push(player, "Empire")
+	Remotes.Events.GameEvent:FireClient(player, "Expanded", { Zone = zoneId })
+	Log.Info("Building", "Expanded", { user = player.UserId, zone = zoneId })
+	return true, zoneId
 end
 
 local function upgrade(player: Player, buildingId: string): (boolean, any)
@@ -172,7 +238,7 @@ local function upgrade(player: Player, buildingId: string): (boolean, any)
 	PlayerDataService.MarkDirty(player)
 	spawnModel(player, record)
 	ProductionService.Invalidate(player)
-	StateService.Push(player, "Buildings", "Wallet")
+	StateService.Push(player, "Buildings", "Wallet", "Empire")
 	Remotes.Events.GameEvent:FireClient(
 		player,
 		"BuildingUpgraded",
@@ -295,6 +361,9 @@ local function buildingsState(player: Player, profile: PlayerDataService.Profile
 				Assigned = assigned,
 				Slots = rate and rate.Slots or 0,
 				Buffs = ProductionService.GetBuffs(player, id),
+				Starved = ProductionService.IsStarved(player, id),
+				InputsPerUnit = rate and rate.InputsPerUnit,
+				Job = def.Job,
 				NextCost = nextLevel and nextLevel.Cost,
 				UpgradeBlocker = BuildingService.UpgradeBlocker(data, record),
 			}
@@ -309,6 +378,7 @@ local function buildingsState(player: Player, profile: PlayerDataService.Profile
 				Limit = BuildingService.Limit(data, typeId),
 				NextCost = Formulas.PlaceCost(def, owned),
 				Available = def.Phase <= GameConfig.Phase,
+				UnlockTier = BuildingService.UnlockTier(typeId),
 			}
 		end
 	end
@@ -317,6 +387,17 @@ end
 
 function BuildingService.Start()
 	StateService.Register("Buildings", buildingsState)
+	StateService.Register("Empire", function(_player, profile)
+		local count = 0
+		for _ in profile.Data.Creatures do
+			count += 1
+		end
+		return {
+			Expansions = table.clone(profile.Data.Expansions),
+			CreatureCount = count,
+			CreatureCapacity = BuildingService.CreatureCapacity(profile.Data),
+		}
+	end)
 
 	PlotService.OnClaimed(function(player)
 		local data = PlayerDataService.GetData(player)
@@ -335,6 +416,12 @@ function BuildingService.Start()
 		place
 	)
 	Net.Handle("UpgradeBuilding", { Rate = { 3, 1 }, Args = { Check.Id } }, upgrade)
+	Net.Handle(
+		"MoveBuilding",
+		{ Rate = { 3, 1 }, Args = { Check.Id, Check.Integer, Check.Integer, Check.Integer } },
+		move
+	)
+	Net.Handle("BuyExpansion", { Rate = { 2, 0.5 }, Args = { Check.Id } }, buyExpansion)
 	Net.Handle("Collect", { Rate = { 6, 3 }, Args = { Check.Id } }, collect)
 	Net.Handle("Sell", { Rate = { 4, 2 }, Args = { Check.Id, Check.Any } }, sell)
 end

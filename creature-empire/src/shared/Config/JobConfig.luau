@@ -24,17 +24,17 @@ local JobConfig: { [string]: Job } = {
 	Miner = {
 		Id = "Miner",
 		Name = "Miner",
-		Verb = "Mining",
+		Verb = "Mining crystals",
 		Description = "Breaks ore and crystal deposits.",
-		Stats = { "WorkSpeed", "Yield", "Luck" },
+		Stats = { "WorkSpeed", "Yield" },
 		Phase = 2,
 	},
 	Smelter = {
 		Id = "Smelter",
 		Name = "Smelter",
-		Verb = "Smelting",
+		Verb = "Smelting crystals",
 		Description = "Keeps furnaces hot and refines raw materials.",
-		Stats = { "WorkSpeed", "EnergyEfficiency" },
+		Stats = { "WorkSpeed", "Yield" },
 		Phase = 2,
 	},
 	PowerOperator = {
@@ -43,6 +43,14 @@ local JobConfig: { [string]: Job } = {
 		Verb = "Generating power",
 		Description = "Powers machines and relays.",
 		Stats = { "EnergyEfficiency", "AbilityStrength" },
+		Phase = 4,
+	},
+	Alchemist = {
+		Id = "Alchemist",
+		Name = "Alchemist",
+		Verb = "Distilling essence",
+		Description = "Condenses crystals and petals into Essence.",
+		Stats = { "WorkSpeed", "Yield" },
 		Phase = 2,
 	},
 	Researcher = {
@@ -59,7 +67,7 @@ local JobConfig: { [string]: Job } = {
 		Verb = "Hauling",
 		Description = "Moves resources between buildings.",
 		Stats = { "WorkSpeed", "Capacity" },
-		Phase = 2,
+		Phase = 4,
 	},
 	Guardian = {
 		Id = "Guardian",

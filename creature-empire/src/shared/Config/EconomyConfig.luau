@@ -24,7 +24,7 @@ EconomyConfig.MaxBalance = 1e15
 EconomyConfig.ProductionTick = 1
 
 -- Creature experience per completed work cycle.
-EconomyConfig.XpPerCycle = 1
+EconomyConfig.XpPerCycle = 2
 
 -- Offline production: while away, buildings keep working at reduced efficiency for up to
 -- MaxSeconds, and still stop when their storage is full.
@@ -41,6 +41,7 @@ EconomyConfig.Offline = {
 EconomyConfig.BonusRules = {
 	Categories = {
 		Level = { Cap = 0.6 }, -- creature level
+		Stage = { Cap = 0.3 }, -- evolution stage
 		Passive = { Cap = 0.5 }, -- passive abilities
 		Empire = { Cap = 0.5 }, -- Empire Core tier
 		Ability = { Cap = 1.0 }, -- temporary active abilities (Kindle, ...)

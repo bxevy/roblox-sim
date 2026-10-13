@@ -13,6 +13,64 @@ local function gold(base: number, growth: number, level: number): { [string]: nu
 	return { Gold = Formulas.CostAt(base, growth, level - 1) }
 end
 
+-- Gold plus a material, both on their own curves (major milestones need new resources).
+local function goldAnd(
+	base: number,
+	growth: number,
+	level: number,
+	material: string,
+	materialBase: number
+): { [string]: number }
+	local cost = gold(base, growth, level)
+	cost[material] = Formulas.CostAt(materialBase, growth, level - 1)
+	return cost
+end
+
+-- The standard 5-level production building: more slots, storage and speed per level.
+local function productionLevels(
+	base: number,
+	growth: number,
+	cycle: number,
+	storage: number,
+	notes: { string }
+): { Types.BuildingLevel }
+	return {
+		{ CycleTime = cycle, YieldPerCycle = 1, Slots = 1, Storage = storage },
+		{
+			Cost = gold(base, growth, 2),
+			Description = notes[1],
+			CycleTime = cycle * 0.9,
+			YieldPerCycle = 1,
+			Slots = 2,
+			Storage = math.floor(storage * 1.75),
+		},
+		{
+			Cost = gold(base, growth, 3),
+			Description = notes[2],
+			CycleTime = cycle * 0.83,
+			YieldPerCycle = 1.25,
+			Slots = 2,
+			Storage = storage * 3,
+		},
+		{
+			Cost = gold(base, growth, 4),
+			Description = notes[3],
+			CycleTime = cycle * 0.75,
+			YieldPerCycle = 1.25,
+			Slots = 3,
+			Storage = storage * 5,
+		},
+		{
+			Cost = gold(base, growth, 5),
+			Description = notes[4],
+			CycleTime = cycle * 0.67,
+			YieldPerCycle = 2,
+			Slots = 3,
+			Storage = storage * 8,
+		},
+	} :: any
+end
+
 local BuildingConfig: { [string]: Types.BuildingDef } = {
 	EmpireCore = {
 		Id = "EmpireCore",
@@ -24,29 +82,59 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Fixed = true,
 		Phase = 1,
 		Levels = {
-			{ BuildingLimits = { MoonpetalFarm = 2 }, EmpireBonus = 0 },
+			{
+				BuildingLimits = { MoonpetalFarm = 2, Hatchery = 1 },
+				EmpireBonus = 0,
+			},
 			{
 				Cost = gold(600, 3.6, 2),
-				Description = "Tier 2: build up to 3 farms, +5% to all creature yield, a crystal spire rises.",
-				BuildingLimits = { MoonpetalFarm = 3 },
+				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter and Evolution Chamber, +5% creature yield.",
+				BuildingLimits = {
+					MoonpetalFarm = 3,
+					Hatchery = 1,
+					CrystalMine = 1,
+					CrystalSmelter = 1,
+					EvolutionChamber = 1,
+				},
 				EmpireBonus = 0.05,
 			},
 			{
-				Cost = gold(600, 3.6, 3),
-				Description = "Tier 3: up to 4 farms, +10% creature yield, floating rings.",
-				BuildingLimits = { MoonpetalFarm = 4 },
+				Cost = goldAnd(600, 3.6, 3, "RefinedCrystal", 10),
+				Description = "Tier 3: 4 farms, 2 mines, the Essence Condenser, +10% creature yield, floating rings.",
+				BuildingLimits = {
+					MoonpetalFarm = 4,
+					Hatchery = 1,
+					CrystalMine = 2,
+					CrystalSmelter = 1,
+					EssenceCondenser = 1,
+					EvolutionChamber = 1,
+				},
 				EmpireBonus = 0.1,
 			},
 			{
-				Cost = gold(600, 3.6, 4),
-				Description = "Tier 4: up to 5 farms, +15% creature yield, banners of your empire.",
-				BuildingLimits = { MoonpetalFarm = 5 },
+				Cost = goldAnd(600, 3.6, 4, "RefinedCrystal", 10),
+				Description = "Tier 4: 5 farms, 3 mines, 2 smelters, +15% creature yield, banners of your empire.",
+				BuildingLimits = {
+					MoonpetalFarm = 5,
+					Hatchery = 1,
+					CrystalMine = 3,
+					CrystalSmelter = 2,
+					EssenceCondenser = 1,
+					EvolutionChamber = 1,
+				},
 				EmpireBonus = 0.15,
 			},
 			{
-				Cost = gold(600, 3.6, 5),
-				Description = "Tier 5: up to 6 farms, +20% creature yield, a beacon of light.",
-				BuildingLimits = { MoonpetalFarm = 6 },
+				Cost = goldAnd(600, 3.6, 5, "RefinedCrystal", 10),
+				Description = "Tier 5: 6 farms, 4 mines, 2 condensers, +20% creature yield, a beacon of light.",
+				BuildingLimits = {
+					MoonpetalFarm = 6,
+					Hatchery = 1,
+					CrystalMine = 4,
+					CrystalSmelter = 2,
+					EssenceCondenser = 2,
+					EvolutionChamber = 1,
+				},
 				EmpireBonus = 0.2,
 			},
 		},
@@ -102,28 +190,122 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		},
 	},
 
+	CrystalMine = {
+		Id = "CrystalMine",
+		Name = "Crystal Mine",
+		Category = "Production",
+		Description = "Miners chip raw crystal out of a glittering outcrop.",
+		Footprint = { X = 4, Z = 4 },
+		Placeable = true,
+		Job = "Miner",
+		Recipe = "MineCrystal",
+		PlaceCost = { Gold = 500 },
+		PlaceGrowth = 2.5,
+		Phase = 2,
+		Levels = productionLevels(400, 2.3, 8, 30, {
+			"A second tunnel: room for 2 miners, more storage.",
+			"Mine cart rails: faster digging and bigger hauls.",
+			"Crystal lamps: a third miner and much more storage.",
+			"Deep vein: doubles each haul.",
+		}),
+	},
+
+	CrystalSmelter = {
+		Id = "CrystalSmelter",
+		Name = "Crystal Smelter",
+		Category = "Production",
+		Description = "Smelters melt 3 Raw Crystal from your silo into 1 Refined Crystal.",
+		Footprint = { X = 3, Z = 3 },
+		Placeable = true,
+		Job = "Smelter",
+		Recipe = "SmeltCrystal",
+		PlaceCost = { Gold = 1200 },
+		PlaceGrowth = 3,
+		Phase = 2,
+		Levels = productionLevels(900, 2.4, 10, 15, {
+			"Second crucible: room for 2 smelters.",
+			"Bellows: hotter fires, faster smelting, bigger batches.",
+			"Twin chimneys: a third smelter and more storage.",
+			"Starfire core: doubles each batch.",
+		}),
+	},
+
+	EssenceCondenser = {
+		Id = "EssenceCondenser",
+		Name = "Essence Condenser",
+		Category = "Production",
+		Description = "Alchemists condense 1 Refined Crystal and 8 Moonpetals from your silo into 3 Essence.",
+		Footprint = { X = 3, Z = 3 },
+		Placeable = true,
+		Job = "Alchemist",
+		Recipe = "CondenseEssence",
+		PlaceCost = { Gold = 6000, RefinedCrystal = 20 },
+		PlaceGrowth = 3,
+		Phase = 2,
+		Levels = productionLevels(3000, 2.5, 12, 30, {
+			"Second coil: room for 2 alchemists.",
+			"Focusing lens: faster condensing, more Essence per batch.",
+			"Arcane rings: a third alchemist and more storage.",
+			"Resonance chamber: doubles each batch.",
+		}),
+	},
+
+	Hatchery = {
+		Id = "Hatchery",
+		Name = "Hatchery",
+		Category = "Creatures",
+		Description = "A warm nest where you hatch eggs. Every egg shows its exact odds.",
+		Footprint = { X = 3, Z = 3 },
+		Placeable = true,
+		PlaceCost = { Gold = 400 },
+		PlaceGrowth = 1,
+		Phase = 2,
+		Levels = { {} },
+	},
+
+	EvolutionChamber = {
+		Id = "EvolutionChamber",
+		Name = "Evolution Chamber",
+		Category = "Creatures",
+		Description = "A ring of standing stones. Creatures that meet their requirements evolve here.",
+		Footprint = { X = 4, Z = 4 },
+		Placeable = true,
+		PlaceCost = { Gold = 2500 },
+		PlaceGrowth = 1,
+		Phase = 2,
+		Levels = { {} },
+	},
+
 	ResourceSilo = {
 		Id = "ResourceSilo",
 		Name = "Resource Silo",
 		Category = "Automation",
-		Description = "Holds the materials you collect. A bigger silo lets you collect more before selling.",
+		Description = "Holds the materials you collect, and feeds smelters and condensers. Bigger silos hold more.",
 		Footprint = { X = 3, Z = 3 },
 		Placeable = false,
 		Fixed = true,
 		Phase = 1,
 		Levels = {
-			{ Capacity = { Moonpetal = 150 } },
-			{ Cost = gold(100, 2.4, 2), Description = "Holds 300 moonpetals.", Capacity = { Moonpetal = 300 } },
+			{ Capacity = { Moonpetal = 150, RawCrystal = 120, RefinedCrystal = 40 } },
+			{
+				Cost = gold(100, 2.4, 2),
+				Description = "Bigger tank: about twice the room for everything.",
+				Capacity = { Moonpetal = 300, RawCrystal = 250, RefinedCrystal = 80 },
+			},
 			{
 				Cost = gold(100, 2.4, 3),
-				Description = "Holds 650 moonpetals. Adds a second tank.",
-				Capacity = { Moonpetal = 650 },
+				Description = "Adds a second tank.",
+				Capacity = { Moonpetal = 650, RawCrystal = 550, RefinedCrystal = 180 },
 			},
-			{ Cost = gold(100, 2.4, 4), Description = "Holds 1,400 moonpetals.", Capacity = { Moonpetal = 1400 } },
 			{
-				Cost = gold(100, 2.4, 5),
-				Description = "Holds 3,000 moonpetals. Crowned with a glowing cap.",
-				Capacity = { Moonpetal = 3000 },
+				Cost = goldAnd(100, 2.4, 4, "RefinedCrystal", 5),
+				Description = "Reinforced tanks.",
+				Capacity = { Moonpetal = 1400, RawCrystal = 1200, RefinedCrystal = 400 },
+			},
+			{
+				Cost = goldAnd(100, 2.4, 5, "RefinedCrystal", 5),
+				Description = "Crowned with a glowing cap.",
+				Capacity = { Moonpetal = 3000, RawCrystal = 2600, RefinedCrystal = 900 },
 			},
 		},
 	},
@@ -144,12 +326,26 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Id = "Habitat",
 		Name = "Creature Habitat",
 		Category = "Creatures",
-		Description = "Creatures without a job relax and play here.",
+		Description = "Creatures without a job relax and play here. Its level sets how many creatures you can keep.",
 		Footprint = { X = 5, Z = 4 },
 		Placeable = false,
 		Fixed = true,
 		Phase = 1,
-		Levels = { {} },
+		Levels = {
+			{ CreatureCapacity = 6 },
+			{ Cost = gold(500, 2.6, 2), Description = "Room for 10 creatures. A third hutch.", CreatureCapacity = 10 },
+			{ Cost = gold(500, 2.6, 3), Description = "Room for 15 creatures. A bigger pond.", CreatureCapacity = 15 },
+			{
+				Cost = goldAnd(500, 2.6, 4, "RefinedCrystal", 10),
+				Description = "Room for 22 creatures. A play tower.",
+				CreatureCapacity = 22,
+			},
+			{
+				Cost = goldAnd(500, 2.6, 5, "RefinedCrystal", 10),
+				Description = "Room for 30 creatures. A glowing grove.",
+				CreatureCapacity = 30,
+			},
+		},
 	},
 
 	ResearchStation = {

@@ -44,6 +44,7 @@ UIController.Register("Build", require(UIFolder.BuildMenu).new(ctx))
 UIController.Register("Settings", require(UIFolder.SettingsWindow).new(ctx))
 UIController.Register("Quests", require(UIFolder.QuestJournal).new(ctx))
 UIController.Register("Inspect", require(UIFolder.InspectWindow).new(ctx))
+UIController.Register("Inventory", require(UIFolder.InventoryWindow).new(ctx))
 local starter = require(UIFolder.StarterSelect).new(ctx)
 UIController.Register("Starter", starter)
 local reveal = require(UIFolder.RevealOverlay).new(ctx)
@@ -82,6 +83,17 @@ end)
 Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: any)
 	if name == "CreatureObtained" then
 		reveal.Show(payload)
+	elseif name == "CreatureEvolved" then
+		UIController.Close()
+		reveal.Show({
+			Kind = "Evolve",
+			Species = payload.Species,
+			Stage = payload.Stage,
+			Name = payload.Name,
+			Unlocks = payload.Unlocks,
+		})
+	elseif name == "Expanded" then
+		AudioController.Play("Upgrade")
 	elseif name == "QuestReady" then
 		UIController.Notify("Quest complete! Claim your reward.", "Reward")
 		AudioController.Play("QuestComplete")

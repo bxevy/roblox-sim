@@ -7,7 +7,7 @@
 | Project builds into a place file | `rojo build` | ✔ |
 | Type checking of all code against the Roblox API definitions | `luau-lsp analyze` with a Rojo sourcemap | ✔ no errors |
 | Formatting | `stylua --check src tests` | ✔ |
-| Logic tests (65): formulas, bonus caps, grid placement, production rates, slots, XP, rate limiting, schema defaults, migrations, repair, session locking (live and abandoned locks, lock loss, transient and persistent errors, double transforms, unrecognised data), profile size, config integrity, economy pacing | Lune (`lune run tests/run`) | ✔ all pass |
+| Logic tests (93): formulas, bonus caps, grid placement, production rates, slots, XP, rate limiting, schema defaults, migrations, repair, session locking (live and abandoned locks, lock loss, transient and persistent errors, double transforms, unrecognised data), profile size, config integrity, economy pacing, v1→v2 migration, input recipes and starvation, hatching odds/pity (incl. 100k seeded rolls), evolution requirements and bonuses, expansion bounds, content reachability | Lune (`lune run tests/run`) | ✔ all pass |
 | Running inside Roblox (server, client, UI, rendering, DataStore) | Roblox Studio | **Not done yet.** No Studio was available where this was built. Use the manual checklist below. |
 
 Selene is configured (`selene.toml`) but wasn't run, because generating its Roblox standard library needs a download that wasn't reachable. Run `selene generate-roblox-std && selene src` locally.
@@ -41,6 +41,20 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Place a second farm: the preview is green or red, rotation works, and you can't place on the path or another building. Gold is spent and the third starter is granted.
 - [ ] Upgrade the silo and then the core. The core gate message shows when a farm is ahead of the core. The quest line finishes.
 
+### Phase 2: hatching, crystals, evolution, land
+- [ ] Build a Hatchery. Each egg lists every creature with its exact % and rarity word. The odds add up to 100%.
+- [ ] Hatch a Meadow Egg. Gold is spent and an egg-coloured reveal plays. Pity goes up by 1, or resets on a Rare.
+- [ ] *Developer → +1,000 gold* repeatedly and hatch 14 Meadow Eggs. If no Rare appeared, the panel says the next hatch is guaranteed, and it is.
+- [ ] Fill the habitat (6). Hatch is disabled with "Habitat full". Upgrading the habitat makes room.
+- [ ] Core tier 2 → build a Crystal Mine, assign Pebblit, collect Raw Crystal. The bubble and popups use the crystal colour.
+- [ ] Build a Crystal Smelter with Cindercub. Raw Crystal drains from the silo (HUD pill) and Refined Crystal accumulates. With no raw crystal left, the panel says "Paused" and the creature shows "Waiting: needs materials".
+- [ ] Essence Condenser (tier 3) with Wisplet or Puddlefin: uses Refined Crystal and Moonpetals and makes Essence (a currency, so collecting has no silo limit).
+- [ ] Evolution: *Developer → +5 levels* and *+100 essence*, build the Evolution Chamber. The Creatures window checklist turns green, Evolve plays the evolution reveal, the creature grows, gains new features, and the job rate rises (about ×1.52 for Sproutling).
+- [ ] Buy West Meadow (tier 2, 1,500 gold) at the Empire Core. The fence moves out and buildings can be placed on the new land, including straddling the old edge.
+- [ ] Move a farm with *Move this building*. Its workers follow and production carries on.
+- [ ] Rejoin: pity, expansions, evolutions, job cycles and moved buildings all persist.
+- [ ] Load an account saved by the Phase 1 build. It migrates to v2, its creatures keep their farming work as Farmer cycles, and nothing is lost.
+
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.
 - [ ] When the silo is full, collecting leaves the remainder in the farm with a clear message.
@@ -66,7 +80,7 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] `Sell("Moonpetal", -5)`, `Sell("Gold", 10)` and `UseAbility` on another player's creature id are all refused.
 
 ### Input and accessibility
-- [ ] Keyboard shortcuts C / B / J / P toggle windows and don't fire while typing in chat.
+- [ ] Keyboard shortcuts C / B / J / P / G toggle windows and don't fire while typing in chat.
 - [ ] Gamepad: D-pad opens windows, B closes, selection highlight is visible, and placement works with Y / A / B.
 - [ ] Touch (device emulator, phone sizes): HUD readable, windows fit, tap-to-place works.
 - [ ] Settings: volumes apply, VFX Off removes particles and motion, Reduced Motion stops bobbing and popping, Fast reveals skips the build-up.

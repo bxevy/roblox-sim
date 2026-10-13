@@ -16,6 +16,7 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Remotes = require(Shared.Remotes)
 local Format = require(Shared.Util.Format)
+local Production = require(Shared.Util.Production)
 local StateController = require(script.Parent.StateController)
 local EffectsController = require(script.Parent.EffectsController)
 local AudioController = require(script.Parent.AudioController)
@@ -52,7 +53,9 @@ function BuildingController.PredictedStored(buildingId: string): (number, number
 		return 0, 0, nil
 	end
 	local stored = info.Stored[info.Output] or 0
-	local predicted = math.min(stored + (info.PerSecond or 0) * StateController.Age("Buildings"), info.Capacity or 0)
+	-- No extrapolation while inputs have run out (the server paused it).
+	local rate = if info.Starved then 0 else info.PerSecond or 0
+	local predicted = math.min(stored + rate * StateController.Age("Buildings"), info.Capacity or 0)
 	return predicted, info.Capacity or 0, info.Output
 end
 
@@ -78,7 +81,7 @@ local function prompt(
 	return p
 end
 
-local function makeBubble(t: Tracked)
+local function makeBubble(t: Tracked, color: Color3)
 	local base = t.Model.PrimaryPart :: BasePart
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "StorageBubble"
@@ -114,7 +117,7 @@ local function makeBubble(t: Tracked)
 	Instance.new("UICorner", barBack).CornerRadius = UDim.new(1, 0)
 	local fill = Instance.new("Frame")
 	fill.Size = UDim2.fromScale(0, 1)
-	fill.BackgroundColor3 = ResourceConfig.Moonpetal.Color
+	fill.BackgroundColor3 = color
 	fill.Parent = barBack
 	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 	gui.Parent = base
@@ -139,6 +142,8 @@ local function track(model: Instance, owned: boolean)
 	end
 	local t: Tracked = { Model = model, Id = id, Type = typeId, Owned = owned, Petals = {} }
 
+	local output = Production.OutputOf(def)
+	local outputDef = output and ResourceConfig[output] or ResourceConfig.Moonpetal
 	if owned then
 		if def.Recipe then
 			local collect = prompt(base, "Collect", def.Name, Enum.KeyCode.E, Enum.KeyCode.ButtonX, 0)
@@ -148,12 +153,12 @@ local function track(model: Instance, owned: boolean)
 					AudioController.Play("Collect", base.Position)
 					EffectsController.Popup(
 						base.Position + Vector3.new(0, 6, 0),
-						"+" .. Format.Number(result) .. " " .. ResourceConfig.Moonpetal.Icon,
-						ResourceConfig.Moonpetal.Color
+						"+" .. Format.Number(result) .. " " .. outputDef.Icon,
+						outputDef.Color
 					)
 					EffectsController.Burst(
 						base.Position + Vector3.new(0, 2, 0),
-						ResourceConfig.Moonpetal.Color,
+						outputDef.Color,
 						20,
 						{ Acceleration = Vector3.new(0, 8, 0) }
 					)
@@ -161,7 +166,7 @@ local function track(model: Instance, owned: boolean)
 					BuildingController.Notify(result, "Error")
 				end
 			end)
-			makeBubble(t)
+			makeBubble(t, outputDef.Color)
 		end
 		local action = if typeId == "TradingPost" then "Trade" elseif def.Locked then "Inspect" else "Manage"
 		local manage = prompt(base, action, def.Name, Enum.KeyCode.F, Enum.KeyCode.ButtonY, if def.Recipe then 1 else 0)
@@ -256,8 +261,12 @@ local function update()
 			end
 		end
 		if t.Gauge and t.GaugeBase and wallet then
-			local capacity = wallet.Capacity and wallet.Capacity.Moonpetal or 0
-			local amount = wallet.Resources and wallet.Resources.Moonpetal or 0
+			-- Overall fill across every stored material.
+			local capacity, amount = 0, 0
+			for id, cap in wallet.Capacity or {} do
+				capacity += cap
+				amount += math.min(wallet.Resources[id] or 0, cap)
+			end
 			local alpha = if capacity > 0 then math.clamp(amount / capacity, 0, 1) else 0
 			local maxHeight = (t.Gauge:GetAttribute("MaxHeight") :: number?) or 6
 			local height = math.max(maxHeight * alpha, 0.2)

@@ -31,6 +31,8 @@ Bootstrap starts the services in this order. PlayerDataService starts last, so e
 | `BuildingService`   | Place, upgrade, collect and sell. Checks bounds and collisions with `Shared/Util/Grid`, the core-tier limits and gates, cost, distance and rate. Spawns building models. |
 | `ProductionService` | One loop for the whole server. Caches rates per player (`Shared/Util/Production`), advances storage by elapsed time, grants XP, handles ability buffs and applies offline progress. |
 | `CreatureService`   | Grants creatures (GUID ids), the starter choice, job assignment, active abilities (with saved cooldowns) and the replicated creature anchors. |
+| `HatchingService`   | Hatches eggs at the Hatchery: checks habitat space, spends the cost, rolls with `Shared/Util/Hatching` (the same code that publishes the odds), updates pity, grants the creature (tradable, source "Egg"). |
+| `EvolutionService`  | Evolves creatures at the Evolution Chamber. Checks requirements with `Shared/Util/Evolution` (the same checklist the client shows) and only takes the costs once everything is met. |
 | `QuestService`      | Tutorial steps checked by named evaluators. Step counters are driven by `Core/Events`. Rewards are claimed and granted once. |
 | `SettingsService`   | Validated, saved player settings. |
 | `AntiExploitService`| Counts rejected requests and removes clients that flood invalid requests (never in Studio). |
@@ -84,13 +86,13 @@ Per creature at a production building:
 
 ```
 cycleTime = levelCycleTime / ((WorkSpeed/10) × speedBonus)
-perCycle  = levelYieldPerCycle × (Yield/10) × jobAffinity × yieldBonus
+perCycle  = levelYieldPerCycle × recipeOutputs × (Yield/10) × jobAffinity(stage) × yieldBonus
 rate      = perCycle / cycleTime            (per second; the building's rate is the sum, until storage is full)
 ```
 
 Bonuses follow `EconomyConfig.BonusRules`:
 
-- Bonuses in the same category **add** and are capped per category: Level, Passive, Empire, Ability, Synergy, Boost.
+- Bonuses in the same category **add** and are capped per category: Level, Stage, Passive, Empire, Ability, Synergy, Boost.
 - Categories **multiply** with each other.
 - The total is capped at `MaxMultiplier` (6×).
 
@@ -102,7 +104,8 @@ Costs follow `Cost(level) = Base × Growth^(level−1)`, rounded to two signific
 
 - **New species.** Add a `species({...})` entry in `CreatureConfig.luau`. Set `Phase` to when it becomes obtainable. Its `Appearance.Features` pick parts from `client/Visuals/CreatureModels.luau`; add a feature builder there for new body parts. Add its sound keys to `AssetConfig`.
 - **New building.** Add it to `BuildingConfig.luau` (levels, footprint, job, recipe). Add a model builder to `server/World/BuildingModels.luau`, otherwise a labelled placeholder is used. Add it to the Empire Core's `BuildingLimits` if it's placeable.
-- **New recipe or resource.** Add entries to `RecipeConfig` and `ResourceConfig`. Phase 1 production supports output-only recipes; consuming inputs is the Phase 2 task in the roadmap.
+- **New recipe or resource.** Add entries to `RecipeConfig` and `ResourceConfig`. Inputs are consumed from the silo as the building works (`Production.Step`); outputs per cycle can be more than one unit.
+- **New egg.** Add it to `EggConfig` (cost, loot weights, pity rarity and limit). The Hatchery panel lists it and publishes its odds automatically.
 - **New quest step.** Add a step to `QuestConfig.Tutorial` with an existing `Kind`, or add an evaluator in `QuestService.Evaluators` plus a counter hook.
 - **New remote.** Add its name in `Shared/Remotes.luau` and register it with `Net.Handle(name, { Rate, Args }, handler)`.
 - **Schema change.** Bump `Schema.CURRENT_VERSION`, add `Migrations[old]`, update `Default` and `Sanitize`, and add a migration test in `tests/specs/Data.spec.luau`.

@@ -4,7 +4,7 @@ A creature-collecting simulator and empire-building tycoon for Roblox, written i
 
 You start with a small plot, one partner creature and a single Moonpetal Farm. Creatures walk to their jobs and work there. You collect the harvest, sell it, and grow the farm into a glowing empire.
 
-This folder is **Phase 1: the playable foundation**. The [roadmap](docs/ROADMAP.md) lists what Phases 2–6 add and exactly what is unfinished.
+This folder contains **Phase 1 (the playable foundation)** and **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)**. The [roadmap](docs/ROADMAP.md) lists what Phases 3–6 add and exactly what is unfinished.
 
 | Doc                                       | What's in it                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------ |
@@ -50,6 +50,28 @@ This folder is **Phase 1: the playable foundation**. The [roadmap](docs/ROADMAP.
   - A failed load never becomes a fresh profile.
 - **Security.** Every request is validated on the server (ownership, distance, prices, slots, input types) and rate-limited.
 
+## Added in Phase 2
+
+- **Hatchery and eggs.** Three eggs: Meadow (Gold), Ember (Gold and Raw Crystal) and Geode (Essence and Refined Crystal).
+  - Exact odds are listed before every hatch, with rarity glyphs and words.
+  - Pity: a Rare or better is guaranteed within 15 hatches (12 for Geode). The counter is shown and resets when you hatch one.
+  - The hatch plays an egg-coloured reveal. Eggs never cost Robux.
+- **13 obtainable species** (up from 3), including four Rares and an Epic (Prismaw). Every obtainable species has a real job and a passive that actually does something.
+- **Evolution Chamber.** Creatures evolve to Mature and Ascended forms once they meet their requirements: level, work cycles in a specific job, Essence or materials.
+  - Each stage adds +15% / +30% speed and yield and makes the active ability 50% / 100% stronger (longer for speed bursts).
+  - Some species' job skills improve, and they gain new visual features (flower crown, flame tuft, aura, halo).
+  - The Creatures window shows a live checklist and an Evolve button.
+- **Crystal chain.**
+  - Crystal Mine (Miner) → Raw Crystal → Crystal Smelter (Smelter, uses 3 Raw from your silo) → Refined Crystal → Essence Condenser (new Alchemist job, uses Refined Crystal + Moonpetals) → Essence.
+  - Buildings pause with a clear message when the silo runs out of inputs, which makes bottlenecks easy to spot.
+  - Empire Core tiers 3–5, the late silo and habitat levels, and land need Refined Crystal.
+- **Land expansion.** Buy the West Meadow, East Grove and North Ridge from the Empire Core panel. The fence moves out and the land becomes buildable.
+- **Move buildings.** Use *Move this building* in any placeable building's panel.
+- **Habitat capacity** (6 → 30 across 5 levels) limits hatching. Upgrade it to keep more creatures.
+- **Inventory window** (G) listing every currency and material, what it's for and its storage limit.
+- **7 more quests** that lead through hatching, mining, smelting, evolving and Empire Core tier 3.
+- **Saves move to schema v2.** Old v1 profiles migrate automatically: earlier work counts as farming, and pity and expansions are added.
+
 ## Run it
 
 ### Option A: open the built place
@@ -84,6 +106,7 @@ rojo build -o creature-empire.rbxl
 | Build menu         | B                     | D-pad left             | Build button        |
 | Quest journal      | J                     | D-pad right            | Quests button       |
 | Settings           | P                     | D-pad down             | Settings button     |
+| Inventory          | G                     | Inventory button       | Inventory button    |
 | Close window       | ✕ / click outside     | B                      | ✕ / tap outside     |
 | Placement          | R rotate, click place, X / right-click cancel | Y rotate, A place, B cancel | tap ground, then Rotate / Place / Cancel |
 
@@ -94,23 +117,24 @@ creature-empire/
   default.project.json      Rojo project (ReplicatedStorage.Shared, ServerScriptService.Server, StarterPlayerScripts.Client)
   src/shared/               → ReplicatedStorage.Shared
     Config/                 every number and definition: creatures, jobs, buildings, recipes,
-                            resources, rarities, economy, quests, biomes, plots, assets, game
-    Util/                   pure shared logic: Formulas, Production, Grid, Format
+                            resources, rarities, eggs, economy, quests, biomes, plots, assets, game
+    Util/                   pure shared logic: Formulas, Production, Grid, Hatching, Evolution, Format
     Types.luau, Remotes.luau
   src/server/               → ServerScriptService.Server
     Bootstrap.server.luau   starts everything
     Core/                   ProfileCore (session locks), Schema (defaults/migrations/repair),
                             Net (validated remotes), RateLimiter, Events, Signal, Log
     Services/               PlayerData, State, Economy, Plot, Building, Production, Creature,
-                            Quest, Settings, AntiExploit, Dev
+                            Hatching, Evolution, Quest, Settings, AntiExploit, Dev
     World/                  WorldBuilder (Verdant Reach), BuildingModels, Parts
   src/client/               → StarterPlayer.StarterPlayerScripts.Client
     Main.client.luau
     Controllers/            State, UI, Creature, Building, Placement, Tutorial, Effects, Audio, Input
     UI/                     Theme, Window, Hud, CreaturesWindow, BuildingPanel, BuildMenu,
-                            StarterSelect, RevealOverlay, SettingsWindow, QuestJournal, InspectWindow
+                            StarterSelect, RevealOverlay, SettingsWindow, QuestJournal, InspectWindow,
+                            InventoryWindow
     Visuals/CreatureModels  code-built creature models
-  tests/                    Lune test suite (65 tests): `lune run tests/run`
+  tests/                    Lune test suite (93 tests): `lune run tests/run`
   docs/
 ```
 

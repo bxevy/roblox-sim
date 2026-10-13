@@ -46,6 +46,7 @@ local function setSignText(sign: BasePart, text: string)
 	end
 end
 
+local buildBounds: (Plot, { [string]: boolean }) -> ()
 local function buildPlot(index: number): Plot
 	local angle = (index - 1) / PlotConfig.PlotCount * math.pi * 2
 	local direction = Vector3.new(math.sin(angle), 0, math.cos(angle))
@@ -79,68 +80,6 @@ local function buildPlot(index: number): Plot
 		Color = Color3.fromRGB(108, 172, 80),
 		Material = Enum.Material.Grass,
 	})
-	-- Stone curb, open at the entrance
-	local curb = Color3.fromRGB(170, 164, 155)
-	local entranceLeft = 11 * PlotConfig.CellSize
-	local entranceRight = 13 * PlotConfig.CellSize
-	local function curbPiece(x1: number, z1: number, x2: number, z2: number)
-		local size = Vector3.new(math.max(math.abs(x2 - x1), 1), 1, math.max(math.abs(z2 - z1), 1))
-		Parts.Part(ground, {
-			Size = size,
-			CFrame = origin * CFrame.new((x1 + x2) / 2, 0.5, (z1 + z2) / 2),
-			Color = curb,
-			Material = Enum.Material.Cobblestone,
-		})
-	end
-	curbPiece(0, 0, entranceLeft, 0)
-	curbPiece(entranceRight, 0, WIDTH, 0)
-	curbPiece(0, DEPTH, WIDTH, DEPTH)
-	curbPiece(0, 0, 0, DEPTH)
-	curbPiece(WIDTH, 0, WIDTH, DEPTH)
-
-	-- Wooden fence on the curb, open at the entrance. Posts every few studs and two long
-	-- rails per side keep the part count low (about 70 parts per plot).
-	local FENCE_HEIGHT = 4
-	local POST_SPACING = 6
-	local post = Color3.fromRGB(110, 78, 50)
-	local rail = Color3.fromRGB(150, 110, 72)
-	local function fence(x1: number, z1: number, x2: number, z2: number)
-		local from = Vector3.new(x1, 0, z1)
-		local to = Vector3.new(x2, 0, z2)
-		local length = (to - from).Magnitude
-		if length < 1 then
-			return
-		end
-		local direction = (to - from).Unit
-		local posts = math.max(math.floor(length / POST_SPACING), 1)
-		for i = 0, posts do
-			local p = from + direction * (length * i / posts)
-			Parts.Part(ground, {
-				Name = "FencePost",
-				Size = Vector3.new(0.8, FENCE_HEIGHT + 0.6, 0.8),
-				CFrame = origin * CFrame.new(p.X, 1 + (FENCE_HEIGHT + 0.6) / 2, p.Z),
-				Color = post,
-				Material = Enum.Material.Wood,
-			})
-		end
-		local mid = (from + to) / 2
-		local facing = CFrame.lookAt(Vector3.zero, direction)
-		for _, height in { 1.6, 3.4 } do
-			Parts.Part(ground, {
-				Name = "FenceRail",
-				Size = Vector3.new(0.35, 0.5, length),
-				CFrame = origin * CFrame.new(mid.X, 1 + height, mid.Z) * facing.Rotation,
-				Color = rail,
-				Material = Enum.Material.WoodPlanks,
-			})
-		end
-	end
-	fence(0, 0, entranceLeft, 0)
-	fence(entranceRight, 0, WIDTH, 0)
-	fence(WIDTH, 0, WIDTH, DEPTH)
-	fence(WIDTH, DEPTH, 0, DEPTH)
-	fence(0, DEPTH, 0, 0)
-
 	-- Path from the entrance to the Empire Core (the reserved cells)
 	for _, area in PlotConfig.ReservedCells do
 		local x1, z1 = area.X1 * PlotConfig.CellSize, area.Z1 * PlotConfig.CellSize
@@ -167,39 +106,6 @@ local function buildPlot(index: number): Plot
 	end
 	local sign = Parts.Sign(ground, archCF * CFrame.new(0, 5.6, 0), "Unclaimed plot", 12)
 
-	-- Expansion zones: overgrown, roped off, labelled (Phase 2 unlocks them).
-	local depthStuds = 4 * PlotConfig.CellSize
-	for _, zone in PlotConfig.ExpansionZones do
-		local cf, size
-		if zone.Side == "Left" then
-			cf = origin * CFrame.new(-depthStuds / 2 - 1, 0, DEPTH / 2)
-			size = Vector3.new(depthStuds, 0.4, DEPTH)
-		elseif zone.Side == "Right" then
-			cf = origin * CFrame.new(WIDTH + depthStuds / 2 + 1, 0, DEPTH / 2)
-			size = Vector3.new(depthStuds, 0.4, DEPTH)
-		else
-			cf = origin * CFrame.new(WIDTH / 2, 0, DEPTH + depthStuds / 2 + 1)
-			size = Vector3.new(WIDTH, 0.4, depthStuds)
-		end
-		Parts.Part(ground, {
-			Name = "Expansion",
-			Size = size,
-			CFrame = cf * CFrame.new(0, -0.2, 0),
-			Color = Color3.fromRGB(78, 120, 60),
-			Material = Enum.Material.LeafyGrass,
-			CanQuery = false,
-		})
-		local rng = Random.new(index * 100 + #zone.Name)
-		for _ = 1, 6 do
-			local offset = Vector3.new(rng:NextNumber(-0.4, 0.4) * size.X, 0, rng:NextNumber(-0.4, 0.4) * size.Z)
-			Parts.Ball(ground, (cf * CFrame.new(offset + Vector3.new(0, 1, 0))).Position, rng:NextNumber(2.5, 4), {
-				Color = Color3.fromRGB(60, 110, 50),
-				Material = Enum.Material.Grass,
-			})
-		end
-		Parts.Sign(ground, cf * CFrame.new(0, 0, 0), zone.Name .. " · expansion (coming soon)", 10)
-	end
-
 	-- Where the owner appears (just inside the entrance, facing the Empire Core).
 	local spawn = Instance.new("Part")
 	spawn.Name = "PlotSpawn"
@@ -212,8 +118,117 @@ local function buildPlot(index: number): Plot
 	spawn.CanTouch = false
 	spawn.Parent = ground
 
+	local bounds = Instance.new("Folder")
+	bounds.Name = "Bounds"
+	bounds.Parent = folder
+
 	folder.Parent = plotsFolder
-	return { Index = index, Folder = folder, Origin = origin, Owner = nil, Sign = sign, Spawn = spawn }
+	local plot: Plot = { Index = index, Folder = folder, Origin = origin, Owner = nil, Sign = sign, Spawn = spawn }
+	buildBounds(plot, {})
+	return plot
+end
+
+-- The plot's edge: expansion zones (owned = more lawn, otherwise overgrown with a sign),
+-- then a stone curb and a wooden fence around the whole buildable area, open at the
+-- entrance. Rebuilt when the owner changes or buys an expansion.
+local FENCE_HEIGHT = 4
+local POST_SPACING = 6
+local POST_COLOR = Color3.fromRGB(110, 78, 50)
+local RAIL_COLOR = Color3.fromRGB(150, 110, 72)
+local CURB_COLOR = Color3.fromRGB(170, 164, 155)
+local LAWN_COLOR = Color3.fromRGB(108, 172, 80)
+
+buildBounds = function(plot: Plot, expansions: { [string]: boolean })
+	local folder = plot.Folder:FindFirstChild("Bounds") :: Folder
+	folder:ClearAllChildren()
+	local origin = plot.Origin
+	local cell = PlotConfig.CellSize
+
+	for _, zone in PlotConfig.ExpansionZones do
+		local r = zone.Rect
+		local x1, z1 = r.X1 * cell, r.Z1 * cell
+		local x2, z2 = (r.X2 + 1) * cell, (r.Z2 + 1) * cell
+		local size = Vector3.new(x2 - x1, 1, z2 - z1)
+		local cf = origin * CFrame.new((x1 + x2) / 2, 0, (z1 + z2) / 2)
+		if expansions[zone.Id] then
+			Parts.Part(folder, {
+				Name = "ExpansionFloor",
+				Size = size,
+				CFrame = cf * CFrame.new(0, -0.5, 0),
+				Color = LAWN_COLOR,
+				Material = Enum.Material.Grass,
+			})
+		else
+			Parts.Part(folder, {
+				Name = "Overgrowth",
+				Size = Vector3.new(size.X, 0.4, size.Z),
+				CFrame = cf * CFrame.new(0, -0.2, 0),
+				Color = Color3.fromRGB(78, 120, 60),
+				Material = Enum.Material.LeafyGrass,
+				CanQuery = false,
+			})
+			local rng = Random.new(plot.Index * 100 + #zone.Name)
+			for _ = 1, 6 do
+				local offset = Vector3.new(rng:NextNumber(-0.4, 0.4) * size.X, 1, rng:NextNumber(-0.4, 0.4) * size.Z)
+				Parts.Ball(folder, (cf * CFrame.new(offset)).Position, rng:NextNumber(2.5, 4), {
+					Color = Color3.fromRGB(60, 110, 50),
+					Material = Enum.Material.Grass,
+				})
+			end
+			Parts.Sign(folder, cf, `{zone.Name} · expand at your Empire Core (tier {zone.CoreTier})`, 12)
+		end
+	end
+
+	-- Outer rectangle of the buildable area.
+	local minX = if expansions.West then -4 * cell else 0
+	local maxX = WIDTH + (if expansions.East then 4 * cell else 0)
+	local maxZ = DEPTH + (if expansions.North then 4 * cell else 0)
+	local entranceLeft = 11 * cell
+	local entranceRight = 13 * cell
+
+	local function edge(x1: number, z1: number, x2: number, z2: number)
+		local from = Vector3.new(x1, 0, z1)
+		local to = Vector3.new(x2, 0, z2)
+		local length = (to - from).Magnitude
+		if length < 1 then
+			return
+		end
+		local direction = (to - from).Unit
+		local mid = (from + to) / 2
+		local facing = CFrame.lookAt(Vector3.zero, direction).Rotation
+		Parts.Part(folder, {
+			Name = "Curb",
+			Size = Vector3.new(1, 1, length + 1),
+			CFrame = origin * CFrame.new(mid.X, 0.5, mid.Z) * facing,
+			Color = CURB_COLOR,
+			Material = Enum.Material.Cobblestone,
+		})
+		local posts = math.max(math.floor(length / POST_SPACING), 1)
+		for i = 0, posts do
+			local p = from + direction * (length * i / posts)
+			Parts.Part(folder, {
+				Name = "FencePost",
+				Size = Vector3.new(0.8, FENCE_HEIGHT + 0.6, 0.8),
+				CFrame = origin * CFrame.new(p.X, 1 + (FENCE_HEIGHT + 0.6) / 2, p.Z),
+				Color = POST_COLOR,
+				Material = Enum.Material.Wood,
+			})
+		end
+		for _, height in { 1.6, 3.4 } do
+			Parts.Part(folder, {
+				Name = "FenceRail",
+				Size = Vector3.new(0.35, 0.5, length),
+				CFrame = origin * CFrame.new(mid.X, 1 + height, mid.Z) * facing,
+				Color = RAIL_COLOR,
+				Material = Enum.Material.WoodPlanks,
+			})
+		end
+	end
+	edge(minX, 0, entranceLeft, 0)
+	edge(entranceRight, 0, maxX, 0)
+	edge(maxX, 0, maxX, maxZ)
+	edge(maxX, maxZ, minX, maxZ)
+	edge(minX, maxZ, minX, 0)
 end
 
 local function clearPlot(plot: Plot)
@@ -227,6 +242,7 @@ local function clearPlot(plot: Plot)
 	plot.Folder:SetAttribute("OwnerUserId", 0)
 	plot.Folder:SetAttribute("OwnerName", "")
 	setSignText(plot.Sign, "Unclaimed plot")
+	buildBounds(plot, {})
 end
 
 -- Public -----------------------------------------------------------------------------------
@@ -258,6 +274,15 @@ function PlotService.OnClaimed(callback: (Player, Plot) -> ())
 	table.insert(claimedCallbacks, callback)
 end
 
+-- Redraws a player's plot edge after they buy an expansion.
+function PlotService.RefreshBounds(player: Player)
+	local plot = byPlayer[player]
+	local data = PlayerDataService.GetData(player)
+	if plot and data then
+		buildBounds(plot, data.Expansions)
+	end
+end
+
 -- Puts the player's character at their plot entrance.
 function PlotService.SendHome(player: Player)
 	local plot = byPlayer[player]
@@ -275,6 +300,7 @@ local function claim(player: Player)
 			plot.Folder:SetAttribute("OwnerUserId", player.UserId)
 			plot.Folder:SetAttribute("OwnerName", player.DisplayName)
 			setSignText(plot.Sign, player.DisplayName .. "'s Empire")
+			PlotService.RefreshBounds(player)
 			Log.Info("Plot", "Claimed", { user = player.UserId, plot = plot.Index })
 			for _, callback in claimedCallbacks do
 				task.spawn(callback, player, plot)

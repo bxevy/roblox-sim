@@ -37,9 +37,38 @@ function Grid.Cells(footprint: Footprint, x: number, z: number, rot: number): { 
 	return cells
 end
 
-function Grid.InBounds(footprint: Footprint, x: number, z: number, rot: number): boolean
+-- Whether one cell is buildable: inside the base plot or an owned expansion zone.
+function Grid.CellAllowed(cx: number, cz: number, expansions: { [string]: boolean }?): boolean
+	if cx >= 0 and cz >= 0 and cx < PlotConfig.GridX and cz < PlotConfig.GridZ then
+		return true
+	end
+	if expansions then
+		for _, zone in PlotConfig.ExpansionZones do
+			local r = zone.Rect
+			if expansions[zone.Id] and cx >= r.X1 and cx <= r.X2 and cz >= r.Z1 and cz <= r.Z2 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function Grid.InBounds(
+	footprint: Footprint,
+	x: number,
+	z: number,
+	rot: number,
+	expansions: { [string]: boolean }?
+): boolean
 	local sx, sz = Grid.Rotated(footprint, rot)
-	return x >= 0 and z >= 0 and x + sx <= PlotConfig.GridX and z + sz <= PlotConfig.GridZ
+	for cx = x, x + sx - 1 do
+		for cz = z, z + sz - 1 do
+			if not Grid.CellAllowed(cx, cz, expansions) then
+				return false
+			end
+		end
+	end
+	return true
 end
 
 -- Every occupied cell, from existing buildings and reserved paths.
@@ -74,12 +103,13 @@ function Grid.CanPlace(
 	footprint: Footprint,
 	x: number,
 	z: number,
-	rot: number
+	rot: number,
+	expansions: { [string]: boolean }?
 ): (boolean, string?)
 	if not Grid.ValidPlacementInput(x, z, rot) then
 		return false, "Invalid position."
 	end
-	if not Grid.InBounds(footprint, x, z, rot) then
+	if not Grid.InBounds(footprint, x, z, rot, expansions) then
 		return false, "That doesn't fit on your plot."
 	end
 	for _, cell in Grid.Cells(footprint, x, z, rot) do

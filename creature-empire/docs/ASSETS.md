@@ -20,9 +20,11 @@ Formats: OGG or MP3, mono for 3D effects, normalised to about −14 LUFS. Every 
 | `Place` | Building | 0.6 s | Wooden thunk and dust. |
 | `Upgrade` | Building | 1.2 s | Hammering then a magical shimmer. |
 | `Harvest` | Building | 0.3 s | Tiny pluck (played often, keep it quiet). |
-| `CreatureObtain` | Reward | 1.5 s | Egg crack and sparkle swell. |
+| `CreatureObtain` | Reward | 1.5 s | Creature joins (quest rewards): sparkle swell. |
+| `Hatch` | Reward | 1.5 s | Egg crack, then a happy chirp. |
+| `Evolve` | Reward | 2 s | Rising shimmer and a deep "whoom". |
 | `AbilityCast` | Creature | 0.6 s | Generic cast whoosh (per-family variants later). |
-| `<species>_idle` | Creature | 0.5–1 s | Species vocalisation: Sproutling coo, Cindercub chuff, Pebblit gravel giggle. |
+| `<species>_idle` (all 32 species) | Creature | 0.5–1 s | Species vocalisation: Sproutling coo, Cindercub chuff, Pebblit gravel giggle. |
 | `<species>_move` | Creature | 0.15 s | Footstep: leaf patter, ash puff, stone tap. |
 | `<species>_work` | Creature | 0.3 s | Working: snip, crackle, dig. |
 | `MusicEmpire` | Music | 2–3 min loop | Calm, optimistic plucked strings and woodwinds. Must loop seamlessly. |

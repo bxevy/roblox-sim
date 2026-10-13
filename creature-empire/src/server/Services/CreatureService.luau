@@ -62,13 +62,18 @@ local function updateAnchor(player: Player, creature: Types.CreatureRecord)
 	a:SetAttribute("OwnerUserId", player.UserId)
 end
 
+function CreatureService.RefreshAnchor(player: Player, creature: Types.CreatureRecord)
+	updateAnchor(player, creature)
+end
+
 -- Granting -----------------------------------------------------------------------------------
 
 function CreatureService.Grant(
 	player: Player,
 	speciesId: string,
 	source: string,
-	tradable: boolean?
+	tradable: boolean?,
+	extra: { [string]: any }? -- added to the client's reveal event (egg id, pity, ...)
 ): Types.CreatureRecord?
 	local data = PlayerDataService.GetData(player)
 	local species = CreatureConfig.Species[speciesId]
@@ -87,6 +92,7 @@ function CreatureService.Grant(
 		ObtainedAt = now,
 		Tradable = if tradable == nil then false else tradable,
 		WorkCycles = 0,
+		JobCycles = {},
 		AbilityReadyAt = 0,
 	}
 	data.Creatures[record.Id] = record
@@ -100,12 +106,17 @@ function CreatureService.Grant(
 	PlayerDataService.MarkDirty(player)
 	updateAnchor(player, record)
 	StateService.Push(player, "Creatures", "Collection")
-	Remotes.Events.GameEvent:FireClient(player, "CreatureObtained", {
+	local payload: { [string]: any } = {
 		Id = record.Id,
 		Species = speciesId,
 		Source = source,
 		NewDiscovery = firstTime,
-	})
+	}
+	local extras: { [string]: any } = extra or {}
+	for key, value in extras do
+		payload[key] = value
+	end
+	Remotes.Events.GameEvent:FireClient(player, "CreatureObtained", payload)
 	Events.CreatureObtained:Fire(player, record.Id, source)
 	Log.Info("Creature", "Granted", { user = player.UserId, species = speciesId, source = source, id = record.Id })
 	return record
@@ -170,7 +181,7 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 			return false, "Creatures can't work there."
 		end
 		local species = CreatureConfig.Species[creature.Species]
-		local affinity = species and species.JobAffinity[def.Job] or 0
+		local affinity = if species then CreatureConfig.Affinity(species, creature.Stage, def.Job) else 0
 		if affinity <= 0 then
 			local job = JobConfig[def.Job]
 			return false, `{displayName(creature)} can't work as a {job and job.Name or def.Job}.`
@@ -216,7 +227,10 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 	if (ability.RequiresAssignment or ability.Kind ~= "GoldFind") and not buildingId then
 		return false, `Assign {displayName(creature)} to a job first.`
 	end
-	local strength = (species.BaseStats.AbilityStrength or 10) / 10
+	local stage = species.Evolution[creature.Stage] or species.Evolution[1]
+	local multiplier = stage.AbilityMultiplier or 1
+	local strength = (species.BaseStats.AbilityStrength or 10) / 10 * multiplier
+	local duration = (ability.Duration or 15) * multiplier
 	local message: string
 
 	if ability.Kind == "InstantHarvest" then
@@ -239,10 +253,11 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 			Stat = "WorkSpeed",
 			Category = "Ability",
 			Value = ability.Power * strength,
-			Duration = ability.Duration or 15,
+			Duration = duration,
 		})
-		message =
-			`{ability.Name}! Workers are {math.floor(ability.Power * strength * 100)}% faster for {ability.Duration or 15}s.`
+		message = `{ability.Name}! Workers are {math.floor(ability.Power * strength * 100)}% faster for {math.floor(
+			duration
+		)}s.`
 	elseif ability.Kind == "GoldFind" then
 		local tier = Production.CoreTier(data)
 		local gold = math.floor(ability.Power * strength * (1 + EconomyConfig.GoldFindPerCoreLevel * (tier - 1)))
@@ -286,7 +301,10 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 			if job and building then
 				local rate = ProductionService.GetRate(player, building.Id)
 				local full = rate and (building.Stored[rate.Output] or 0) >= rate.Capacity
-				task = if full then "Waiting: storage is full" else job.Verb
+				task = if full
+					then "Waiting: storage is full"
+					elseif ProductionService.IsStarved(player, building.Id) then "Waiting: needs materials in the silo"
+					else job.Verb
 			end
 			list[id] = {
 				Id = id,
@@ -307,6 +325,7 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 				Source = creature.Source,
 				Tradable = creature.Tradable,
 				WorkCycles = creature.WorkCycles,
+				JobCycles = table.clone(creature.JobCycles),
 				ObtainedAt = creature.ObtainedAt,
 			}
 		end

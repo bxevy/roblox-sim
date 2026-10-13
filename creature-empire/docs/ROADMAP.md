@@ -1,8 +1,8 @@
 # Roadmap and unfinished work
 
-Phase 1 (this build) is the playable foundation. Each later phase must leave the game runnable and keep saved data compatible: bump `Schema.CURRENT_VERSION` and add a migration whenever the data shape changes.
+Phases 1 and 2 are built. Each later phase must leave the game runnable and keep saved data compatible: bump `Schema.CURRENT_VERSION` and add a migration whenever the data shape changes (v1 → v2 is the worked example).
 
-## Phase 1: playable foundation ✔ built (needs a Studio pass)
+## Phase 1: playable foundation ✔ built
 
 - **Done:**
   - Project structure and profile saving.
@@ -11,38 +11,32 @@ Phase 1 (this build) is the playable foundation. Each later phase must leave the
   - HUD and windows.
   - 10-step tutorial.
   - Upgrades, placement, abilities and offline progress.
-- **Open:** run the manual checklist in [TESTING.md](TESTING.md) in Studio and fix whatever it turns up. Nothing here has executed inside Roblox yet.
 
-### Known limitations in Phase 1
+## Phase 2: core simulator ✔ built
 
-- Creatures walk in straight lines across the flat plot and pass through buildings visually. There's no pathfinding yet.
-- Placed buildings can't be moved or demolished.
+- **Hatching.** `HatchingService`, `EggConfig` and `Shared/Util/Hatching`: 3 eggs, exact odds and a pity counter for each egg type.
+- **Evolution.** `EvolutionService`, `Shared/Util/Evolution` and the Evolution Chamber: stage stat bonus, stronger abilities, job skill overrides and new features.
+- **Second production chain.** Crystal Mine → Smelter → Essence Condenser. Recipes consume silo materials (`Production.Step`) and pause when inputs run out.
+- **Land and buildings.**
+  - Land expansion (3 zones, a moving fence) and building move.
+  - Habitat capacity levels.
+  - Refined Crystal costs at major milestones.
+- **Interface and content.** Inventory window, 13 obtainable species, 7 new quests.
+- **Save data.** Schema v2 with the v1 → v2 migration.
+
+**Open for both phases:** run the manual checklist in [TESTING.md](TESTING.md) in Studio. Nothing has executed inside Roblox yet. Everything except the engine-facing code is covered by 93 automated tests and type checking.
+
+### Known limitations
+
+- Creatures walk in straight lines and pass through buildings visually. There's no pathfinding yet.
+- Buildings can be moved but not demolished.
 - No audio assets are configured (the game is silent apart from the UI click), and creatures use code-built models with procedural animation. See [ASSETS.md](ASSETS.md).
-- The cooldown shown in an open Creatures window doesn't count down live. The creature bar does.
-- Only the Moonpetal chain exists, so Essence and Empire Shards are only granted by the last quest and have no use yet.
-- Expansion zones, the Research Station, synergies and evolution are visible but not functional. They say so in the game.
+- Couriers, conveyors and power don't exist yet. Smelters and condensers pull straight from the silo.
+- Empire Shards are granted by one quest and have no use until Ascension (Phase 4).
+- The Research Station and synergies are visible but not functional; the game says so.
+- Starters' Ascended forms need long-term work (1,500 job cycles). Phase 3 expeditions won't retroactively add requirements.
 - Creature nicknames exist in the data but there's no rename UI. Renaming needs `TextService` filtering.
 - The plot count is fixed at 6. Set the place's max players to 6.
-
-## Phase 2: core simulator
-
-1. **Hatching** (`HatchingService`, `EggConfig`).
-   - Egg types with loot tables from `CreatureConfig` species (`Phase <= 2`).
-   - Published exact odds in the UI, and a pity counter saved per egg type (`PlayerData.Pity[eggId]`) with clear reset rules.
-   - The hatch sequence reuses `RevealOverlay`.
-   - Eggs cost Gold or Essence only. Robux eggs need a compliant disclosure flow and are not planned.
-2. **Evolution** (`EvolutionService` and an Evolution Chamber building). Requirements are already in config: `Level`, `WorkCycles`, `Essence`, plus new kinds. On evolving:
-   - set `Stage`
-   - change abilities through `Evolution[stage].Unlocks`
-   - rebuild the model (the anchor's `Stage` attribute triggers this already)
-3. **Second production chain.**
-   - Crystal Mine (Miner job), Smelter (input recipe) and Essence Condenser.
-   - ProductionService then has to consume inputs: pull from building storage or the silo, and stop when inputs run out.
-   - Add Raw Crystal, Refined Crystal and Arcane Core to `ResourceConfig`, and enable the recipes in `RecipeConfig`.
-4. **Upgrades and expansion.**
-   - Expansion zones become purchasable: a saved `PlotExpansions` list widens the grid bounds in `Grid.InBounds`.
-   - Building move and demolish (Grid already supports `ignoreId`).
-5. **Inventory UI** for materials and items, and a collection journal with per-species records (first found, best mutation).
 
 ## Phase 3: world and exploration
 

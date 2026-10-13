@@ -12,6 +12,8 @@ export type SoundDef = {
 	Category: "Ui" | "Creature" | "Building" | "Reward" | "Music" | "Ambience",
 }
 
+local CreatureConfig = require(script.Parent.CreatureConfig)
+
 local AssetConfig = {}
 
 local function sound(category: any, volume: number, minPitch: number?, maxPitch: number?): SoundDef
@@ -37,20 +39,22 @@ AssetConfig.Sounds = {
 	-- Creatures (per-species keys from CreatureConfig resolve here; missing = silent)
 	CreatureObtain = sound("Reward", 0.8),
 	AbilityCast = sound("Creature", 0.6, 0.95, 1.05),
-	sproutling_idle = sound("Creature", 0.35, 0.9, 1.2),
-	sproutling_move = sound("Creature", 0.2, 0.9, 1.2),
-	sproutling_work = sound("Creature", 0.25, 0.9, 1.2),
-	cindercub_idle = sound("Creature", 0.35, 0.9, 1.2),
-	cindercub_move = sound("Creature", 0.2, 0.9, 1.2),
-	cindercub_work = sound("Creature", 0.25, 0.9, 1.2),
-	pebblit_idle = sound("Creature", 0.35, 0.9, 1.2),
-	pebblit_move = sound("Creature", 0.2, 0.9, 1.2),
-	pebblit_work = sound("Creature", 0.25, 0.9, 1.2),
+	Hatch = sound("Reward", 0.7),
+	Evolve = sound("Reward", 0.8),
 
 	-- Music and ambience
 	MusicEmpire = sound("Music", 0.35),
 	AmbienceVerdant = sound("Ambience", 0.3),
 } :: { [string]: SoundDef }
+
+-- Per-species sounds: <species>_idle / _move / _work for every species. Fill in ids here
+-- (e.g. AssetConfig.Sounds.sproutling_idle.Id = "rbxassetid://...") as they're uploaded.
+for _, speciesId in CreatureConfig.Order do
+	local key = string.lower(speciesId)
+	AssetConfig.Sounds[key .. "_idle"] = AssetConfig.Sounds[key .. "_idle"] or sound("Creature", 0.35, 0.9, 1.2)
+	AssetConfig.Sounds[key .. "_move"] = AssetConfig.Sounds[key .. "_move"] or sound("Creature", 0.2, 0.9, 1.2)
+	AssetConfig.Sounds[key .. "_work"] = AssetConfig.Sounds[key .. "_work"] or sound("Creature", 0.25, 0.9, 1.2)
+end
 
 -- Images. Empty ids fall back to the glyphs in ResourceConfig / RarityConfig.
 AssetConfig.Images = {

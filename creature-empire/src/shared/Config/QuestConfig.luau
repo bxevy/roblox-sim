@@ -9,6 +9,8 @@
 --   BuildingCount (Target, Amount)      how many of a building type are placed
 --   UseAbility  (Amount)                active abilities used during this step
 --   EarnGold    (Amount)                gold earned during this step
+--   Hatch       (Amount)                eggs hatched during this step
+--   Evolve      (Amount)                creatures evolved during this step
 --
 -- `Pointer` is the building type the tutorial arrow points at.
 
@@ -106,6 +108,73 @@ QuestConfig.Tutorial = {
 		Target = "EmpireCore",
 		Amount = 2,
 		Reward = { Gold = 250, Essence = 25 },
+		Pointer = "EmpireCore",
+	},
+	-- Update 2: hatching, crystals and evolution
+	{
+		Id = "Hatchery",
+		Title = "A warm nest",
+		Description = "Build a Hatchery (Build menu, Creature care).",
+		Kind = "BuildingCount",
+		Target = "Hatchery",
+		Amount = 1,
+		Reward = { Gold = 300 },
+	},
+	{
+		Id = "FirstHatch",
+		Title = "Something is moving",
+		Description = "Hatch an egg at your Hatchery. Its odds are shown before you hatch.",
+		Kind = "Hatch",
+		Amount = 1,
+		Reward = { Gold = 150 },
+		Pointer = "Hatchery",
+	},
+	{
+		Id = "Mine",
+		Title = "Shiny rocks",
+		Description = "Build a Crystal Mine and put a miner to work (Pebblit is a natural).",
+		Kind = "Collect",
+		Target = "RawCrystal",
+		Amount = 15,
+		Reward = { Gold = 400 },
+		Pointer = "CrystalMine",
+	},
+	{
+		Id = "Smelter",
+		Title = "Feel the heat",
+		Description = "Build a Crystal Smelter, assign a smelter, and collect 5 Refined Crystal.",
+		Kind = "Collect",
+		Target = "RefinedCrystal",
+		Amount = 5,
+		Reward = { Essence = 30 },
+		Pointer = "CrystalSmelter",
+	},
+	{
+		Id = "Chamber",
+		Title = "Standing stones",
+		Description = "Build an Evolution Chamber.",
+		Kind = "BuildingCount",
+		Target = "EvolutionChamber",
+		Amount = 1,
+		Reward = { Essence = 20 },
+	},
+	{
+		Id = "Evolve",
+		Title = "Growing up",
+		Description = "Evolve a creature. Check each creature's requirements in the Creatures window.",
+		Kind = "Evolve",
+		Amount = 1,
+		Reward = { Gold = 1000, Shards = 1 },
+		Pointer = "EvolutionChamber",
+	},
+	{
+		Id = "CoreTier3",
+		Title = "A crystal crown",
+		Description = "Upgrade the Empire Core to tier 3 (needs Refined Crystal).",
+		Kind = "BuildingLevel",
+		Target = "EmpireCore",
+		Amount = 3,
+		Reward = { Gold = 1500, Essence = 40 },
 		Pointer = "EmpireCore",
 	},
 } :: { Types.QuestStep }

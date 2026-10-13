@@ -2,10 +2,11 @@
 -- Production recipes. A production building names its recipe; each work cycle turns the
 -- inputs into outputs (scaled by the building level's YieldPerCycle and the worker).
 --
--- Phase 1 has the first link of the Moonpetal chain. Later recipes are listed (disabled)
--- so the chain is visible in one place:
---   Moonpetal Farm -> Moonpetals -> Alchemy Lab -> Growth Elixir -> creature training
---   Crystal Mine -> Raw Crystal -> Smelter -> Refined Crystal -> Condenser -> Arcane Core
+-- Chains:
+--   Moonpetal Farm -> Moonpetals ----------------------------.
+--   Crystal Mine -> Raw Crystal -> Crystal Smelter -> Refined Crystal -> Essence Condenser -> Essence
+--   (Refined Crystal also pays for Empire Core tiers 3+ and land expansions; Essence
+--    evolves creatures and hatches Geode Eggs.)
 
 local Types = require(script.Parent.Parent.Types)
 
@@ -19,30 +20,42 @@ local RecipeConfig: { [string]: Types.RecipeDef & { Enabled: boolean } } = {
 		RequiresJob = "Farmer",
 		Enabled = true,
 	},
+	MineCrystal = {
+		Id = "MineCrystal",
+		Name = "Mine Raw Crystal",
+		Inputs = {},
+		Outputs = { RawCrystal = 1 },
+		Power = 0,
+		RequiresJob = "Miner",
+		Enabled = true,
+	},
+	-- Inputs are taken from the Resource Silo as the building works. Yield bonuses add
+	-- output without extra input, so better workers are also more efficient.
+	SmeltCrystal = {
+		Id = "SmeltCrystal",
+		Name = "Smelt Crystal",
+		Inputs = { RawCrystal = 3 },
+		Outputs = { RefinedCrystal = 1 },
+		Power = 0,
+		RequiresJob = "Smelter",
+		Enabled = true,
+	},
+	CondenseEssence = {
+		Id = "CondenseEssence",
+		Name = "Condense Essence",
+		Inputs = { RefinedCrystal = 1, Moonpetal = 8 },
+		Outputs = { Essence = 3 },
+		Power = 0,
+		RequiresJob = "Alchemist",
+		Enabled = true,
+	},
 	BrewGrowthElixir = {
 		Id = "BrewGrowthElixir",
 		Name = "Brew Growth Elixir",
 		Inputs = { Moonpetal = 10 },
 		Outputs = { GrowthElixir = 1 },
 		Power = 1,
-		Enabled = false, -- Phase 2
-	},
-	SmeltCrystal = {
-		Id = "SmeltCrystal",
-		Name = "Smelt Crystal",
-		Inputs = { RawCrystal = 3 },
-		Outputs = { RefinedCrystal = 1 },
-		Power = 2,
-		RequiresJob = "Smelter",
-		Enabled = false, -- Phase 2
-	},
-	CondenseArcaneCore = {
-		Id = "CondenseArcaneCore",
-		Name = "Condense Arcane Core",
-		Inputs = { RefinedCrystal = 5, Essence = 20 },
-		Outputs = { ArcaneCore = 1 },
-		Power = 4,
-		Enabled = false, -- Phase 2
+		Enabled = false, -- Phase 4 (Alchemy Lab)
 	},
 }
 

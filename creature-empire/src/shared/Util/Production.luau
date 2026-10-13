@@ -24,10 +24,12 @@ export type WorkerRate = {
 
 export type BuildingRate = {
 	Output: string,
+	Job: string,
 	Capacity: number,
-	PerSecond: number,
+	PerSecond: number, -- output units per second while inputs last
 	Workers: { WorkerRate },
 	Slots: number,
+	InputsPerUnit: { [string]: number }, -- silo resources consumed per output unit
 }
 
 local Production = {}
@@ -67,8 +69,11 @@ function Production.WorkerAt(
 	if not def or not species or not level or not def.Job then
 		return nil
 	end
+	local stage = species.Evolution[creature.Stage or 1] or species.Evolution[1]
 	local extra = {
 		{ Stat = "Yield", Category = "Empire", Value = Production.EmpireBonus(data) },
+		{ Stat = "Yield", Category = "Stage", Value = stage.StatBonus or 0 },
+		{ Stat = "WorkSpeed", Category = "Stage", Value = stage.StatBonus or 0 },
 	}
 	local active: { Buff } = buffs or {}
 	for _, buff in active do
@@ -80,11 +85,16 @@ function Production.WorkerAt(
 		Job = def.Job,
 		ExtraBonuses = extra,
 		LevelBonus = CreatureConfig.LevelBonus,
+		Affinity = CreatureConfig.Affinity(species, creature.Stage or 1, def.Job),
 	}, level, EconomyConfig.BonusRules)
+	-- A recipe can make several units per cycle (Essence Condenser: 3).
+	local recipe = def.Recipe and RecipeConfig[def.Recipe]
+	local output = Production.OutputOf(def)
+	local perCycleUnits = if recipe and output then recipe.Outputs[output] or 1 else 1
 	return {
 		CreatureId = creature.Id,
-		PerSecond = result.PerSecond,
-		PerCycle = result.PerCycle,
+		PerSecond = result.PerSecond * perCycleUnits,
+		PerCycle = result.PerCycle * perCycleUnits,
 		CycleTime = result.CycleTime,
 		Affinity = result.Affinity,
 		SpeedMultiplier = result.SpeedMultiplier,
@@ -99,13 +109,20 @@ function Production.Rates(data: Types.PlayerData, buffs: { [string]: { Buff } }?
 		local def = BuildingConfig[building.Type]
 		local level = def and def.Levels[building.Level]
 		local output = def and Production.OutputOf(def)
-		if def and level and output and not def.Locked then
+		if def and level and output and def.Job and not def.Locked then
+			local recipe = RecipeConfig[def.Recipe :: string]
+			local inputs = {}
+			for resource, amount in recipe.Inputs do
+				inputs[resource] = amount / (recipe.Outputs[output] or 1)
+			end
 			rates[id] = {
 				Output = output,
+				Job = def.Job,
 				Capacity = level.Storage or 0,
 				PerSecond = 0,
 				Workers = {},
 				Slots = level.Slots or 0,
+				InputsPerUnit = inputs,
 			}
 		end
 	end
@@ -128,6 +145,39 @@ function Production.Rates(data: Types.PlayerData, buffs: { [string]: { Buff } }?
 		end
 	end
 	return rates
+end
+
+-- One production step for a building: output grows by rate * dt, limited by storage room
+-- and by the inputs available in `resources` (which are consumed). Returns the new stored
+-- amount, units produced, resources consumed, and whether inputs ran short.
+function Production.Step(
+	stored: number,
+	perSecond: number,
+	dt: number,
+	capacity: number,
+	inputsPerUnit: { [string]: number },
+	resources: { [string]: number }
+): (number, number, { [string]: number }, boolean)
+	local consumed: { [string]: number } = {}
+	if dt <= 0 or perSecond <= 0 then
+		return stored, 0, consumed, false
+	end
+	local wanted = math.min(perSecond * dt, math.max(capacity - stored, 0))
+	local possible = wanted
+	for resource, per in inputsPerUnit do
+		if per > 0 then
+			possible = math.min(possible, (resources[resource] or 0) / per)
+		end
+	end
+	possible = math.max(possible, 0)
+	for resource, per in inputsPerUnit do
+		if per > 0 and possible > 0 then
+			local amount = possible * per
+			resources[resource] = math.max((resources[resource] or 0) - amount, 0)
+			consumed[resource] = amount
+		end
+	end
+	return stored + possible, possible, consumed, possible < wanted - 1e-9
 end
 
 -- Experience: adds xp to a creature record and levels it up. Returns levels gained.

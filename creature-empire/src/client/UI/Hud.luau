@@ -69,6 +69,11 @@ function Hud.new(ctx: any)
 	pill("Moonpetal", 2)
 	local essencePill = pill("Essence", 3)
 	essencePill.Frame.Visible = false
+	-- Crystal materials only appear once you have some, to keep the bar short.
+	local crystalPills = { pill("RawCrystal", 4), pill("RefinedCrystal", 5) }
+	for _, p in crystalPills do
+		p.Frame.Visible = false
+	end
 
 	local function flash(p: Pill, color: Color3)
 		local stroke = p.Frame:FindFirstChildOfClass("UIStroke")
@@ -100,6 +105,8 @@ function Hud.new(ctx: any)
 			p.Value = amount
 		end
 		essencePill.Frame.Visible = (w.Currencies.Essence or 0) > 0
+		crystalPills[1].Frame.Visible = (w.Resources.RawCrystal or 0) >= 1
+		crystalPills[2].Frame.Visible = (w.Resources.RefinedCrystal or 0) >= 1
 	end)
 
 	------------------------------------------------------------------ Empire (top left)
@@ -242,7 +249,8 @@ function Hud.new(ctx: any)
 	menuButton("❦", "Creatures", "C", "Creatures", 1)
 	menuButton("⌂", "Build", "B", "Build", 2)
 	menuButton("✎", "Quests", "J", "Quests", 3)
-	menuButton("⚙", "Settings", "P", "Settings", 4)
+	menuButton("▤", "Inventory", "G", "Inventory", 4)
+	menuButton("⚙", "Settings", "P", "Settings", 5)
 
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {
@@ -416,7 +424,7 @@ function Hud.new(ctx: any)
 			return
 		end
 		local def = BuildingConfig[info.Type]
-		placeTitle.Text = "Placing: " .. def.Name
+		placeTitle.Text = (if info.Moving then "Moving: " else "Placing: ") .. def.Name
 		if info.Reason then
 			placeHint.Text = `<font color="#{Theme.Colors.Danger:ToHex()}">✖ {info.Reason}</font>`
 		else

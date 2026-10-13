@@ -303,7 +303,7 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 
 	if entity.State == "Working" then
 		local mine = ownState(entity)
-		local waiting = mine and string.find(mine.Task or "", "full", 1, true) ~= nil
+		local waiting = mine and string.find(mine.Task or "", "Waiting", 1, true) ~= nil
 		if entity.FaceTarget then
 			local d = entity.FaceTarget - entity.Position
 			local desiredYaw = math.atan2(-d.X, -d.Z)
@@ -330,7 +330,10 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 					and entity.Model.PrimaryPart
 				then
 					local amount = mine.PerSecond * cycle
-					local petal = ResourceConfig.Moonpetal
+					local buildings = StateController.Get("Buildings")
+					local building = buildings and mine.Assignment and buildings.List[mine.Assignment]
+					local petal = building and building.Output and ResourceConfig[building.Output]
+						or ResourceConfig.Moonpetal
 					EffectsController.Popup(
 						entity.Model.PrimaryPart.Position + Vector3.new(0, entity.Height + 1.5, 0),
 						"+" .. Format.Rate(amount) .. " " .. petal.Icon,

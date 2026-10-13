@@ -11,6 +11,10 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local Production = require(Shared.Util.Production)
+local Hatching = require(Shared.Util.Hatching)
+local Evolution = require(Shared.Util.Evolution)
+local EggConfig = require(Shared.Config.EggConfig)
+local PlotConfig = require(Shared.Config.PlotConfig)
 local Format = require(Shared.Util.Format)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
@@ -93,7 +97,33 @@ function BuildingPanel.new(ctx: any)
 			15,
 			{ TextColor3 = if perMinute > 0 then Theme.Colors.Success else Theme.Colors.Warning }
 		)
-		if perMinute > 0 and info.Capacity then
+		-- Recipes that consume silo materials (smelter, condenser).
+		local inputs = {}
+		local wallet = State.Get("Wallet")
+		for resource, per in info.InputsPerUnit or {} do
+			local def2 = ResourceConfig[resource]
+			local have = wallet and (wallet.Resources[resource] or wallet.Currencies[resource]) or 0
+			table.insert(
+				inputs,
+				`{Format.Rate(per)} {def2 and def2.Name or resource} (you have {Format.Number(math.floor(have))})`
+			)
+		end
+		if #inputs > 0 then
+			Theme.Text(
+				card,
+				`Uses from your silo, per {output and output.Name or "unit"}: ` .. table.concat(inputs, ", "),
+				14,
+				{
+					TextColor3 = Theme.Colors.Muted,
+				}
+			)
+		end
+		if info.Starved then
+			Theme.Text(card, "⚠ Paused: not enough materials in your silo. Collect from your mines and farms.", 14, {
+				TextColor3 = Theme.Colors.Warning,
+			})
+		end
+		if perMinute > 0 and info.Capacity and not info.Starved then
 			local stored = info.Stored[info.Output] or 0
 			local seconds = (info.Capacity - stored) / info.PerSecond
 			Theme.Text(
@@ -169,12 +199,12 @@ function BuildingPanel.new(ctx: any)
 			for id, c in list do
 				if c.Assignment ~= info.Id then
 					local species = CreatureConfig.Species[c.Species]
-					local affinity = species and species.JobAffinity[def.Job] or 0
+					local affinity = if species then CreatureConfig.Affinity(species, c.Stage, def.Job) else 0
 					if affinity > 0 then
 						candidates += 1
 						local worker = Production.WorkerAt(
 							{ Buildings = { core = { Level = coreLevel } } } :: any,
-							{ Id = id, Species = c.Species, Level = c.Level } :: any,
+							{ Id = id, Species = c.Species, Level = c.Level, Stage = c.Stage } :: any,
 							{ Type = info.Type, Level = info.Level } :: any,
 							nil
 						)
@@ -369,8 +399,204 @@ function BuildingPanel.new(ctx: any)
 		)
 	end
 
+	local function expansionSection()
+		local card = Window.Section(win.Body, "EXPAND YOUR LAND", 3)
+		local empire = State.Get("Empire") or {}
+		local owned = empire.Expansions or {}
+		local core = State.Get("Buildings").List.core
+		local wallet = State.Get("Wallet")
+		for _, zone in PlotConfig.ExpansionZones do
+			local row = Window.Row(card, 44)
+			local label = `<b>{zone.Name}</b> · 4 more rows of land · {Format.Cost(zone.Cost, ResourceConfig)}`
+			Theme.Text(row, label, 14, {
+				Size = UDim2.new(1, -150, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextYAlignment = Enum.TextYAlignment.Center,
+			})
+			local button = Theme.Button(row, "Buy land", "Gold", { Size = UDim2.fromOffset(140, 34), TextSize = 15 })
+			local reason: string? = nil
+			if owned[zone.Id] then
+				reason = "Owned"
+				button.Text = "✔ Owned"
+			elseif core.Level < zone.CoreTier then
+				reason = `Needs Empire Core tier {zone.CoreTier}.`
+				button.Text = `Tier {zone.CoreTier}`
+			else
+				for id, amount in zone.Cost do
+					if (wallet.Currencies[id] or wallet.Resources[id] or 0) < amount then
+						reason = "You need " .. Format.Cost(zone.Cost, ResourceConfig) .. "."
+					end
+				end
+			end
+			Theme.SetEnabled(button, reason == nil)
+			button.Activated:Connect(function()
+				if reason then
+					if reason ~= "Owned" then
+						ctx.Notify(reason, "Error")
+					end
+					return
+				end
+				local ok = request("BuyExpansion", zone.Id)
+				if ok then
+					ctx.Notify(`{zone.Name} is yours! The fence has moved out.`, "Reward")
+				end
+			end)
+		end
+	end
+
+	local function hatcherySection()
+		local card = Window.Section(win.Body, "EGGS", 2)
+		local empire = State.Get("Empire") or {}
+		local hatchery = State.Get("Hatchery") or { Pity = {} }
+		local wallet = State.Get("Wallet")
+		Theme.Text(
+			card,
+			`Your habitat holds {empire.CreatureCount or 0} / {empire.CreatureCapacity or 6} creatures. Hatched creatures can be traded later on.`,
+			14,
+			{
+				TextColor3 = Theme.Colors.Muted,
+			}
+		)
+		for order, eggId in EggConfig.Order do
+			local egg = EggConfig.Eggs[eggId]
+			local box = Theme.Make("Frame", {
+				BackgroundColor3 = Theme.Colors.PanelSunken,
+				BackgroundTransparency = 0.2,
+				Size = UDim2.new(1, 0, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				LayoutOrder = order,
+			}, card)
+			Theme.Corner(box, 10)
+			Theme.Stroke(box, egg.Color, 0.5)
+			Theme.Padding(box, 10)
+			local art = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(90, 110) }, box)
+			Viewport.Egg(art, egg.Color, egg.Spots)
+			local text = Theme.Make("Frame", {
+				BackgroundTransparency = 1,
+				Position = UDim2.fromOffset(100, 0),
+				Size = UDim2.new(1, -100, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+			}, box)
+			Theme.List(text, 4)
+			Theme.Text(text, `<b>{egg.Name}</b> · {Format.Cost(egg.Cost, ResourceConfig)}`, 17)
+			Theme.Text(text, egg.Description, 13, { TextColor3 = Theme.Colors.Muted })
+			-- Exact odds, rarest first, with rarity glyph + word (never colour alone).
+			for _, entry in Hatching.Odds(egg) do
+				local species = CreatureConfig.Species[entry.Species]
+				local rarity = RarityConfig.Get(entry.Rarity)
+				local owned = (State.Get("Collection") or {})[entry.Species] ~= nil
+				local chance = entry.Chance * 100
+				local percent = if chance < 10 then string.format("%.1f%%", chance) else string.format("%.0f%%", chance)
+				Theme.Text(
+					text,
+					`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph} {rarity.Label}</font>  {if owned
+						then species.Name
+						else "??? (" .. species.Name .. ")"}  ·  <b>{percent}</b>`,
+					13
+				)
+			end
+			local pity = hatchery.Pity[eggId] or 0
+			local guaranteed = Hatching.PityReady(egg, pity)
+			Theme.Text(
+				text,
+				if guaranteed
+					then `<b>Next hatch is guaranteed {RarityConfig.Label(egg.PityRarity)} or better!</b>`
+					else `Pity: {pity} / {egg.PityLimit - 1}. A {RarityConfig.Label(egg.PityRarity)} or better is guaranteed within {egg.PityLimit} hatches; the counter resets when you hatch one.`,
+				12,
+				{ TextColor3 = if guaranteed then Theme.Colors.Gold else Theme.Colors.Muted }
+			)
+			local _, setPity = Theme.Bar(text, Theme.Colors.Gold, 6)
+			setPity(pity / math.max(egg.PityLimit - 1, 1))
+			local affordable = true
+			for id, amount in egg.Cost do
+				if (wallet.Currencies[id] or wallet.Resources[id] or 0) < amount then
+					affordable = false
+				end
+			end
+			local full = (empire.CreatureCount or 0) >= (empire.CreatureCapacity or 6)
+			local button = Theme.Button(
+				text,
+				if full then "Habitat full" else "Hatch",
+				"Primary",
+				{ Size = UDim2.fromOffset(180, 38) }
+			)
+			Theme.SetEnabled(button, affordable and not full)
+			button.Activated:Connect(function()
+				if button:GetAttribute("Disabled") then
+					ctx.Notify(
+						if full
+							then "Your habitat is full. Upgrade it to make room."
+							else "You need " .. Format.Cost(egg.Cost, ResourceConfig) .. ".",
+						"Error"
+					)
+					return
+				end
+				request("HatchEgg", eggId)
+			end)
+		end
+	end
+
+	local function chamberSection()
+		local card = Window.Section(win.Body, "READY TO EVOLVE?", 2)
+		local creatures = State.Get("Creatures")
+		local wallet = State.Get("Wallet")
+		local any = false
+		for id, c in creatures and creatures.List or {} do
+			local check = Evolution.Check(
+				wallet,
+				{
+					Species = c.Species,
+					Stage = c.Stage,
+					Level = c.Level,
+					JobCycles = c.JobCycles or {},
+					WorkCycles = c.WorkCycles,
+				} :: any
+			)
+			if check.NextStage then
+				any = true
+				local met = 0
+				for _, r in check.Requirements do
+					if r.Met then
+						met += 1
+					end
+				end
+				local row = Window.Row(card, 40)
+				Theme.Text(
+					row,
+					`<b>{c.Name}</b> → {check.NextStage.Name} · {met}/{#check.Requirements} requirements`,
+					14,
+					{
+						Size = UDim2.new(1, -150, 1, 0),
+						AutomaticSize = Enum.AutomaticSize.None,
+						TextYAlignment = Enum.TextYAlignment.Center,
+					}
+				)
+				local open = Theme.Button(
+					row,
+					if check.Ready then "Evolve!" else "Details",
+					if check.Ready then "Gold" else "Secondary",
+					{
+						Size = UDim2.fromOffset(140, 34),
+						TextSize = 15,
+					}
+				)
+				open.Activated:Connect(function()
+					ctx.Open("Creatures", id)
+				end)
+			end
+		end
+		if not any then
+			Theme.Text(card, "Every creature is fully evolved. Impressive!", 15, { TextColor3 = Theme.Colors.Muted })
+		end
+	end
+
 	local function habitatSection()
-		local card = Window.Section(win.Body, "RESTING CREATURES", 2)
+		local empire = State.Get("Empire") or {}
+		local card = Window.Section(
+			win.Body,
+			`RESTING CREATURES · {empire.CreatureCount or 0} / {empire.CreatureCapacity or 6} housed`,
+			2
+		)
 		local creatures = State.Get("Creatures")
 		local any = false
 		for id, c in creatures and creatures.List or {} do
@@ -417,12 +643,27 @@ function BuildingPanel.new(ctx: any)
 			siloSection()
 		elseif info.Type == "EmpireCore" then
 			coreSection(info, def)
+			expansionSection()
+		elseif info.Type == "Hatchery" then
+			hatcherySection()
+		elseif info.Type == "EvolutionChamber" then
+			chamberSection()
 		elseif info.Type == "Habitat" then
 			habitatSection()
 		elseif def.Recipe then
 			productionSection(info, def)
 		end
 		upgradeSection(info, def)
+		if def.Placeable then
+			local move = Theme.Button(win.Body, "⇄ Move this building", "Secondary", {
+				Size = UDim2.fromOffset(220, 38),
+				LayoutOrder = 20,
+			})
+			move.Activated:Connect(function()
+				ctx.Close()
+				ctx.Controllers.Placement.Begin(info.Type, { MoveId = info.Id, Rot = info.Rot })
+			end)
+		end
 	end
 
 	-- Keep the storage line live between server updates.
@@ -463,7 +704,7 @@ function BuildingPanel.new(ctx: any)
 		local info = buildingId and b.List[buildingId]
 		-- Ignore pure storage ticks; the live label handles those.
 		local signature = if info
-			then `{info.Level}:{#info.Assigned}:{#info.Buffs}:{info.PerSecond}:{info.UpgradeBlocker}`
+			then `{info.Level}:{#info.Assigned}:{#info.Buffs}:{info.PerSecond}:{info.UpgradeBlocker}:{info.Starved}`
 			else "gone"
 		if signature ~= lastSignature then
 			lastSignature = signature
@@ -471,6 +712,8 @@ function BuildingPanel.new(ctx: any)
 		end
 	end)
 	State.OnChanged("Wallet", schedule)
+	State.OnChanged("Empire", schedule)
+	State.OnChanged("Hatchery", schedule)
 
 	return {
 		Root = win.Root,

@@ -30,12 +30,53 @@ PlotConfig.ReservedCells = {
 	{ X1 = 11, Z1 = 0, X2 = 12, Z2 = 9 },
 }
 
--- Expansion zones (Phase 2) are drawn beyond these edges as overgrown, roped-off land.
-PlotConfig.ExpansionZones = {
-	{ Name = "West Meadow", Side = "Left", Depth = 4 },
-	{ Name = "East Grove", Side = "Right", Depth = 4 },
-	{ Name = "North Ridge", Side = "Back", Depth = 4 },
+-- Expansion zones: overgrown land beyond the plot edges. Buying one (from the Empire Core)
+-- moves the fence out and makes its cells buildable. Rect = the zone's cells (inclusive),
+-- in the same grid coordinates as the plot, so the west zone has negative X.
+export type Zone = {
+	Id: string,
+	Name: string,
+	Side: string,
+	Rect: { X1: number, Z1: number, X2: number, Z2: number },
+	CoreTier: number,
+	Cost: { [string]: number },
 }
+
+PlotConfig.ExpansionZones = {
+	{
+		Id = "West",
+		Name = "West Meadow",
+		Side = "Left",
+		Rect = { X1 = -4, Z1 = 0, X2 = -1, Z2 = 23 },
+		CoreTier = 2,
+		Cost = { Gold = 1500 },
+	},
+	{
+		Id = "East",
+		Name = "East Grove",
+		Side = "Right",
+		Rect = { X1 = 24, Z1 = 0, X2 = 27, Z2 = 23 },
+		CoreTier = 3,
+		Cost = { Gold = 6000, RefinedCrystal = 40 },
+	},
+	{
+		Id = "North",
+		Name = "North Ridge",
+		Side = "Back",
+		Rect = { X1 = 0, Z1 = 24, X2 = 23, Z2 = 27 },
+		CoreTier = 4,
+		Cost = { Gold = 20000, RefinedCrystal = 120 },
+	},
+} :: { Zone }
+
+function PlotConfig.Zone(id: string): Zone?
+	for _, zone in PlotConfig.ExpansionZones do
+		if zone.Id == id then
+			return zone
+		end
+	end
+	return nil
+end
 
 -- How close (studs) a player must be to collect from or interact with a building.
 PlotConfig.InteractRange = 28

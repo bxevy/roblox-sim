@@ -27,6 +27,7 @@ type Runtime = {
 	Rates: { [string]: Production.BuildingRate },
 	Buffs: { [string]: { Production.Buff } },
 	CycleProgress: { [string]: number }, -- fractional work cycles per creature
+	Starved: { [string]: boolean }, -- buildings whose inputs ran out on the last step
 	LastTick: number,
 	LastResync: number,
 	Stale: boolean,
@@ -74,26 +75,55 @@ local function advance(
 	if not data or dt <= 0 then
 		return produced
 	end
-	for buildingId, rate in runtime.Rates do
+	local consumedAny = false
+	-- Stable order so buildings sharing inputs (two smelters) are served predictably.
+	local ids = {}
+	for buildingId in runtime.Rates do
+		table.insert(ids, buildingId)
+	end
+	table.sort(ids)
+	for _, buildingId in ids do
+		local rate = runtime.Rates[buildingId]
 		local building = data.Buildings[buildingId]
 		if building and rate.PerSecond > 0 then
 			local stored = building.Stored[rate.Output] or 0
-			local full = stored >= rate.Capacity
-			local newStored, made = Formulas.Accumulate(stored, rate.PerSecond * efficiency, dt, rate.Capacity)
+			local newStored, made, consumed, starved = Production.Step(
+				stored,
+				rate.PerSecond * efficiency,
+				dt,
+				rate.Capacity,
+				rate.InputsPerUnit,
+				data.Resources
+			)
 			building.Stored[rate.Output] = newStored
+			if (runtime.Starved[buildingId] == true) ~= starved then
+				-- Paused or resumed: refresh panels and the creatures' task text.
+				StateService.Push(player, "Buildings", "Creatures")
+			end
+			if starved then
+				runtime.Starved[buildingId] = true
+			else
+				runtime.Starved[buildingId] = nil
+			end
+			if next(consumed) then
+				consumedAny = true
+			end
 			if made > 0 then
 				produced[rate.Output] = (produced[rate.Output] or 0) + made
 			end
-			-- Creatures only gain experience while their building has room to work.
-			if grantXp and not full then
+			-- Creatures gain experience only for the share of time they actually worked
+			-- (not while storage is full or inputs ran out).
+			local worked = if rate.PerSecond > 0 then made / (rate.PerSecond * efficiency) else 0
+			if grantXp and worked > 0 then
 				for _, worker in rate.Workers do
 					local creature = data.Creatures[worker.CreatureId]
 					if creature then
-						local progress = (runtime.CycleProgress[worker.CreatureId] or 0) + dt / worker.CycleTime
+						local progress = (runtime.CycleProgress[worker.CreatureId] or 0) + worked / worker.CycleTime
 						local cycles = math.floor(progress)
 						runtime.CycleProgress[worker.CreatureId] = progress - cycles
 						if cycles > 0 then
 							creature.WorkCycles += cycles
+							creature.JobCycles[rate.Job] = (creature.JobCycles[rate.Job] or 0) + cycles
 							local gained = Production.AddXp(creature, cycles * EconomyConfig.XpPerCycle)
 							if gained > 0 then
 								runtime.Stale = true -- level changes the rate
@@ -106,8 +136,11 @@ local function advance(
 			end
 		end
 	end
-	if next(produced) then
+	if next(produced) or consumedAny then
 		PlayerDataService.MarkDirty(player)
+	end
+	if consumedAny then
+		StateService.Push(player, "Wallet")
 	end
 	return produced
 end
@@ -214,6 +247,12 @@ function ProductionService.GetWorkerRate(player: Player, creatureId: string): Pr
 	return nil
 end
 
+-- Whether a building stopped because its silo inputs ran out.
+function ProductionService.IsStarved(player: Player, buildingId: string): boolean
+	local runtime = getRuntime(player)
+	return runtime ~= nil and runtime.Starved[buildingId] == true
+end
+
 -- Remaining seconds of buffs on a building (for the UI).
 function ProductionService.GetBuffs(
 	player: Player,
@@ -244,6 +283,7 @@ function ProductionService.Start()
 			Rates = {},
 			Buffs = {},
 			CycleProgress = {},
+			Starved = {},
 			LastTick = os.clock(),
 			LastResync = 0,
 			Stale = false,

@@ -50,6 +50,7 @@ export type WorkerInput = {
 	Job: string,
 	ExtraBonuses: { { Stat: string, Category: string, Value: number } }?, -- empire, abilities, ...
 	LevelBonus: number,
+	Affinity: number?, -- job skill override (evolution stages); defaults to the species' value
 }
 
 export type WorkerOutput = {
@@ -64,7 +65,7 @@ export type WorkerOutput = {
 -- How fast one creature produces at a production building.
 function Formulas.WorkerRate(worker: WorkerInput, level: Types.BuildingLevel, rules: BonusRules): WorkerOutput
 	local species = worker.Species
-	local affinity = species.JobAffinity[worker.Job] or 0
+	local affinity = worker.Affinity or species.JobAffinity[worker.Job] or 0
 	local cycleTime = level.CycleTime or 0
 	local perCycleBase = level.YieldPerCycle or 0
 	if affinity <= 0 or cycleTime <= 0 then
