@@ -67,7 +67,7 @@ local function getRuntime(player: Player): Runtime?
 	return runtimes[player]
 end
 
-local function recompute(player: Player, runtime: Runtime)
+local function recompute(player: Player, runtime: Runtime, withoutGlobal: boolean?)
 	local data = PlayerDataService.GetData(player)
 	if not data then
 		return
@@ -88,7 +88,9 @@ local function recompute(player: Player, runtime: Runtime)
 			globalBuffs[id] = nil
 		end
 	end
-	local buffs = combinedBuffs(data, runtime)
+	-- Offline catch-up must not use server-wide event buffs (joining during Golden Hour
+	-- would otherwise boost the whole absence).
+	local buffs = if withoutGlobal then runtime.Buffs else combinedBuffs(data, runtime)
 	runtime.Rates = Production.Rates(data, buffs)
 	runtime.Couriers = Production.Couriers(data, buffs)
 	-- Buildings with no workers can't be "starved".
@@ -190,7 +192,7 @@ end
 
 -- Couriers move stored output from production buildings into the silo or wallet, fullest
 -- building first, up to `budget` units. Returns units carried.
-local function carry(player: Player, runtime: Runtime, budget: number, grantXp: boolean): number
+local function carry(player: Player, runtime: Runtime, budget: number, grantXp: boolean, how: string?): number
 	local data = PlayerDataService.GetData(player)
 	if not data or budget < 1 then
 		return 0
@@ -231,7 +233,7 @@ local function carry(player: Player, runtime: Runtime, budget: number, grantXp: 
 			budget -= added
 			carried += added
 			data.Stats.Collected = (data.Stats.Collected or 0) + added
-			Events.Collected:Fire(player, output, added)
+			Events.Collected:Fire(player, output, added, how or "Courier")
 		end
 	end
 	if blocked ~= runtime.CourierBlocked then
@@ -284,7 +286,8 @@ local function runCouriers(player: Player, runtime: Runtime, dt: number, efficie
 	runtime.CarryTimer += dt
 	if force or runtime.CarryTimer >= CARRY_INTERVAL then
 		runtime.CarryTimer = 0
-		local carried = carry(player, runtime, runtime.CarryBudget, efficiency >= 1)
+		local carried =
+			carry(player, runtime, runtime.CarryBudget, efficiency >= 1, if force then "Offline" else "Courier")
 		-- Keep only the fractional leftover: unused trips aren't banked while nothing waits.
 		runtime.CarryBudget = math.clamp(runtime.CarryBudget - carried, 0, 1)
 	end
@@ -542,8 +545,9 @@ function ProductionService.Start()
 			Stale = false,
 		}
 		runtimes[player] = runtime
-		recompute(player, runtime)
+		recompute(player, runtime, true)
 		applyOffline(player, runtime)
+		recompute(player, runtime)
 		StateService.Push(player, "Buildings")
 	end)
 

@@ -95,7 +95,7 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 
 - **Plot permissions.** `SocialService.Permission` returns Owner, Collaborator or Visitor. Each owner keeps a saved list of up to 5 collaborators. Collaborators can collect the owner's harvests into the owner's silo (`CollectFor`) and nothing else. Visitors can inspect and cheer. Cheering an Empire Core gives the owner's production buildings +10% work speed (`Boost`) for 10 min: up to 3 cheers stack, each visitor can cheer each empire once per 10 min, and the cheerer gets a small gift.
 - **Trading.** `TradingService` plus the pure `Shared/Util/Trade`:
-  - **Session:** an invite, then both offers (up to 4 creatures plus listed resources).
+  - **Session:** an invite, then both offers (up to 4 creatures plus Ember Lures; currencies and materials aren't tradable, which closes the "park it on an alt through Ascension" loophole).
   - **Confirming:** ready ticks clear on any change, then a 3 s countdown that any change also cancels.
   - **Committing:** a full re-check of ownership, tradability, companions, expeditions, habitat and silo room, then one no-yield swap and an immediate save of both profiles.
   - **Cancelling:** nothing moves on cancel or disconnect.
@@ -113,6 +113,10 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 
 - Trades save both profiles right after the swap. If the server crashes between those two saves, one side could roll back. Session locks rule out cross-server duplication.
 - Collaborators can't build or assign; they only collect, and the harvest goes to the owner.
+- Visiting a plot is an instant trip home or elsewhere, from anywhere (including Emberfall and guardian fights).
+- Elderbark (the Grand Bloom reward) joins even if the habitat is full, like other one-off rewards.
+- A creature passed between friends counts toward each of their Collectors scores.
+- A rift team that ends up on a different server from the one where the rift closed is resolved solo, with no party bonus.
 - Leaderboards need a published game (or Studio API access).
 - Thundermaw, Nocturnox and Abyssquid, and the PowerOperator, Breeder and RelicInvestigator jobs, are Phase 6. Cross-server friends and party invites are not included.
 

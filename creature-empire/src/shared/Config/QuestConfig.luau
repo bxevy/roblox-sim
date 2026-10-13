@@ -306,14 +306,6 @@ QuestConfig.Tutorial = {
 		Pointer = "ResearchStation",
 	},
 	{
-		Id = "WorldEvent",
-		Title = "Stronger together",
-		Description = "Take part in a world event: send a team into an Ember Rift, or collect 10+ moonpetals during a Grand Bloom. The banner at the top shows the next one.",
-		Kind = "WorldEvent",
-		Amount = 1,
-		Reward = { Gold = 3000, Essence = 30 },
-	},
-	{
 		Id = "Ascend",
 		Title = "Ascension",
 		Description = "Reach Empire Core tier 5, then Ascend from the Empire Core: start over stronger, keep your creatures.",
@@ -321,6 +313,14 @@ QuestConfig.Tutorial = {
 		Amount = 1,
 		Reward = { Shards = 5 },
 		Pointer = "EmpireCore",
+	},
+	{
+		Id = "WorldEvent",
+		Title = "Stronger together",
+		Description = "Take part in a world event: send a team into an Ember Rift, or collect 10+ moonpetals during a Grand Bloom. The banner at the top shows the next one.",
+		Kind = "WorldEvent",
+		Amount = 1,
+		Reward = { Gold = 3000, Essence = 30 },
 	},
 } :: { Types.QuestStep }
 

@@ -42,6 +42,8 @@ type Current = {
 local folder: Configuration
 local current: Current? = nil
 local forced: WorldEvent.Slot? = nil -- Studio testing (DevService)
+local lastFinished: number? = nil -- an event index that already ran (never begin it twice)
+local riftResults: { [number]: number } = {} -- rift index -> teams, for late claims
 
 local function publish()
 	local now = Workspace:GetServerTimeNow()
@@ -160,6 +162,14 @@ local function finish(event: Current)
 		finishRift(event)
 	end
 	Remotes.Events.GameEvent:FireAllClients("WorldEventEnded", { Kind = event.Slot.Kind })
+	lastFinished = event.Slot.Index
+	if event.Slot.Kind == "EmberRift" then
+		local teams = 0
+		for _ in event.Teams do
+			teams += 1
+		end
+		riftResults[event.Slot.Index] = teams
+	end
 	current = nil
 	publish()
 end
@@ -174,8 +184,17 @@ local function step()
 	if active and (not slot.Active or slot.Index ~= active.Slot.Index) then
 		finish(active)
 	end
-	if slot.Active and not current then
+	if slot.Active and not current and slot.Index ~= lastFinished then
 		begin(slot)
+	end
+	-- More players arrived during a Bloom: the goal grows with them (never shrinks).
+	local bloom = current
+	if bloom and bloom.Slot.Kind == "Bloom" then
+		local goal = math.max(bloom.Goal, WorldEvent.BloomGoal(#Players:GetPlayers()))
+		if goal ~= bloom.Goal then
+			bloom.Goal = goal
+			publish()
+		end
 	end
 end
 
@@ -200,6 +219,17 @@ function WorldEventService.JoinRift(player: Player)
 		Events.WorldEventJoined:Fire(player, "EmberRift")
 		publish()
 	end
+end
+
+-- The rift index still running (its teams can't be resolved yet), if any.
+function WorldEventService.CurrentRift(): number?
+	local active = current
+	return if active and active.Slot.Kind == "EmberRift" then active.Slot.Index else nil
+end
+
+-- How many teams went into a rift that closed on this server (nil if unknown).
+function WorldEventService.RiftTeams(index: number): number?
+	return riftResults[index]
 end
 
 -- Studio testing: start an event now (the normal schedule resumes when it ends).
@@ -231,9 +261,10 @@ function WorldEventService.Start()
 	folder.Parent = ReplicatedStorage
 	publish()
 
-	Events.Collected:Connect(function(player, resource, amount)
+	Events.Collected:Connect(function(player, resource, amount, how)
 		local active = current
-		if active and active.Slot.Kind == "Bloom" and resource == "Moonpetal" and amount > 0 then
+		-- Offline catch-up deliveries don't count: the Bloom is for people playing now.
+		if active and active.Slot.Kind == "Bloom" and resource == "Moonpetal" and amount > 0 and how ~= "Offline" then
 			local before = active.Contributions[player.UserId] or 0
 			active.Contributions[player.UserId] = before + amount
 			active.Progress += amount
@@ -244,6 +275,20 @@ function WorldEventService.Start()
 				Events.WorldEventJoined:Fire(player, "Bloom")
 			end
 			publish()
+		end
+	end)
+
+	-- Players who rejoin while their rift team is still out count as joined again.
+	PlayerDataService.Loaded:Connect(function(player)
+		local active = current
+		local data = PlayerDataService.GetData(player)
+		if active and active.Slot.Kind == "EmberRift" and data then
+			for _, record in data.Expeditions do
+				if record.Party == active.Slot.Index then
+					active.Teams[player.UserId] = true
+					publish()
+				end
+			end
 		end
 	end)
 

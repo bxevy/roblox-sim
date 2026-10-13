@@ -6,7 +6,8 @@ local Signal = require(script.Parent.Signal)
 
 return {
 	-- (player, resourceId, amount)
-	Collected = Signal.new() :: Signal.Signal<Player, string, number>,
+	-- (player, resource, amount, how: "Collect" | "Courier" | "Offline")
+	Collected = Signal.new() :: Signal.Signal<Player, string, number, string>,
 	-- (player, resourceId, amount, goldReceived)
 	Sold = Signal.new() :: Signal.Signal<Player, string, number, number>,
 	-- (player, currencyId, amount, reason)

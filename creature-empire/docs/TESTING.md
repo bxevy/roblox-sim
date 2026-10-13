@@ -83,9 +83,10 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 ### Phase 5: multiplayer (Studio → Test → Clients and Servers, 2–3 players)
 - [ ] Players window (U): lists the others. Visit teleports to their plot entrance.
 - [ ] Trade: player A invites B, and B sees an Accept/Decline card that disappears after 30 s. Both windows open.
-  - [ ] Add creatures and gold. Both sides update live, and every change clears both Ready ticks.
+  - [ ] Add creatures and lures (there's no gold or material field). Both sides update live, and every change clears both Ready ticks.
   - [ ] Ready on both sides: a 3 s countdown runs, and editing during it cancels.
-  - [ ] After the swap, creatures appear on the other plot, journals update, and the gold moved exactly once.
+  - [ ] After the swap, creatures appear on the other plot, journals update, and the lures moved exactly once.
+  - [ ] Pressing C, B or U during a trade doesn't open other windows, and the ✕ cancels the trade.
 - [ ] Trade refusals:
   - [ ] Starter, quest and companion creatures show "Can't".
   - [ ] A full habitat on the receiver refuses with a message.

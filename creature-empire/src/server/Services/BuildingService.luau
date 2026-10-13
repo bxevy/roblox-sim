@@ -304,7 +304,7 @@ local function collectFor(owner: Player, actor: Player, buildingId: string): (bo
 			end
 			if added > 0 then
 				data.Stats.Collected = (data.Stats.Collected or 0) + added
-				Events.Collected:Fire(player, resource, added)
+				Events.Collected:Fire(player, resource, added, "Collect")
 			end
 		end
 	end

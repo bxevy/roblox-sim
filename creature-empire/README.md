@@ -104,7 +104,7 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
 ## Added in Phase 5
 
 - **Players window (U).** Lists everyone in the server. From it you can visit their plot, inspect it, invite them to trade, or make them a collaborator.
-- **Trading.** Swap up to 4 creatures plus Gold, Essence and materials.
+- **Trading.** Swap up to 4 creatures (plus Ember Lures). Gold and materials can't be traded, so nobody can park wealth on a friend through an Ascension or sell gold.
   - Both players see exactly what they'll get.
   - Any change clears both "Ready" ticks, and a short countdown runs before the swap.
   - The server re-checks everything at the end, then saves both profiles.

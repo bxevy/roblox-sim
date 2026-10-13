@@ -23,7 +23,16 @@ local TradeWindow = {}
 
 function TradeWindow.new(ctx: any)
 	local State = ctx.Controllers.State
-	local win = Window.new(ctx.Gui, "Trade", "⇄", Vector2.new(760, 640), ctx.Close)
+	-- The window can't be closed while trading (other windows would cancel it): the ✕
+	-- button cancels the trade instead.
+	local module: any = nil
+	local win = Window.new(ctx.Gui, "Trade", "⇄", Vector2.new(760, 640), function()
+		if module and module.Modal then
+			ctx.Request("TradeCancel")
+		else
+			ctx.Close()
+		end
+	end)
 	Theme.List(win.Body, 10)
 
 	local session: any = nil -- last TradeState from the server
@@ -106,10 +115,13 @@ function TradeWindow.new(ctx: any)
 		)
 
 		-- Your side: creatures
-		for index, c in session.Mine.Creatures do
+		for _, c in session.Mine.Creatures do
 			creatureCard(mine, c, function()
-				table.remove(myCreatures, index)
-				send()
+				local index = table.find(myCreatures, c.Id)
+				if index then
+					table.remove(myCreatures, index)
+					send()
+				end
 			end)
 		end
 		if #myCreatures < SocialConfig.Trade.MaxCreatures then
@@ -307,15 +319,19 @@ function TradeWindow.new(ctx: any)
 				-- A new session: start from what the server has (empty).
 				myCreatures, myResources, picking = {}, {}, false
 			end
+			module.Modal = false -- let it open over whatever window is showing
 			if not ctx.IsOpen("Trade") then
+				ctx.Close()
 				ctx.Open("Trade")
 			else
 				render()
 			end
+			module.Modal = true
 		elseif name == "TradeClosed" then
 			session = nil
 			myCreatures, myResources, picking = {}, {}, false
 			ctx.Notify(payload.Reason, if payload.Reason == "Trade complete!" then "Reward" else "Info")
+			module.Modal = false
 			if ctx.IsOpen("Trade") then
 				closingFromServer = true
 				ctx.Close()
@@ -324,18 +340,20 @@ function TradeWindow.new(ctx: any)
 		end
 	end)
 
-	return {
+	module = {
 		Root = win.Root,
+		Modal = false,
 		Open = function()
 			render()
 		end,
 		OnClose = function()
-			-- Closing the window cancels an active trade (nothing moves).
+			-- Only reachable when the trade has ended (the window is modal while trading).
 			if session and not closingFromServer then
 				ctx.Request("TradeCancel")
 			end
 		end,
 	}
+	return module
 end
 
 return TradeWindow

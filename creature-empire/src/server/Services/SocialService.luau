@@ -222,7 +222,7 @@ function SocialService.Start()
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		lastGift[player.UserId] = nil
+		-- lastGift is kept on purpose: leaving and rejoining doesn't reset the gift cooldown.
 		for _, other in Players:GetPlayers() do
 			if other ~= player then
 				StateService.Push(other, "Social")

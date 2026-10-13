@@ -214,6 +214,13 @@ local function claim(player: Player, expeditionId: string): (boolean, any)
 		return false, `They'll be back in {Format.Duration(record.EndsAt - now)}.`
 	end
 	local destination = ExpeditionConfig.Destinations[record.Destination]
+	if record.Party ~= nil and record.PartySize == nil then
+		if WorldEventService.CurrentRift() == record.Party then
+			return false, "The rift is still closing. Try again in a moment."
+		end
+		-- Closed while you were away: use this server's count if it saw the rift.
+		record.PartySize = WorldEventService.RiftTeams(record.Party)
+	end
 	-- Resolve before changing anything, from the stored seed.
 	local outcome = Expedition.Resolve(
 		destination,

@@ -51,70 +51,64 @@ end
 
 describe("Trading rules", function()
 	test("offers from clients are shape-checked", function()
-		truthy(Trade.Clean({ Creatures = { "a" }, Resources = { Gold = 10 } }))
+		truthy(Trade.Clean({ Creatures = { "a" }, Resources = { EmberLure = 2 } }))
 		falsy(Trade.Clean({ Creatures = { "a", "a" }, Resources = {} }), "duplicate creature")
-		falsy(Trade.Clean({ Creatures = {}, Resources = { EmpireShards = 5 } }), "shards aren't tradable")
-		falsy(Trade.Clean({ Creatures = {}, Resources = { Gold = -5 } }), "negative")
-		falsy(Trade.Clean({ Creatures = {}, Resources = { Gold = 1.5 } }), "fractional")
-		falsy(Trade.Clean({ Creatures = {}, Resources = { Gold = 0 / 0 } }), "NaN")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { Gold = 10 } }), "gold can't be traded")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { Moonpetal = 10 } }), "materials can't be traded")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { EmpireShards = 5 } }), "shards can't be traded")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { EmberLure = -5 } }), "negative")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 1.5 } }), "fractional")
+		falsy(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 0 / 0 } }), "NaN")
 		falsy(Trade.Clean({ Creatures = { "a", "b", "c", "d", "e" }, Resources = {} }), "too many creatures")
 		falsy(Trade.Clean("nope"))
-		eq(next(Trade.Clean({ Creatures = {}, Resources = { Gold = 0 } }).Resources), nil, "zero amounts dropped")
+		eq(next(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 0 } }).Resources), nil, "zero amounts dropped")
 	end)
-	test("only your own tradable, free creatures and resources you have", function()
+	test("only your own tradable, free creatures and items you have", function()
 		local data = Schema.Default(0)
 		data.Creatures.a = creature("a", "Mossmaw")
 		data.Creatures.s = creature("s", "Sproutling", { Tradable = false, Source = "Starter" })
 		data.Creatures.e = creature("e", "Zappup", { Expedition = "x" })
 		data.Creatures.c = creature("c", "Ashwhisk")
 		data.Companion = "c"
-		data.Currencies.Gold = 100
-		truthy(Trade.CanGive(data, { Creatures = { "a" }, Resources = { Gold = 100 } }))
+		data.Resources.EmberLure = 3
+		truthy(Trade.CanGive(data, { Creatures = { "a" }, Resources = { EmberLure = 3 } }))
 		falsy(Trade.CanGive(data, { Creatures = { "s" }, Resources = {} }), "starter")
 		falsy(Trade.CanGive(data, { Creatures = { "e" }, Resources = {} }), "away")
 		falsy(Trade.CanGive(data, { Creatures = { "c" }, Resources = {} }), "companion")
 		falsy(Trade.CanGive(data, { Creatures = { "zzz" }, Resources = {} }), "not owned")
-		falsy(Trade.CanGive(data, { Creatures = {}, Resources = { Gold = 101 } }), "too much gold")
+		falsy(Trade.CanGive(data, { Creatures = {}, Resources = { EmberLure = 4 } }), "too many lures")
 	end)
-	test("the receiver needs habitat and silo room (after what they give away)", function()
+	test("the receiver needs habitat and stack room (after what they give away)", function()
 		local data = Schema.Default(0)
 		for i = 1, 6 do
 			data.Creatures["c" .. i] = creature("c" .. i, "Mossmaw")
 		end
-		data.Resources.Moonpetal = 140
-		local incoming = { Creatures = { "x" }, Resources = { Moonpetal = 20 } }
-		falsy(Trade.CanReceive(data, incoming, Trade.Empty(), limits(6, 150)), "habitat full")
-		falsy(Trade.CanReceive(data, { Creatures = {}, Resources = { Moonpetal = 20 } }, Trade.Empty(), limits(6, 150)))
+		data.Resources.EmberLure = 18
+		local incoming = { Creatures = { "x" }, Resources = {} }
+		falsy(Trade.CanReceive(data, incoming, Trade.Empty(), limits(6, 20)), "habitat full")
+		falsy(Trade.CanReceive(data, { Creatures = {}, Resources = { EmberLure = 3 } }, Trade.Empty(), limits(6, 20)))
 		truthy(
-			Trade.CanReceive(data, incoming, { Creatures = { "c1" }, Resources = { Moonpetal = 10 } }, limits(6, 150)),
+			Trade.CanReceive(data, incoming, { Creatures = { "c1" }, Resources = {} }, limits(6, 20)),
 			"giving one away makes room"
-		)
-		truthy(
-			Trade.CanReceive(data, { Creatures = {}, Resources = { Gold = 1e9 } }, Trade.Empty(), limits(6, 150)),
-			"no cap on gold"
 		)
 	end)
 	test("a trade swaps everything exactly once", function()
 		local a, b = Schema.Default(0), Schema.Default(0)
 		a.Creatures.m = creature("m", "Mossmaw", { Assignment = "farm1" })
 		b.Creatures.z = creature("z", "Zappup")
-		a.Currencies.Gold = 500
-		b.Resources.Moonpetal = 40
-		local offerA = { Creatures = { "m" }, Resources = { Gold = 200 } }
-		local offerB = { Creatures = { "z" }, Resources = { Moonpetal = 40 } }
+		a.Resources.EmberLure = 5
+		local offerA = { Creatures = { "m" }, Resources = { EmberLure = 2 } }
+		local offerB = { Creatures = { "z" }, Resources = {} }
 		truthy(Trade.Validate(a, offerA, limits(), b, offerB, limits()))
 		Trade.Apply(a, offerA, b, offerB, 100)
 		eq(a.Creatures.m, nil)
 		eq(b.Creatures.m.Species, "Mossmaw")
 		eq(b.Creatures.m.Assignment, nil, "unassigned on arrival")
 		eq(a.Creatures.z.Species, "Zappup")
-		eq(a.Currencies.Gold, 300)
-		eq(b.Currencies.Gold, 50 + 200)
-		eq(a.Resources.Moonpetal, 40)
-		eq(b.Resources.Moonpetal, 0)
+		eq(a.Resources.EmberLure, 3)
+		eq(b.Resources.EmberLure, 2)
 		truthy(b.Collection.Mossmaw and a.Collection.Zappup, "journals updated")
 		eq(a.Stats.Trades, 1)
-		-- Both profiles are still valid.
 		eq(#Schema.Sanitize(a, 0), 0)
 		eq(#Schema.Sanitize(b, 0), 0)
 	end)

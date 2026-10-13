@@ -29,8 +29,10 @@ SocialConfig.Trade = {
 	InviteSeconds = 30,
 	ConfirmSeconds = 3, -- countdown after both are ready; any change cancels it
 	MaxCreatures = 4, -- per side
-	-- Only these can be traded (no Insight, Empire Shards or anything bought with Robux).
-	Resources = { "Gold", "Essence", "Moonpetal", "RawCrystal", "RefinedCrystal", "Emberstone", "EmberLure" },
+	-- Only these can be traded besides creatures. Currencies and silo materials can't be, so
+	-- trades can't carry wealth past an Ascension (parked on a friend) or be used to sell
+	-- gold. Ember Lures are kept through Ascension anyway.
+	Resources = { "EmberLure" },
 	MaxDistance = nil :: number?, -- trades work from anywhere in the server
 }
 
