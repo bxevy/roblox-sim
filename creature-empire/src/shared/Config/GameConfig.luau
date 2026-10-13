@@ -4,11 +4,11 @@
 local GameConfig = {}
 
 GameConfig.Name = "Creature Empire"
-GameConfig.Version = "0.3.0"
+GameConfig.Version = "0.4.0"
 
 -- Development phase this build implements. Content with a higher `Phase` in the configs is
 -- designed but not obtainable or buildable yet.
-GameConfig.Phase = 3
+GameConfig.Phase = 4
 
 -- A building (other than the Empire Core) can be at most this many levels above the
 -- Empire Core's tier, so the core gates progression.

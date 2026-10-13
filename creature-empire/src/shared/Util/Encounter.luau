@@ -48,6 +48,7 @@ export type HeatContext = {
 	CompanionFamily: string?,
 	Eruption: boolean,
 	OnBridge: boolean,
+	Ward: number?, -- research: share of heat build-up prevented (0..1)
 }
 
 -- Heat change per second at a spot. Vent bursts are added separately when they go off.
@@ -68,6 +69,7 @@ function Encounter.HeatRate(region: RegionConfig.Region, context: HeatContext): 
 	if resist then
 		rate *= resist
 	end
+	rate *= 1 - math.clamp(context.Ward or 0, 0, 0.9)
 	for _, pool in region.Pools do
 		local flat = Vector3.new(context.Offset.X - pool.X, 0, context.Offset.Z - pool.Z)
 		if flat.Magnitude <= heat.PoolRadius then

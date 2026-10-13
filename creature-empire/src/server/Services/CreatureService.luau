@@ -8,6 +8,7 @@
 
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
@@ -17,6 +18,9 @@ local EconomyConfig = require(Shared.Config.EconomyConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local Production = require(Shared.Util.Production)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
+local MutationConfig = require(Shared.Config.MutationConfig)
+local Mutation = require(Shared.Util.Mutation)
+local Research = require(Shared.Util.Research)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -29,7 +33,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local PlotService = require(script.Parent.PlotService)
 local ProductionService = require(script.Parent.ProductionService)
 
-local IMPLEMENTED_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true }
+local IMPLEMENTED_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true, Collect = true }
 
 local CreatureService = {}
 
@@ -100,6 +104,9 @@ function CreatureService.Grant(
 		RestUntil = 0,
 		AbilityReadyAt = 0,
 	}
+	if MutationConfig.RollSources[source] then
+		record.Mutation = Mutation.Roll(speciesId, record.Id .. ":" .. source, CreatureService.MutationMultiplier(data))
+	end
 	data.Creatures[record.Id] = record
 	local entry = data.Collection[speciesId]
 	local firstTime = entry == nil
@@ -116,6 +123,7 @@ function CreatureService.Grant(
 		Species = speciesId,
 		Source = source,
 		NewDiscovery = firstTime,
+		Mutation = record.Mutation,
 	}
 	local extras: { [string]: any } = extra or {}
 	for key, value in extras do
@@ -125,6 +133,11 @@ function CreatureService.Grant(
 	Events.CreatureObtained:Fire(player, record.Id, source)
 	Log.Info("Creature", "Granted", { user = player.UserId, species = speciesId, source = source, id = record.Id })
 	return record
+end
+
+-- Mutation chance multiplier from research (1 = base chances).
+function CreatureService.MutationMultiplier(data: Types.PlayerData): number
+	return 1 + Research.Total(data, "Mutation")
 end
 
 -- The next starter species the player does not own yet (tutorial rewards).
@@ -278,7 +291,8 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		return false, `{ability.Name} is ready in {creature.AbilityReadyAt - now}s.`
 	end
 	local buildingId = creature.Assignment
-	if (ability.RequiresAssignment or ability.Kind ~= "GoldFind") and not buildingId then
+	local anywhere = ability.Kind == "GoldFind" or ability.Kind == "Collect"
+	if (ability.RequiresAssignment or not anywhere) and not buildingId then
 		return false, `Assign {displayName(creature)} to a job first.`
 	end
 	local stage = species.Evolution[creature.Stage] or species.Evolution[1]
@@ -325,6 +339,12 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		local gold = math.floor(ability.Power * strength * (1 + EconomyConfig.GoldFindPerCoreLevel * (tier - 1)))
 		EconomyService.Add(player, "Gold", gold, "Ability " .. ability.Id)
 		message = `{ability.Name}! {displayName(creature)} dug up {gold} gold.`
+	elseif ability.Kind == "Collect" then
+		local carried = ProductionService.CarryNow(player, math.floor(ability.Power * strength))
+		if carried <= 0 then
+			return false, "Nothing is waiting at your buildings (or your silo is full)."
+		end
+		message = `{ability.Name}! {displayName(creature)} carried {carried} items to your silo.`
 	else
 		return false, "This ability isn't available yet."
 	end
@@ -393,6 +413,9 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 				JobCycles = table.clone(creature.JobCycles),
 				Expedition = creature.Expedition,
 				RestIn = math.max(creature.RestUntil - now, 0),
+				-- Absolute, on the shared server clock, so the client can count down without
+				-- a fresh push.
+				RestUntilServer = Workspace:GetServerTimeNow() + math.max(creature.RestUntil - now, 0),
 				Companion = data.Companion == id,
 				ObtainedAt = creature.ObtainedAt,
 			}

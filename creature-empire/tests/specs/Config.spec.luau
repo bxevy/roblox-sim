@@ -36,8 +36,11 @@ local QUEST_KINDS = {
 	"Befriend",
 	"Expedition",
 	"Guardian",
+	"Research",
+	"Synergy",
+	"Ascend",
 }
-local PHASE1_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true }
+local PHASE1_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true, Collect = true }
 
 describe("Creatures", function()
 	test("eight families with at least four species each", function()

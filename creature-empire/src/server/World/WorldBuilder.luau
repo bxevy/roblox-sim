@@ -247,6 +247,7 @@ local function setupLighting()
 	bloom.Threshold = 1.6
 	bloom.Parent = Lighting
 	local colour = Instance.new("ColorCorrectionEffect")
+	colour.Name = "CE_Grade" -- the client's region mood looks it up by name
 	colour.Saturation = 0.12
 	colour.Contrast = 0.06
 	colour.TintColor = Color3.fromRGB(255, 250, 244)

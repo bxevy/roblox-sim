@@ -14,6 +14,8 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local Grid = require(Shared.Util.Grid)
+local Research = require(Shared.Util.Research)
+local ResearchConfig = require(Shared.Config.ResearchConfig)
 local Formulas = require(Shared.Util.Formulas)
 local Format = require(Shared.Util.Format)
 local Remotes = require(Shared.Remotes)
@@ -118,6 +120,24 @@ local function spawnModel(player: Player, record: Types.BuildingRecord)
 	model.Parent = folder
 end
 
+-- Rebuilds every building model from saved data (after an Ascension reset the layout).
+function BuildingService.RebuildAll(player: Player)
+	local plot = PlotService.Get(player)
+	local data = PlayerDataService.GetData(player)
+	if not plot or not data then
+		return
+	end
+	local folder = plot.Folder:FindFirstChild("Buildings") :: Folder
+	for _, child in folder:GetChildren() do
+		if not data.Buildings[child.Name] then
+			child:Destroy()
+		end
+	end
+	for _, record in data.Buildings do
+		spawnModel(player, record)
+	end
+end
+
 function BuildingService.GetModel(player: Player, buildingId: string): Model?
 	local plot = PlotService.Get(player)
 	local folder = plot and plot.Folder:FindFirstChild("Buildings")
@@ -139,6 +159,10 @@ local function place(player: Player, typeId: string, x: number, z: number, rot: 
 	local def = BuildingConfig[typeId]
 	if not def or not def.Placeable or def.Phase > GameConfig.Phase then
 		return false, "You can't build that yet."
+	end
+	if def.RequiresResearch and not Research.Has(data, def.RequiresResearch) then
+		local node = ResearchConfig.Nodes[def.RequiresResearch]
+		return false, `Research {node and node.Name or def.RequiresResearch} at the Research Station first.`
 	end
 	local owned = countOf(data, typeId)
 	local limit = BuildingService.Limit(data, typeId)
@@ -330,10 +354,12 @@ local function buildingsState(player: Player, profile: PlayerDataService.Profile
 		local def = BuildingConfig[record.Type]
 		if def then
 			local rate = ProductionService.GetRate(player, id)
+			local courier, courierBlocked = ProductionService.GetCourier(player, id)
 			local nextLevel = def.Levels[record.Level + 1]
 			local workers = {}
-			if rate then
-				for _, worker in rate.Workers do
+			local staffed: { Workers: { any } }? = rate or courier
+			if staffed then
+				for _, worker in staffed.Workers do
 					table.insert(
 						workers,
 						{ CreatureId = worker.CreatureId, PerSecond = worker.PerSecond, CycleTime = worker.CycleTime }
@@ -356,10 +382,12 @@ local function buildingsState(player: Player, profile: PlayerDataService.Profile
 				Stored = table.clone(record.Stored),
 				Output = rate and rate.Output,
 				Capacity = rate and rate.Capacity,
-				PerSecond = rate and rate.PerSecond or 0,
+				PerSecond = if rate then rate.PerSecond elseif courier then courier.PerSecond else 0,
 				Workers = workers,
 				Assigned = assigned,
-				Slots = rate and rate.Slots or 0,
+				Slots = if rate then rate.Slots elseif courier then courier.Slots else 0,
+				Synergies = if rate then rate.Synergies elseif courier then courier.Synergies else {},
+				CourierBlocked = courier ~= nil and courierBlocked,
 				Buffs = ProductionService.GetBuffs(player, id),
 				Starved = ProductionService.IsStarved(player, id),
 				InputsPerUnit = rate and rate.InputsPerUnit,
@@ -378,6 +406,9 @@ local function buildingsState(player: Player, profile: PlayerDataService.Profile
 				Limit = BuildingService.Limit(data, typeId),
 				NextCost = Formulas.PlaceCost(def, owned),
 				Available = def.Phase <= GameConfig.Phase,
+				NeedsResearch = if def.RequiresResearch and not Research.Has(data, def.RequiresResearch)
+					then def.RequiresResearch
+					else nil,
 				UnlockTier = BuildingService.UnlockTier(typeId),
 			}
 		end

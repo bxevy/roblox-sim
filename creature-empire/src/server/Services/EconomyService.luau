@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage.Shared
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local BuildingConfig = require(Shared.Config.BuildingConfig)
+local Research = require(Shared.Util.Research)
 
 local Core = script.Parent.Parent.Core
 local Log = require(Core.Log)
@@ -47,7 +48,7 @@ function EconomyService.Capacity(player: Player, id: string): number
 			capacity += level.Capacity[id]
 		end
 	end
-	return capacity
+	return math.floor(capacity * Research.SiloMultiplier(data))
 end
 
 function EconomyService.Balance(player: Player, id: string): number
@@ -80,6 +81,7 @@ function EconomyService.Add(player: Player, id: string, amount: number, reason: 
 		Events.CurrencyEarned:Fire(player, id, added, reason)
 		if id == "Gold" then
 			data.Stats.GoldEarned = (data.Stats.GoldEarned or 0) + added
+			data.Ascension.RunGold = (data.Ascension.RunGold or 0) + added
 		end
 	end
 	PlayerDataService.MarkDirty(player)

@@ -13,6 +13,7 @@ local Shared = ReplicatedStorage.Shared
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local Production = require(Shared.Util.Production)
 local Formulas = require(Shared.Util.Formulas)
+local Research = require(Shared.Util.Research)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -20,11 +21,17 @@ local Events = require(Core.Events)
 local Log = require(Core.Log)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local StateService = require(script.Parent.StateService)
+local EconomyService = require(script.Parent.EconomyService)
 
 local RESYNC_INTERVAL = 5 -- seconds between "Buildings" refreshes while anything produces
+local CARRY_INTERVAL = 5 -- couriers deliver in batches so the wallet isn't re-sent every second
 
 type Runtime = {
 	Rates: { [string]: Production.BuildingRate },
+	Couriers: Production.CourierRate,
+	CarryBudget: number, -- units couriers may still carry (fractional, carried in batches)
+	CarryTimer: number,
+	CourierBlocked: boolean, -- the silo was full on the last delivery
 	Buffs: { [string]: { Production.Buff } },
 	CycleProgress: { [string]: number }, -- fractional work cycles per creature
 	Starved: { [string]: boolean }, -- buildings whose inputs ran out on the last step
@@ -59,6 +66,7 @@ local function recompute(player: Player, runtime: Runtime)
 		end
 	end
 	runtime.Rates = Production.Rates(data, runtime.Buffs)
+	runtime.Couriers = Production.Couriers(data, runtime.Buffs)
 	-- Buildings with no workers can't be "starved".
 	for buildingId in runtime.Starved do
 		local rate = runtime.Rates[buildingId]
@@ -156,6 +164,104 @@ local function advance(
 	return produced
 end
 
+-- Couriers move stored output from production buildings into the silo or wallet, fullest
+-- building first, up to `budget` units. Returns units carried.
+local function carry(player: Player, runtime: Runtime, budget: number, grantXp: boolean): number
+	local data = PlayerDataService.GetData(player)
+	if not data or budget < 1 then
+		return 0
+	end
+	local ids = {}
+	for id, building in data.Buildings do
+		local rate = runtime.Rates[id]
+		if rate and (building.Stored[rate.Output] or 0) >= 1 then
+			table.insert(ids, id)
+		end
+	end
+	local function fill(id: string): number
+		local rate = runtime.Rates[id]
+		return (data.Buildings[id].Stored[rate.Output] or 0) / math.max(rate.Capacity, 1)
+	end
+	table.sort(ids, function(a, b)
+		local fa, fb = fill(a), fill(b)
+		if fa ~= fb then
+			return fa > fb
+		end
+		return a < b
+	end)
+	local carried = 0
+	local blocked = false
+	for _, id in ids do
+		if budget < 1 then
+			break
+		end
+		local building = data.Buildings[id]
+		local output = runtime.Rates[id].Output
+		local take = math.min(math.floor(building.Stored[output] or 0), math.floor(budget))
+		local added = EconomyService.Add(player, output, take, "Courier")
+		if added < take then
+			blocked = true
+		end
+		if added > 0 then
+			building.Stored[output] -= added
+			budget -= added
+			carried += added
+			data.Stats.Collected = (data.Stats.Collected or 0) + added
+			Events.Collected:Fire(player, output, added)
+		end
+	end
+	if blocked ~= runtime.CourierBlocked then
+		runtime.CourierBlocked = blocked
+		StateService.Push(player, "Buildings")
+	end
+	-- Couriers gain experience for the trips they made.
+	local total = runtime.Couriers.PerSecond
+	if grantXp and carried > 0 and total > 0 then
+		for _, post in runtime.Couriers.Posts do
+			for _, worker in post.Workers do
+				local creature = data.Creatures[worker.CreatureId]
+				if creature and worker.PerCycle > 0 then
+					local trips = carried * (worker.PerSecond / total) / worker.PerCycle
+					local progress = (runtime.CycleProgress[worker.CreatureId] or 0) + trips
+					local cycles = math.floor(progress)
+					runtime.CycleProgress[worker.CreatureId] = progress - cycles
+					if cycles > 0 then
+						creature.WorkCycles += cycles
+						creature.JobCycles.Courier = (creature.JobCycles.Courier or 0) + cycles
+						if Production.AddXp(creature, cycles * EconomyConfig.XpPerCycle) > 0 then
+							runtime.Stale = true
+							Events.CreatureLeveled:Fire(player, creature.Id, creature.Level)
+						end
+						StateService.Push(player, "Creatures")
+					end
+				end
+			end
+		end
+	end
+	if carried > 0 then
+		PlayerDataService.MarkDirty(player)
+		StateService.Push(player, "Buildings")
+	end
+	return carried
+end
+
+-- Accumulates courier capacity and delivers in batches.
+local function runCouriers(player: Player, runtime: Runtime, dt: number, efficiency: number, force: boolean)
+	local perSecond = runtime.Couriers.PerSecond
+	if perSecond <= 0 then
+		runtime.CarryBudget = 0
+		return
+	end
+	runtime.CarryBudget += perSecond * efficiency * dt
+	runtime.CarryTimer += dt
+	if force or runtime.CarryTimer >= CARRY_INTERVAL then
+		runtime.CarryTimer = 0
+		carry(player, runtime, runtime.CarryBudget, efficiency >= 1)
+		-- Unused capacity isn't banked: couriers can't save up trips while nothing waits.
+		runtime.CarryBudget = math.min(runtime.CarryBudget, 1)
+	end
+end
+
 local function tick(player: Player, runtime: Runtime)
 	local now = os.clock()
 	local dt = math.min(now - runtime.LastTick, 10) -- a long server hitch never grants a burst
@@ -172,11 +278,13 @@ local function tick(player: Player, runtime: Runtime)
 	if runtime.Stale or hasExpiredBuff then
 		-- Advance with the old rates up to now, then switch.
 		advance(player, runtime, dt, 1, true)
+		runCouriers(player, runtime, dt, 1, false)
 		recompute(player, runtime)
 		StateService.Push(player, "Buildings", "Creatures")
 		return
 	end
 	local produced = advance(player, runtime, dt, 1, true)
+	runCouriers(player, runtime, dt, 1, false)
 	if next(produced) and now - runtime.LastResync >= RESYNC_INTERVAL then
 		runtime.LastResync = now
 		StateService.Push(player, "Buildings")
@@ -188,11 +296,17 @@ local function applyOffline(player: Player, runtime: Runtime)
 	if not data then
 		return
 	end
-	local seconds = Formulas.OfflineSeconds(data.LastOnline, os.time(), EconomyConfig.Offline.MaxSeconds)
+	local seconds = Formulas.OfflineSeconds(
+		data.LastOnline,
+		os.time(),
+		EconomyConfig.Offline.MaxSeconds + Research.OfflineExtra(data)
+	)
 	if seconds < EconomyConfig.Offline.MinSeconds then
 		return
 	end
 	local produced = advance(player, runtime, seconds, EconomyConfig.Offline.Efficiency, false)
+	-- Couriers kept working too (one delivery for the whole absence).
+	runCouriers(player, runtime, seconds, EconomyConfig.Offline.Efficiency, true)
 	local rounded = {}
 	local any = false
 	for resource, amount in produced do
@@ -255,7 +369,41 @@ function ProductionService.GetWorkerRate(player: Player, creatureId: string): Pr
 			end
 		end
 	end
+	for _, post in runtime.Couriers.Posts do
+		for _, worker in post.Workers do
+			if worker.CreatureId == creatureId then
+				return worker
+			end
+		end
+	end
 	return nil
+end
+
+-- A Courier Post's workers and carry rate (for the UI), and whether the silo blocked them.
+function ProductionService.GetCourier(
+	player: Player,
+	buildingId: string
+): ({
+	PerSecond: number,
+	Workers: { Production.WorkerRate },
+	Slots: number,
+	Synergies: { string },
+}?, boolean)
+	local runtime = getRuntime(player)
+	if not runtime then
+		return nil, false
+	end
+	return runtime.Couriers.Posts[buildingId], runtime.CourierBlocked
+end
+
+-- Carries up to `amount` units right away (Gearhound's Fetch). Returns units carried.
+function ProductionService.CarryNow(player: Player, amount: number): number
+	local runtime = getRuntime(player)
+	if not runtime then
+		return 0
+	end
+	tick(player, runtime)
+	return carry(player, runtime, amount, false)
 end
 
 -- Whether a building stopped because its silo inputs ran out.
@@ -280,6 +428,23 @@ function ProductionService.GetBuffs(
 	return list
 end
 
+-- Forgets every buff, starved flag and courier progress (after an Ascension rebuilt the
+-- plot) and recomputes rates from the new data.
+function ProductionService.Reset(player: Player)
+	local runtime = getRuntime(player)
+	if not runtime then
+		return
+	end
+	runtime.Buffs = {}
+	runtime.Starved = {}
+	runtime.CycleProgress = {}
+	runtime.CarryBudget = 0
+	runtime.CarryTimer = 0
+	runtime.CourierBlocked = false
+	runtime.LastTick = os.clock()
+	recompute(player, runtime)
+end
+
 -- Brings everything up to date right now (before collecting, saving, ...).
 function ProductionService.Flush(player: Player)
 	local runtime = getRuntime(player)
@@ -292,6 +457,10 @@ function ProductionService.Start()
 	PlayerDataService.Loaded:Connect(function(player)
 		local runtime: Runtime = {
 			Rates = {},
+			Couriers = { PerSecond = 0, Posts = {} },
+			CarryBudget = 0,
+			CarryTimer = 0,
+			CourierBlocked = false,
 			Buffs = {},
 			CycleProgress = {},
 			Starved = {},

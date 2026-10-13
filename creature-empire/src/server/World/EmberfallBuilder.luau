@@ -88,20 +88,31 @@ local function terrain(region: RegionConfig.Region)
 	local c = region.Center
 	t:FillBlock(CFrame.new(c + Vector3.new(0, -12, 0)), Vector3.new(600, 24, 600), Enum.Material.Basalt)
 	t:SetMaterialColor(Enum.Material.Basalt, BASALT)
-	-- Cliffs around the edge (gap at the south for the gate).
+	-- Cliffs all the way around (the gate is a teleporter, so no gap is needed).
 	for i = 0, 35 do
 		local a = i / 36 * math.pi * 2
-		local south = math.abs(math.atan2(math.sin(a), math.cos(a)) - math.pi / 2) < 0.18
-		if not south then
-			local r = rng:NextNumber(320, 340)
-			t:FillBall(
-				c + Vector3.new(math.cos(a) * r, 10, math.sin(a) * r),
-				rng:NextNumber(45, 58),
-				Enum.Material.Rock
-			)
-		end
+		local r = rng:NextNumber(320, 340)
+		t:FillBall(c + Vector3.new(math.cos(a) * r, 10, math.sin(a) * r), rng:NextNumber(45, 58), Enum.Material.Rock)
 	end
 	t:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(70, 56, 52))
+end
+
+-- Invisible walls just inside the cliffs, so nobody climbs out or walks off the plate.
+local function bounds(parent: Instance, region: RegionConfig.Region)
+	local c = region.Center
+	local reach = 292
+	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+		local wall = Parts.Part(parent, {
+			Name = "Boundary",
+			Size = if side[1] ~= 0 then Vector3.new(4, 220, reach * 2) else Vector3.new(reach * 2, 220, 4),
+			CFrame = CFrame.new(c + Vector3.new(side[1] * reach, 100, side[2] * reach)),
+			Color = Color3.new(0, 0, 0),
+			Material = Enum.Material.SmoothPlastic,
+			Transparency = 1,
+		})
+		wall.CastShadow = false
+		wall.CanQuery = false
+	end
 end
 
 local function lava(parent: Instance, region: RegionConfig.Region)
@@ -495,6 +506,7 @@ function EmberfallBuilder.Build()
 	nodeFolder.Parent = folder
 
 	terrain(region)
+	bounds(folder, region)
 	lava(folder, region)
 	pools(folder, region)
 	vents(folder, region)

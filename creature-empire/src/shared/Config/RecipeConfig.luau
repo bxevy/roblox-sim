@@ -7,6 +7,7 @@
 --   Crystal Mine -> Raw Crystal -> Crystal Smelter -> Refined Crystal -> Essence Condenser -> Essence
 --   (Refined Crystal also pays for Empire Core tiers 3+ and land expansions; Essence
 --    evolves creatures and hatches Geode Eggs.)
+--   Research Station -> Insight (from Moonpetals) -> research and Arcane Eggs
 
 local Types = require(script.Parent.Parent.Types)
 
@@ -49,13 +50,22 @@ local RecipeConfig: { [string]: Types.RecipeDef & { Enabled: boolean } } = {
 		RequiresJob = "Alchemist",
 		Enabled = true,
 	},
+	StudyInsight = {
+		Id = "StudyInsight",
+		Name = "Study",
+		Inputs = { Moonpetal = 2 },
+		Outputs = { Insight = 1 },
+		Power = 0,
+		RequiresJob = "Researcher",
+		Enabled = true,
+	},
 	BrewGrowthElixir = {
 		Id = "BrewGrowthElixir",
 		Name = "Brew Growth Elixir",
 		Inputs = { Moonpetal = 10 },
 		Outputs = { GrowthElixir = 1 },
 		Power = 1,
-		Enabled = false, -- Phase 4 (Alchemy Lab)
+		Enabled = false, -- a later update (Alchemy Lab)
 	},
 }
 

@@ -551,7 +551,9 @@ function Hud.new(ctx: any)
 			Guardian.OnHealth(info)
 		end
 	end
+	local lastBoss: any = nil
 	Guardian.OnHealth = function(info: any)
+		lastBoss = info
 		bossName.Text = info.Name or "Guardian"
 		if info.Alive then
 			setBoss(info.Health / math.max(info.MaxHealth, 1))
@@ -569,6 +571,9 @@ function Hud.new(ctx: any)
 		while true do
 			task.wait(0.2)
 			if combat.Visible then
+				if lastBoss and not lastBoss.Alive then
+					Guardian.OnHealth(lastBoss) -- keep the respawn countdown ticking
+				end
 				local companion = companionInfo()
 				local cds = Guardian.Cooldowns()
 				local now = os.clock()

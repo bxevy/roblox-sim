@@ -16,6 +16,7 @@ local CreatureConfig = require(Shared.Config.CreatureConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Encounter = require(Shared.Util.Encounter)
+local Research = require(Shared.Util.Research)
 local Format = require(Shared.Util.Format)
 local Remotes = require(Shared.Remotes)
 
@@ -129,6 +130,12 @@ local function discover(player: Player, region: RegionConfig.Region, landmark: R
 	Log.Info("Region", "Discovered", { user = player.UserId, region = region.Id, landmark = landmark.Id })
 end
 
+-- Share of heat build-up prevented by research (Heat Wards).
+local function wardOf(player: Player): number
+	local data = PlayerDataService.GetData(player)
+	return if data then Research.Total(data, "Heat") else 0
+end
+
 local function tickPlayer(player: Player, runtime: Runtime, now: number)
 	local part = root(player)
 	if not part then
@@ -158,6 +165,7 @@ local function tickPlayer(player: Player, runtime: Runtime, now: number)
 		CompanionFamily = RegionService.CompanionFamily(player),
 		Eruption = eruption,
 		OnBridge = offset.Y > 4.3,
+		Ward = wardOf(player),
 	})
 	local heat = runtime.Heat + rate * TICK
 	for index, vent in region.Vents do
@@ -188,7 +196,7 @@ local function tickPlayer(player: Player, runtime: Runtime, now: number)
 
 	for _, landmark in region.Landmarks do
 		local flat = Vector3.new(offset.X - landmark.Offset.X, 0, offset.Z - landmark.Offset.Z)
-		if flat.Magnitude <= landmark.Radius then
+		if flat.Magnitude <= landmark.Radius and offset.Y >= (landmark.MinHeight or -math.huge) then
 			discover(player, region, landmark)
 		end
 	end

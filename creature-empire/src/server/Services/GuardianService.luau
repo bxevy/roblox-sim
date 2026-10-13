@@ -73,7 +73,7 @@ local function playersInArena(fight: Fight, extra: number?): { Player }
 		local part = root(player)
 		if
 			part
-			and flatDistance(part.Position, fight.Center) <= fight.Radius + (extra or 0)
+			and flatDistance(part.Position, fight.Center) <= fight.Radius + (extra or ATTACK_RANGE_EXTRA)
 			and math.abs(part.Position.Y - fight.Center.Y) < 30
 		then
 			table.insert(list, player)
@@ -201,7 +201,7 @@ local function resolveImpacts(fight: Fight, now: number)
 				"GuardianSlam",
 				{ Guardian = fight.Def.Id, Position = pending.Position, Radius = pending.Radius }
 			)
-			for _, player in playersInArena(fight, 10) do
+			for _, player in playersInArena(fight, ATTACK_RANGE_EXTRA + 5) do
 				local part = root(player)
 				if part and flatDistance(part.Position, pending.Position) <= pending.Radius then
 					RegionService.AddHeat(player, fight.Def.SlamHeat)
@@ -210,7 +210,14 @@ local function resolveImpacts(fight: Fight, now: number)
 					local direction = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
 					local character = player.Character
 					if character then
-						character:PivotTo(CFrame.new(part.Position + direction * 12 + Vector3.new(0, 2, 0)))
+						-- Knocked back, but kept inside the arena floor (clear of the standing stones).
+						local landing = part.Position + direction * 12
+						local fromCenter = Vector3.new(landing.X - fight.Center.X, 0, landing.Z - fight.Center.Z)
+						local limit = fight.Radius - 4
+						if fromCenter.Magnitude > limit then
+							landing = Vector3.new(fight.Center.X, landing.Y, fight.Center.Z) + fromCenter.Unit * limit
+						end
+						character:PivotTo(CFrame.new(landing + Vector3.new(0, 2, 0)))
 					end
 					Remotes.Events.GameEvent:FireClient(
 						player,
@@ -232,17 +239,24 @@ local function tickFight(fight: Fight, now: number)
 	end
 	local inside = playersInArena(fight)
 	if #inside == 0 then
+		-- Nobody left: forget queued slams, and heal back to a fresh fight after a while.
+		fight.Pending = {}
 		fight.EmptySince = fight.EmptySince or now
-		if fight.Health < fight.MaxHealth and now - (fight.EmptySince :: number) > RESET_AFTER then
+		local touched = fight.Health < fight.MaxHealth or fight.Fighters > 1 or next(fight.Damage) ~= nil
+		if touched and now - (fight.EmptySince :: number) > RESET_AFTER then
 			reset(fight)
 		end
 		return
 	end
 	fight.EmptySince = nil
-	-- More players joined mid-fight: the guardian toughens up (never weakens).
-	if #inside > fight.Fighters then
-		local extra = (#inside - fight.Fighters) * fight.Def.HealthPerExtraPlayer
-		fight.Fighters = #inside
+	-- More players joined the fight (dealt damage): the guardian toughens up (never weakens).
+	local attackers = 0
+	for _ in fight.Damage do
+		attackers += 1
+	end
+	if attackers > fight.Fighters then
+		local extra = (attackers - fight.Fighters) * fight.Def.HealthPerExtraPlayer
+		fight.Fighters = attackers
 		fight.MaxHealth += extra
 		fight.Health += extra
 		publish(fight)

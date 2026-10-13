@@ -7,6 +7,7 @@
 
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
@@ -15,6 +16,7 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local GameConfig = require(Shared.Config.GameConfig)
+local Research = require(Shared.Util.Research)
 local Expedition = require(Shared.Util.Expedition)
 local Production = require(Shared.Util.Production)
 local Format = require(Shared.Util.Format)
@@ -157,6 +159,7 @@ local function launch(
 		Approach = approach,
 		Supplies = chosen,
 		Seed = rng:NextInteger(1, 2 ^ 30),
+		Bonus = Research.Total(data, "Expedition"),
 	}
 	for _, creatureId in creatureIds do
 		local creature = data.Creatures[creatureId]
@@ -190,8 +193,14 @@ local function claim(player: Player, expeditionId: string): (boolean, any)
 	end
 	local destination = ExpeditionConfig.Destinations[record.Destination]
 	-- Resolve before changing anything, from the stored seed.
-	local outcome =
-		Expedition.Resolve(destination, team(data, record.Creatures), record.Approach, record.Supplies, record.Seed)
+	local outcome = Expedition.Resolve(
+		destination,
+		team(data, record.Creatures),
+		record.Approach,
+		record.Supplies,
+		record.Seed,
+		record.Bonus
+	)
 	data.Expeditions[expeditionId] = nil
 
 	local granted: { [string]: number } = {}
@@ -266,6 +275,7 @@ function ExpeditionService.Start()
 				Destination = record.Destination,
 				Creatures = table.clone(record.Creatures),
 				EndsIn = math.max(record.EndsAt - now, 0),
+				EndsAtServer = Workspace:GetServerTimeNow() + math.max(record.EndsAt - now, 0),
 				Duration = record.EndsAt - record.StartedAt,
 				Approach = record.Approach,
 				Supplies = table.clone(record.Supplies),

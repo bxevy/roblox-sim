@@ -80,8 +80,27 @@ EggConfig.Eggs = {
 		PityLimit = 12,
 		Phase = 2,
 	},
+	ArcaneEgg = {
+		Id = "ArcaneEgg",
+		Name = "Arcane Egg",
+		Description = "Covered in glowing runes. Scholars, reef dwellers and clockwork helpers.",
+		Cost = { Insight = 40, Essence = 20 },
+		Color = Color3.fromRGB(110, 90, 190),
+		Spots = Color3.fromRGB(120, 230, 200),
+		Loot = {
+			{ Species = "Runemoth", Weight = 22 },
+			{ Species = "Bubblot", Weight = 22 },
+			{ Species = "Boltbug", Weight = 22 },
+			{ Species = "Gearhound", Weight = 12 },
+			{ Species = "Coralisk", Weight = 12 },
+			{ Species = "Starweaver", Weight = 10 },
+		},
+		PityRarity = "Rare",
+		PityLimit = 12,
+		Phase = 4,
+	},
 } :: { [string]: Egg }
 
-EggConfig.Order = { "MeadowEgg", "EmberEgg", "GeodeEgg" }
+EggConfig.Order = { "MeadowEgg", "EmberEgg", "GeodeEgg", "ArcaneEgg" }
 
 return EggConfig

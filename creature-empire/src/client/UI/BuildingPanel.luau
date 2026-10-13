@@ -3,6 +3,7 @@
 -- type-specific sections (Trading Post sales, silo capacity, core tiers, habitat).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BuildingConfig = require(Shared.Config.BuildingConfig)
@@ -398,6 +399,10 @@ function BuildingPanel.new(ctx: any)
 	local plan =
 		{ Destination = "Foothills", Team = {} :: { string }, Approach = "Balanced", Supplies = {} :: { string } }
 
+	local function restLeft(c: any): number
+		return math.max((c.RestUntilServer or 0) - Workspace:GetServerTimeNow(), 0)
+	end
+
 	local function portalSection()
 		local expeditions = State.Get("Expeditions") or { List = {}, Slots = 0 }
 		local creatures = State.Get("Creatures")
@@ -413,7 +418,7 @@ function BuildingPanel.new(ctx: any)
 			table.insert(ids, id)
 		end
 		table.sort(ids, function(a, b)
-			return expeditions.List[a].EndsIn < expeditions.List[b].EndsIn
+			return expeditions.List[a].EndsAtServer < expeditions.List[b].EndsAtServer
 		end)
 		for _, id in ids do
 			local record = expeditions.List[id]
@@ -429,16 +434,16 @@ function BuildingPanel.new(ctx: any)
 				`<b>{destination and destination.Name or record.Destination}</b> · {table.concat(names, ", ")}`,
 				15
 			)
-			-- Countdown estimated from when the state arrived.
-			local endsAt = os.clock() + record.EndsIn
+			-- Counted down on the shared server clock (the state isn't re-sent while it runs).
+			local endsAt = record.EndsAtServer
 			local label = Theme.Text(active, "", 13, { TextColor3 = Theme.Colors.Muted })
 			local _, setBar = Theme.Bar(active, Theme.Colors.Primary, 6)
 			local claim = Theme.Button(active, "Claim", "Gold", { Size = UDim2.fromOffset(160, 36) })
 			local function tick()
-				local left = math.max(endsAt - os.clock(), 0)
+				local left = math.max(endsAt - Workspace:GetServerTimeNow(), 0)
 				label.Text = if left > 0 then `Back in {Format.Duration(left)}` else "They're back! Claim the rewards."
 				setBar(1 - left / math.max(record.Duration, 1))
-				Theme.SetEnabled(claim, left <= 0)
+				Theme.SetStyle(claim, if left <= 0 then "Gold" else "Secondary")
 				return label.Parent ~= nil
 			end
 			tick()
@@ -447,10 +452,7 @@ function BuildingPanel.new(ctx: any)
 				end
 			end)
 			claim.Activated:Connect(function()
-				if claim:GetAttribute("Disabled") then
-					return
-				end
-				Theme.SetEnabled(claim, false)
+				-- Always clickable: the server decides (and says how long is left).
 				request("ClaimExpedition", id)
 			end)
 		end
@@ -543,7 +545,7 @@ function BuildingPanel.new(ctx: any)
 		local team = {}
 		for _, id in plan.Team do
 			local c = creatures and creatures.List[id]
-			if c and not c.Expedition and c.RestIn <= 0 then
+			if c and not c.Expedition and restLeft(c) <= 0 then
 				table.insert(team, id)
 			end
 		end
@@ -560,12 +562,13 @@ function BuildingPanel.new(ctx: any)
 		}, grid)
 		for order, c in list do
 			local picked = table.find(plan.Team, c.Id) ~= nil
-			local busy = c.Expedition ~= nil or c.RestIn > 0
+			local resting = restLeft(c)
+			local busy = c.Expedition ~= nil or resting > 0
 			local label = `{if picked then "✔ " else ""}{c.Name} · Lv {c.Level}`
 			if c.Expedition then
 				label = `{c.Name} · away`
-			elseif c.RestIn > 0 then
-				label = `{c.Name} · resting {Format.Duration(c.RestIn)}`
+			elseif resting > 0 then
+				label = `{c.Name} · resting {Format.Duration(resting)}`
 			end
 			local b = Theme.Button(
 				grid,

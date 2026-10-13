@@ -42,8 +42,11 @@ end
 -- Mood -----------------------------------------------------------------------------------
 
 local function setupMood()
-	mood.Atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-	mood.Color = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+	-- Made by the server's WorldBuilder; wait briefly in case they haven't replicated yet.
+	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or Lighting:WaitForChild("Atmosphere", 10)
+	local grade = Lighting:WaitForChild("CE_Grade", 10)
+	mood.Atmosphere = if atmosphere and atmosphere:IsA("Atmosphere") then atmosphere else nil
+	mood.Color = if grade and grade:IsA("ColorCorrectionEffect") then grade else nil
 	if mood.Atmosphere then
 		original.AtmosphereColor = mood.Atmosphere.Color
 		original.AtmosphereDecay = mood.Atmosphere.Decay
@@ -241,7 +244,7 @@ function RegionController.CurrentRegion(): string?
 end
 
 function RegionController.Start()
-	setupMood()
+	task.spawn(setupMood)
 	for _, tag in { "CE_Gate", "CE_Vent", "CE_Node" } do
 		local setup = if tag == "CE_Gate" then setupGate elseif tag == "CE_Vent" then setupVent else setupNode
 		for _, instance in CollectionService:GetTagged(tag) do

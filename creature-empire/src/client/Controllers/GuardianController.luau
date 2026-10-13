@@ -69,6 +69,7 @@ local function build(view: View)
 	local model = CreatureModels.Build(species, 3)
 	model:ScaleTo(SCALE)
 	view.Height = ((model:GetAttribute("Height") :: number?) or 2) * SCALE
+	model:PivotTo(CFrame.new(view.Position + Vector3.new(0, view.Height, 0)))
 	model.Name = "Guardian_" .. view.Id
 	local highlight = Instance.new("Highlight")
 	highlight.FillTransparency = 1
@@ -76,8 +77,9 @@ local function build(view: View)
 	highlight.FillColor = Color3.new(1, 1, 1)
 	highlight.Parent = model
 	view.Highlight = highlight
-	model.Parent = Workspace
 	view.Model = model
+	-- Only shown while alive (a defeated guardian is away until it respawns).
+	model.Parent = if view.Anchor:GetAttribute("Alive") ~= false then Workspace else nil
 end
 
 local function telegraph(position: Vector3, radius: number, impactAt: number)
@@ -295,7 +297,8 @@ function GuardianController.Start()
 					view.Position + Vector3.new(0, view.Height + math.sin(t * 1.5) * 0.4, 0)
 				) * CFrame.Angles(0, facing, 0)
 			end
-			if distance <= view.Radius + 20 and root and math.abs(root.Position.Y - view.Position.Y) < 40 then
+			-- Same reach the server allows for attacks (arena radius + 15).
+			if distance <= view.Radius + 15 and root and math.abs(root.Position.Y - view.Position.Y) < 30 then
 				nowNear = view
 			end
 		end

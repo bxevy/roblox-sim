@@ -45,9 +45,10 @@ function Expedition.Chance(
 	destination: ExpeditionConfig.Destination,
 	team: { Member },
 	approach: string,
-	supplies: { string }
+	supplies: { string },
+	bonus: number? -- research (Field Kits)
 ): number
-	local chance = 0.15 + 0.6 * Expedition.Score(destination, team)
+	local chance = 0.15 + 0.6 * Expedition.Score(destination, team) + (bonus or 0)
 	local a = ExpeditionConfig.Approaches[approach]
 	chance += if a then a.Chance else 0
 	for _, id in supplies do
@@ -62,10 +63,11 @@ function Expedition.Resolve(
 	team: { Member },
 	approach: string,
 	supplies: { string },
-	seed: number
+	seed: number,
+	bonus: number?
 ): Outcome
 	local rng = Rng.new(seed)
-	local chance = Expedition.Chance(destination, team, approach, supplies)
+	local chance = Expedition.Chance(destination, team, approach, supplies, bonus)
 	local success = rng:Next() < chance
 	local a = ExpeditionConfig.Approaches[approach]
 	local multiplier = (if a then a.Rewards else 1) * (if success then 1 else ExpeditionConfig.FailureRewardShare)

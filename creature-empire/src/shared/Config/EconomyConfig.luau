@@ -8,6 +8,7 @@ EconomyConfig.StartingCurrencies = {
 	Gold = 50,
 	Essence = 0,
 	EmpireShards = 0,
+	Insight = 0,
 }
 
 EconomyConfig.StartingResources = {
@@ -45,7 +46,10 @@ EconomyConfig.BonusRules = {
 		Passive = { Cap = 0.5 }, -- passive abilities
 		Empire = { Cap = 0.5 }, -- Empire Core tier
 		Ability = { Cap = 1.0 }, -- temporary active abilities (Kindle, ...)
-		Synergy = { Cap = 0.75 }, -- Phase 4
+		Synergy = { Cap = 0.75 }, -- creatures working well together (SynergyConfig)
+		Research = { Cap = 0.5 }, -- research tree (ResearchConfig)
+		Mutation = { Cap = 0.25 }, -- rare mutations (MutationConfig)
+		Ascension = { Cap = 1.0 }, -- Ascension count and perks (AscensionConfig)
 		Boost = { Cap = 1.0 }, -- Phase 6 optional boosts
 	},
 	MaxMultiplier = 6,

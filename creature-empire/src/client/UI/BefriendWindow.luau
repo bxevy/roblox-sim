@@ -81,9 +81,8 @@ function BefriendWindow.new(ctx: any)
 			ctx.Close()
 			if not ok then
 				ctx.Notify(result, "Error")
-			elseif not result.Success then
-				ctx.Notify(`The {species.Name} sniffed the lure… and ran off. Better luck next time!`, "Info")
 			end
+			-- On a miss the server sends the "ran off" message.
 		end)
 	end
 

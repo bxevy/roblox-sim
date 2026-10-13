@@ -18,6 +18,9 @@
 --   Befriend    (Amount)                wild creatures befriended during this step
 --   Expedition  (Amount)                expeditions completed during this step
 --   Guardian    (Target, Amount)        guardian defeats during this step
+--   Research    (Amount)                research completed in total (this run)
+--   Synergy     (Amount)                buildings with at least one active synergy
+--   Ascend      (Amount)                Ascensions in total
 --
 -- `Pointer` is the building type the tutorial arrow points at.
 
@@ -246,6 +249,69 @@ QuestConfig.Tutorial = {
 		Target = "Matriarch",
 		Amount = 1,
 		Reward = { Gold = 3000, Shards = 2 },
+	},
+	{
+		Id = "Study",
+		Title = "The Research Station",
+		Description = "Assign a Wisplet (or another researcher) to the Research Station and collect 20 Insight.",
+		Kind = "Collect",
+		Target = "Insight",
+		Amount = 20,
+		Reward = { Gold = 1500 },
+		Pointer = "ResearchStation",
+	},
+	{
+		Id = "Breakthrough",
+		Title = "First breakthrough",
+		Description = "Complete any research at the Research Station.",
+		Kind = "Research",
+		Amount = 1,
+		Reward = { Essence = 30 },
+		Pointer = "ResearchStation",
+	},
+	{
+		Id = "Together",
+		Title = "Better together",
+		Description = "Trigger a synergy: try a Verdant and an Emberkin on the same farm. The building panel lists every synergy.",
+		Kind = "Synergy",
+		Amount = 1,
+		Reward = { Gold = 2500 },
+	},
+	{
+		Id = "Couriers",
+		Title = "Couriers",
+		Description = "Research Courier Routes, then build a Courier Post and give it a courier (Cogling works).",
+		Kind = "BuildingCount",
+		Target = "CourierPost",
+		Amount = 1,
+		Reward = { Gold = 4000 },
+	},
+	{
+		Id = "Arcane",
+		Title = "Runes in the shell",
+		Description = "Hatch an egg. Arcane Eggs (Insight and Essence) hold scholars, couriers and reef dwellers.",
+		Kind = "Hatch",
+		Amount = 1,
+		Reward = { Essence = 50 },
+		Pointer = "Hatchery",
+	},
+	{
+		Id = "Researcher",
+		Title = "A wider mind",
+		Description = "Complete 4 research projects.",
+		Kind = "Research",
+		Amount = 4,
+		Reward = { Gold = 10000, Shards = 3 },
+		Pointer = "ResearchStation",
+	},
+	{
+		Id = "Ascend",
+		Title = "Ascension",
+		Description = "Reach Empire Core tier 5, then Ascend from the Empire Core: start over stronger, keep your creatures.",
+		Kind = "Ascend",
+		Amount = 1,
+		Reward = { Shards = 5 },
+		Pointer = "EmpireCore",
 	},
 } :: { Types.QuestStep }
 

@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
+local Production = require(Shared.Util.Production)
 local QuestConfig = require(Shared.Config.QuestConfig)
 local Remotes = require(Shared.Remotes)
 
@@ -93,6 +94,30 @@ local Evaluators: { [string]: Evaluator } = {
 	end,
 	Guardian = function(data)
 		return data.Quests.Progress
+	end,
+	Research = function(data)
+		local count = 0
+		for _ in data.Research do
+			count += 1
+		end
+		return count
+	end,
+	Synergy = function(data)
+		local count = 0
+		for _, rate in Production.Rates(data) do
+			if #rate.Synergies > 0 then
+				count += 1
+			end
+		end
+		for _, post in Production.Couriers(data).Posts do
+			if #post.Synergies > 0 then
+				count += 1
+			end
+		end
+		return count
+	end,
+	Ascend = function(data)
+		return data.Ascension.Count
 	end,
 	Discover = function(data)
 		local count = 0
@@ -258,6 +283,8 @@ function QuestService.Start()
 		addCounter(player, "Gather", resource, amount)
 	end)
 	Events.Discovered:Connect(refresh)
+	Events.Researched:Connect(refresh)
+	Events.Ascended:Connect(refresh)
 	Events.Crafted:Connect(function(player, item, amount)
 		addCounter(player, "Craft", item, amount)
 	end)

@@ -22,7 +22,7 @@ export type AbilityDef = {
 	Name: string,
 	Description: string,
 	Cooldown: number, -- seconds
-	-- Phase 1 implements "InstantHarvest", "SpeedBurst" and "GoldFind" (CreatureService).
+	-- Implemented: "InstantHarvest", "SpeedBurst", "GoldFind" and "Collect" (CreatureService).
 	-- Other kinds belong to species that are not obtainable yet.
 	Kind: string,
 	Power: number, -- meaning depends on Kind
@@ -130,6 +130,7 @@ export type BuildingDef = {
 	PlaceGrowth: number?,
 	FreeCount: number?, -- how many every plot starts with (they are pre-placed)
 	Locked: string?, -- reason shown when a fixed building is not usable yet
+	RequiresResearch: string?, -- ResearchConfig node needed before it can be placed
 	Phase: number,
 }
 
@@ -230,7 +231,8 @@ export type PlayerData = {
 	Settings: Settings,
 	Stats: { [string]: number },
 	LastOnline: number,
-	Ascension: { Count: number, Shards: number },
+	Ascension: AscensionRecord,
+	Research: { [string]: number }, -- research node id -> os.time completed (this run)
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids
@@ -238,6 +240,13 @@ export type PlayerData = {
 	Expeditions: { [string]: ExpeditionRecord },
 	Discoveries: { [string]: number }, -- landmark id -> os.time discovered
 	Guardians: { [string]: { Defeats: number, LastRewardAt: number } },
+}
+
+export type AscensionRecord = {
+	Count: number,
+	Shards: number, -- lifetime shards earned
+	Perks: { [string]: number }, -- perk id -> rank
+	RunGold: number, -- gold earned since the last Ascension (sets the shard payout)
 }
 
 export type ExpeditionRecord = {
@@ -249,6 +258,7 @@ export type ExpeditionRecord = {
 	Approach: string,
 	Supplies: { string },
 	Seed: number,
+	Bonus: number?, -- research chance bonus fixed at launch
 }
 
 return nil

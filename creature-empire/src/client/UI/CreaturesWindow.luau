@@ -3,6 +3,7 @@
 -- journal (every species, discovered or not).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BuildingConfig = require(Shared.Config.BuildingConfig)
@@ -127,10 +128,11 @@ function CreaturesWindow.new(ctx: any)
 			status ..= `  ·  {Format.Rate(info.PerSecond * 60)} {ResourceConfig.Moonpetal.Icon}/min`
 		end
 		Theme.Text(jobCard, status, 17, { FontFace = Theme.Bold })
-		if info.RestIn > 0 and not info.Expedition then
+		local resting = math.max((info.RestUntilServer or 0) - Workspace:GetServerTimeNow(), 0)
+		if resting > 0 and not info.Expedition then
 			Theme.Text(
 				jobCard,
-				`Resting after an expedition: ready to explore again in {Format.Duration(info.RestIn)}.`,
+				`Resting after an expedition: ready to explore again in {Format.Duration(resting)}.`,
 				13,
 				{
 					TextColor3 = Theme.Colors.Muted,

@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local BuildingConfig = require(Shared.Config.BuildingConfig)
+local Mutation = require(Shared.Util.Mutation)
 local Evolution = require(Shared.Util.Evolution)
 local Remotes = require(Shared.Remotes)
 
@@ -42,6 +43,10 @@ local function evolve(player: Player, creatureId: string): (boolean, any)
 	if not hasChamber(data) then
 		return false, "Build an Evolution Chamber first."
 	end
+	if creature.Expedition then
+		-- Its expedition result depends on its stats at launch.
+		return false, "It's away on an expedition. Evolve it when it's back."
+	end
 	ProductionService.Flush(player)
 	local check = Evolution.Check(data, creature)
 	if not check.NextStage then
@@ -58,6 +63,16 @@ local function evolve(player: Player, creatureId: string): (boolean, any)
 	local from = creature.Stage
 	creature.Stage = check.NextStage.Stage
 	data.Stats.Evolved = (data.Stats.Evolved or 0) + 1
+	-- Evolving is another chance at a mutation (keeps an existing one).
+	local mutated = false
+	if not creature.Mutation then
+		creature.Mutation = Mutation.Roll(
+			creature.Species,
+			`{creature.Id}:Evolve{creature.Stage}`,
+			CreatureService.MutationMultiplier(data)
+		)
+		mutated = creature.Mutation ~= nil
+	end
 	PlayerDataService.MarkDirty(player)
 	-- A new stage can change job skill; drop the assignment if it no longer fits.
 	local species = CreatureConfig.Species[creature.Species]
@@ -79,6 +94,7 @@ local function evolve(player: Player, creatureId: string): (boolean, any)
 		Stage = creature.Stage,
 		Name = check.NextStage.Name,
 		Unlocks = check.NextStage.Unlocks,
+		Mutation = if mutated then creature.Mutation else nil,
 	})
 	Events.Evolved:Fire(player, creatureId, creature.Stage)
 	Log.Info(

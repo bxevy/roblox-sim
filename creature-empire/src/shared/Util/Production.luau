@@ -9,6 +9,9 @@ local CreatureConfig = require(Shared.Config.CreatureConfig)
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local RecipeConfig = require(Shared.Config.RecipeConfig)
 local Formulas = require(script.Parent.Formulas)
+local Research = require(script.Parent.Research)
+local Synergy = require(script.Parent.Synergy)
+local Mutation = require(script.Parent.Mutation)
 
 export type Buff = { Stat: string, Category: string, Value: number, Expires: number }
 
@@ -30,6 +33,12 @@ export type BuildingRate = {
 	Workers: { WorkerRate },
 	Slots: number,
 	InputsPerUnit: { [string]: number }, -- silo resources consumed per output unit
+	Synergies: { string }, -- active synergy ids
+}
+
+export type CourierRate = {
+	PerSecond: number, -- units carried per second across every Courier Post
+	Posts: { [string]: { PerSecond: number, Workers: { WorkerRate }, Slots: number, Synergies: { string } } },
 }
 
 local Production = {}
@@ -79,6 +88,12 @@ function Production.WorkerAt(
 	for _, buff in active do
 		table.insert(extra, { Stat = buff.Stat, Category = buff.Category, Value = buff.Value })
 	end
+	for _, bonus in Research.Bonuses(data, def.Job) do
+		table.insert(extra, bonus)
+	end
+	for _, bonus in Mutation.Bonuses(creature.Mutation) do
+		table.insert(extra, bonus)
+	end
 	local result = Formulas.WorkerRate({
 		Species = species,
 		Level = creature.Level,
@@ -102,9 +117,69 @@ function Production.WorkerAt(
 	}
 end
 
+-- The creatures working at each building, up to its slots (sorted by id so slot
+-- overflow, which Sanitize prevents, is deterministic).
+local function staff(data: Types.PlayerData): { [string]: { Types.CreatureRecord } }
+	local creatureIds = {}
+	for id in data.Creatures do
+		table.insert(creatureIds, id)
+	end
+	table.sort(creatureIds)
+	local members: { [string]: { Types.CreatureRecord } } = {}
+	for _, creatureId in creatureIds do
+		local creature = data.Creatures[creatureId]
+		local building = creature.Assignment and data.Buildings[creature.Assignment]
+		local def = building and BuildingConfig[building.Type]
+		local level = def and building and def.Levels[building.Level]
+		if building and level and def and def.Job and not def.Locked then
+			local list = members[building.Id] or {}
+			if #list < (level.Slots or 0) then
+				table.insert(list, creature)
+				members[building.Id] = list
+			end
+		end
+	end
+	return members
+end
+
+-- Synergy bonuses (and ids) for one building's workers.
+local function synergiesFor(
+	data: Types.PlayerData,
+	job: string,
+	workers: { Types.CreatureRecord }
+): ({ Buff }, { string })
+	local species = {}
+	for _, creature in workers do
+		table.insert(species, creature.Species)
+	end
+	local active = Synergy.Active(job, species)
+	local ids = {}
+	for _, synergy in active do
+		table.insert(ids, synergy.Id)
+	end
+	local strength = 1 + Research.Total(data, "Synergy")
+	local bonuses: { Buff } = {}
+	for _, bonus in Synergy.Bonuses(active, strength) do
+		table.insert(
+			bonuses,
+			{ Stat = bonus.Stat, Category = bonus.Category, Value = bonus.Value, Expires = math.huge }
+		)
+	end
+	return bonuses, ids
+end
+
+local function withSynergies(buffs: { Buff }?, synergies: { Buff }): { Buff }
+	local all = table.clone(buffs or {})
+	for _, bonus in synergies do
+		table.insert(all, bonus)
+	end
+	return all
+end
+
 -- Rates for every production building. `buffs` maps building id -> active buffs.
 function Production.Rates(data: Types.PlayerData, buffs: { [string]: { Buff } }?): { [string]: BuildingRate }
 	local rates: { [string]: BuildingRate } = {}
+	local members = staff(data)
 	for id, building in data.Buildings do
 		local def = BuildingConfig[building.Type]
 		local level = def and def.Levels[building.Level]
@@ -115,7 +190,9 @@ function Production.Rates(data: Types.PlayerData, buffs: { [string]: { Buff } }?
 			for resource, amount in recipe.Inputs do
 				inputs[resource] = amount / (recipe.Outputs[output] or 1)
 			end
-			rates[id] = {
+			local workers: { Types.CreatureRecord } = members[id] or {}
+			local synergies, synergyIds = synergiesFor(data, def.Job, workers)
+			local rate: BuildingRate = {
 				Output = output,
 				Job = def.Job,
 				Capacity = level.Storage or 0,
@@ -123,28 +200,47 @@ function Production.Rates(data: Types.PlayerData, buffs: { [string]: { Buff } }?
 				Workers = {},
 				Slots = level.Slots or 0,
 				InputsPerUnit = inputs,
+				Synergies = synergyIds,
 			}
-		end
-	end
-	-- Sorted so slot overflow (should never happen after Sanitize) is deterministic.
-	local creatureIds = {}
-	for id in data.Creatures do
-		table.insert(creatureIds, id)
-	end
-	table.sort(creatureIds)
-	for _, creatureId in creatureIds do
-		local creature = data.Creatures[creatureId]
-		local rate = creature.Assignment and rates[creature.Assignment]
-		if rate and #rate.Workers < rate.Slots then
-			local building = data.Buildings[creature.Assignment :: string]
-			local worker = Production.WorkerAt(data, creature, building, buffs and buffs[creature.Assignment :: string])
-			if worker and worker.PerSecond > 0 then
-				table.insert(rate.Workers, worker)
-				rate.PerSecond += worker.PerSecond
+			local all = withSynergies(buffs and buffs[id], synergies)
+			for _, creature in workers do
+				local worker = Production.WorkerAt(data, creature, building, all)
+				if worker and worker.PerSecond > 0 then
+					table.insert(rate.Workers, worker)
+					rate.PerSecond += worker.PerSecond
+				end
 			end
+			rates[id] = rate
 		end
 	end
 	return rates
+end
+
+-- Courier Posts: how fast couriers carry stored output to the silo. A worker's PerCycle
+-- is how many units one trip carries.
+function Production.Couriers(data: Types.PlayerData, buffs: { [string]: { Buff } }?): CourierRate
+	local result: CourierRate = { PerSecond = 0, Posts = {} }
+	local members = staff(data)
+	for id, building in data.Buildings do
+		local def = BuildingConfig[building.Type]
+		local level = def and def.Levels[building.Level]
+		if def and level and def.Job == "Courier" and not def.Recipe then
+			local workers: { Types.CreatureRecord } = members[id] or {}
+			local synergies, synergyIds = synergiesFor(data, "Courier", workers)
+			local post = { PerSecond = 0, Workers = {}, Slots = level.Slots or 0, Synergies = synergyIds }
+			local all = withSynergies(buffs and buffs[id], synergies)
+			for _, creature in workers do
+				local worker = Production.WorkerAt(data, creature, building, all)
+				if worker and worker.PerSecond > 0 then
+					table.insert(post.Workers, worker)
+					post.PerSecond += worker.PerSecond
+				end
+			end
+			result.Posts[id] = post
+			result.PerSecond += post.PerSecond
+		end
+	end
+	return result
 end
 
 -- One production step for a building: output grows by rate * dt, limited by storage room

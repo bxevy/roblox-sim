@@ -143,6 +143,14 @@ local function creatureCount(data: Types.PlayerData): number
 	return count
 end
 
+-- The eruption's special creature: one lure per player per eruption (it reappears for
+-- others after each attempt, so it can't be farmed with a stack of lures).
+local specialTries: { [number]: number } = {} -- userId -> eruption index of the last try
+
+local function eruptionIndex(region: RegionConfig.Region): number
+	return math.floor(Workspace:GetServerTimeNow() / region.Eruption.Period)
+end
+
 local function befriend(player: Player, wildId: string): (boolean, any)
 	local wild = wilds[wildId]
 	if not wild then
@@ -153,6 +161,10 @@ local function befriend(player: Player, wildId: string): (boolean, any)
 	if not part or (part.Position - wild.Position).Magnitude > BEFRIEND_RANGE then
 		return false, "Get closer first."
 	end
+	local region = RegionConfig.Regions[wild.Region]
+	if wild.Special and region and specialTries[player.UserId] == eruptionIndex(region) then
+		return false, "You've already tried this eruption. It will return next eruption!"
+	end
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
 	if creatureCount(data) >= BuildingService.CreatureCapacity(data) then
 		return false, "Your habitat is full. Upgrade it to make room."
@@ -161,6 +173,9 @@ local function befriend(player: Player, wildId: string): (boolean, any)
 		return false, "You need an Ember Lure (craft one at your Trading Post)."
 	end
 	despawn(wildId) -- whatever happens, it leaves
+	if wild.Special and region then
+		specialTries[player.UserId] = eruptionIndex(region)
+	end
 	local chance = Encounter.BefriendChance(wild.Species, NodeService.CompanionInfo(player))
 	local success = rng:NextNumber() < chance
 	local species = CreatureConfig.Species[wild.Species]

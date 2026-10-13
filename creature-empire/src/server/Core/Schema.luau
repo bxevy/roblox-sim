@@ -16,10 +16,13 @@ local CreatureConfig = require(Shared.Config.CreatureConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local QuestConfig = require(Shared.Config.QuestConfig)
 local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
+local ResearchConfig = require(Shared.Config.ResearchConfig)
+local MutationConfig = require(Shared.Config.MutationConfig)
+local AscensionConfig = require(Shared.Config.AscensionConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 3
+Schema.CURRENT_VERSION = 4
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -87,7 +90,8 @@ function Schema.Default(now: number): Types.PlayerData
 		},
 		Stats = { GoldEarned = 0, Collected = 0, Sold = 0, AbilitiesUsed = 0, Sessions = 0 },
 		LastOnline = now,
-		Ascension = { Count = 0, Shards = 0 },
+		Ascension = { Count = 0, Shards = 0, Perks = {}, RunGold = 0 },
+		Research = {},
 		Receipts = {},
 		Pity = {},
 		Expansions = {},
@@ -132,6 +136,17 @@ Schema.Migrations = {
 				if type(creature) == "table" and type(creature.RestUntil) ~= "number" then
 					creature.RestUntil = 0
 				end
+			end
+		end
+	end,
+	-- v3 -> v4 (update 4): research, Ascension perks and the gold earned this run.
+	[3] = function(data: { [string]: any })
+		data.Research = if type(data.Research) == "table" then data.Research else {}
+		if type(data.Ascension) == "table" then
+			data.Ascension.Perks = if type(data.Ascension.Perks) == "table" then data.Ascension.Perks else {}
+			if type(data.Ascension.RunGold) ~= "number" then
+				local earned = type(data.Stats) == "table" and data.Stats.GoldEarned
+				data.Ascension.RunGold = if type(earned) == "number" then earned else 0
 			end
 		end
 	end,
@@ -268,8 +283,12 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		if record.Nickname ~= nil and type(record.Nickname) ~= "string" then
 			record.Nickname = nil
 		end
-		if record.Mutation ~= nil and type(record.Mutation) ~= "string" then
+		if
+			record.Mutation ~= nil
+			and (type(record.Mutation) ~= "string" or not MutationConfig.Mutations[record.Mutation])
+		then
 			record.Mutation = nil
+			fix(`Creature {id} mutation cleared`)
 		end
 
 		-- Assignment must point at an existing building with that job and a free slot.
@@ -354,6 +373,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 			expedition.Approach = if type(expedition.Approach) == "string" then expedition.Approach else "Balanced"
 			expedition.Supplies = if type(expedition.Supplies) == "table" then expedition.Supplies else {}
 			expedition.StartedAt = if isFiniteNumber(expedition.StartedAt) then expedition.StartedAt else now
+			expedition.Bonus = if isFiniteNumber(expedition.Bonus) then math.clamp(expedition.Bonus, 0, 0.5) else 0
 			local members = {}
 			for _, creatureId in expedition.Creatures do
 				if type(creatureId) == "string" and data.Creatures[creatureId] then
@@ -411,6 +431,42 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	end
 	data.Ascension.Count = cleanInteger(data.Ascension.Count, 0, 1e6, 0)
 	data.Ascension.Shards = cleanAmount(data.Ascension.Shards)
+	data.Ascension.RunGold = cleanAmount(data.Ascension.RunGold)
+	if type(data.Ascension.Perks) ~= "table" then
+		data.Ascension.Perks = {}
+	end
+	for perkId, rank in data.Ascension.Perks do
+		local perk = AscensionConfig.Perks[perkId]
+		if not perk then
+			data.Ascension.Perks[perkId] = nil
+			fix(`Perk {tostring(perkId)} removed`)
+		else
+			data.Ascension.Perks[perkId] = cleanInteger(rank, 0, perk.MaxRank, 0)
+		end
+	end
+	-- Research: known nodes only, and only with their prerequisites.
+	if type(data.Research) ~= "table" then
+		data.Research = {}
+	end
+	for nodeId, at in data.Research do
+		if not ResearchConfig.Nodes[nodeId] or not isFiniteNumber(at) then
+			data.Research[nodeId] = nil
+			fix(`Research {tostring(nodeId)} removed`)
+		end
+	end
+	local changed = true
+	while changed do
+		changed = false
+		for nodeId in data.Research do
+			for _, required in ResearchConfig.Nodes[nodeId].Requires do
+				if data.Research[required] == nil then
+					data.Research[nodeId] = nil
+					changed = true
+					fix(`Research {nodeId} missing {required}`)
+				end
+			end
+		end
+	end
 	if not isFiniteNumber(data.LastOnline) or data.LastOnline > now then
 		data.LastOnline = now
 	end

@@ -14,6 +14,7 @@ export type Landmark = {
 	Offset: Vector3,
 	Radius: number,
 	Hidden: boolean?,
+	MinHeight: number?, -- must be at least this high above the region's floor (summits)
 	Reward: { [string]: number },
 }
 export type Region = {
@@ -129,6 +130,7 @@ RegionConfig.Regions = {
 				Name = "Ashen Overlook",
 				Offset = v(-175, 0, 120),
 				Radius = 22,
+				MinHeight = 38, -- the top of the spire (46 studs up)
 				Reward = { Gold = 300 },
 			},
 			{ Id = "Falls", Name = "Magma Falls", Offset = v(170, 0, -110), Radius = 30, Reward = { Gold = 300 } },

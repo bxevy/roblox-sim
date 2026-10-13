@@ -41,4 +41,8 @@ return {
 	GuardianDefeated = Signal.new() :: Signal.Signal<Player, string>,
 	-- (player, speciesId)
 	StarterChosen = Signal.new() :: Signal.Signal<Player, string>,
+	-- (player, nodeId)
+	Researched = Signal.new() :: Signal.Signal<Player, string>,
+	-- (player, ascension count)
+	Ascended = Signal.new() :: Signal.Signal<Player, number>,
 }
