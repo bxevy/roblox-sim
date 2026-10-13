@@ -19,10 +19,11 @@ local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
 local ResearchConfig = require(Shared.Config.ResearchConfig)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local AscensionConfig = require(Shared.Config.AscensionConfig)
+local SocialConfig = require(Shared.Config.SocialConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 4
+Schema.CURRENT_VERSION = 5
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -92,6 +93,9 @@ function Schema.Default(now: number): Types.PlayerData
 		LastOnline = now,
 		Ascension = { Count = 0, Shards = 0, Perks = {}, RunGold = 0 },
 		Research = {},
+		Collaborators = {},
+		WorldEvents = {},
+		Season = { Week = 0, Gold = 0 },
 		Receipts = {},
 		Pity = {},
 		Expansions = {},
@@ -149,6 +153,12 @@ Schema.Migrations = {
 				data.Ascension.RunGold = if type(earned) == "number" then earned else 0
 			end
 		end
+	end,
+	-- v4 -> v5 (update 5): collaborators, world event records, weekly gold.
+	[4] = function(data: { [string]: any })
+		data.Collaborators = if type(data.Collaborators) == "table" then data.Collaborators else {}
+		data.WorldEvents = if type(data.WorldEvents) == "table" then data.WorldEvents else {}
+		data.Season = if type(data.Season) == "table" then data.Season else { Week = 0, Gold = 0 }
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
@@ -374,6 +384,10 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 			expedition.Supplies = if type(expedition.Supplies) == "table" then expedition.Supplies else {}
 			expedition.StartedAt = if isFiniteNumber(expedition.StartedAt) then expedition.StartedAt else now
 			expedition.Bonus = if isFiniteNumber(expedition.Bonus) then math.clamp(expedition.Bonus, 0, 0.5) else 0
+			expedition.Party = if isFiniteNumber(expedition.Party) then math.floor(expedition.Party) else nil
+			expedition.PartySize = if isFiniteNumber(expedition.PartySize)
+				then cleanInteger(expedition.PartySize, 1, 50, 1)
+				else nil
 			local members = {}
 			for _, creatureId in expedition.Creatures do
 				if type(creatureId) == "string" and data.Creatures[creatureId] then
@@ -444,6 +458,36 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 			data.Ascension.Perks[perkId] = cleanInteger(rank, 0, perk.MaxRank, 0)
 		end
 	end
+	-- Collaborators: up to the limit, keyed by positive user id strings.
+	if type(data.Collaborators) ~= "table" then
+		data.Collaborators = {}
+	end
+	local collaborators = 0
+	for userId, allowed in data.Collaborators do
+		local numeric = type(userId) == "string" and tonumber(userId)
+		if allowed ~= true or not numeric or numeric <= 0 or collaborators >= SocialConfig.MaxCollaborators then
+			data.Collaborators[userId] = nil
+			fix(`Collaborator {tostring(userId)} removed`)
+		else
+			collaborators += 1
+		end
+	end
+	if type(data.WorldEvents) ~= "table" then
+		data.WorldEvents = {}
+	end
+	for eventId, times in data.WorldEvents do
+		if type(eventId) ~= "string" then
+			data.WorldEvents[eventId] = nil
+		else
+			data.WorldEvents[eventId] = cleanInteger(times, 0, 1e6, 0)
+		end
+	end
+	if type(data.Season) ~= "table" then
+		data.Season = { Week = 0, Gold = 0 }
+	end
+	data.Season.Week = cleanInteger(data.Season.Week, 0, 1e7, 0)
+	data.Season.Gold = cleanAmount(data.Season.Gold)
+
 	-- Research: known nodes only, and only with their prerequisites.
 	if type(data.Research) ~= "table" then
 		data.Research = {}

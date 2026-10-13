@@ -21,6 +21,7 @@
 --   Research    (Amount)                research completed in total (this run)
 --   Synergy     (Amount)                buildings with at least one active synergy
 --   Ascend      (Amount)                Ascensions in total
+--   WorldEvent  (Amount)                world events taken part in during this step
 --
 -- `Pointer` is the building type the tutorial arrow points at.
 
@@ -303,6 +304,14 @@ QuestConfig.Tutorial = {
 		Amount = 4,
 		Reward = { Gold = 10000, Shards = 3 },
 		Pointer = "ResearchStation",
+	},
+	{
+		Id = "WorldEvent",
+		Title = "Stronger together",
+		Description = "Take part in a world event: send a team into an Ember Rift, or collect 10+ moonpetals during a Grand Bloom. The banner at the top shows the next one.",
+		Kind = "WorldEvent",
+		Amount = 1,
+		Reward = { Gold = 3000, Essence = 30 },
 	},
 	{
 		Id = "Ascend",

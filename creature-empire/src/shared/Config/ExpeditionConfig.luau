@@ -25,6 +25,7 @@ export type Destination = {
 	Events: { Event },
 	CoreTier: number,
 	Phase: number,
+	EventOnly: boolean?, -- only during a world event (the Ember Rift); it ends with the event
 }
 
 local ExpeditionConfig = {}
@@ -186,6 +187,52 @@ ExpeditionConfig.Destinations = {
 		},
 		CoreTier = 3,
 		Phase = 3,
+	},
+	Rift = {
+		Id = "Rift",
+		Name = "Ember Rift",
+		Description = "A world event: a rift torn open above the basin. Every team in the server that joins makes everyone's trip safer.",
+		Duration = 8 * 60, -- the event's length; teams come back when the rift closes
+		Risk = "High",
+		Recommended = { Exploration = 14, CombatPower = 14 },
+		Rewards = {
+			{ Resource = "Gold", Min = 800, Max = 1600 },
+			{ Resource = "Essence", Min = 20, Max = 45 },
+			{ Resource = "Emberstone", Min = 12, Max = 25 },
+		},
+		Xp = 250,
+		Events = {
+			{
+				Id = "Hound",
+				Text = "A Duskfang slipped out of the rift's shadow and followed your team home!",
+				Chance = 0.12,
+				Creature = "Duskfang",
+				SuccessOnly = true,
+			},
+			{
+				Id = "Lark",
+				Text = "A Voidlark blinked out of the rift and landed on your explorer's head!",
+				Chance = 0.06,
+				Creature = "Voidlark",
+				SuccessOnly = true,
+			},
+			{
+				Id = "Shade",
+				Text = "A shy Shadeling hid in your team's shadow all the way home.",
+				Chance = 0.2,
+				Creature = "Shadeling",
+				SuccessOnly = true,
+			},
+			{
+				Id = "Shards",
+				Text = "Picked up glittering rift shards.",
+				Chance = 0.25,
+				Reward = { RefinedCrystal = 12 },
+			},
+		},
+		CoreTier = 2,
+		Phase = 5,
+		EventOnly = true,
 	},
 } :: { [string]: Destination }
 

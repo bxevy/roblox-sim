@@ -12,6 +12,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BuildingConfig = require(Shared.Config.BuildingConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local RegionConfig = require(Shared.Config.RegionConfig)
+local WorldEventConfig = require(Shared.Config.WorldEventConfig)
+local WorldEvent = require(Shared.Util.WorldEvent)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local Format = require(Shared.Util.Format)
@@ -262,7 +264,9 @@ function Hud.new(ctx: any)
 	menuButton("✎", "Quests", "J", "Quests", 3)
 	menuButton("▤", "Inventory", "G", "Inventory", 4)
 	menuButton("✈", "Map", "M", "Map", 5)
-	menuButton("⚙", "Settings", "P", "Settings", 6)
+	menuButton("☺", "Players", "U", "Players", 6)
+	menuButton("♛", "Rankings", "L", "Leaderboards", 7)
+	menuButton("⚙", "Settings", "P", "Settings", 8)
 
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {
@@ -605,6 +609,64 @@ function Hud.new(ctx: any)
 				Theme.SetEnabled(attackButton, a <= 0 and companion ~= nil)
 				Theme.SetEnabled(specialButton, sp <= 0 and companion ~= nil)
 			end
+		end
+	end)
+
+	------------------------------------------------------------------ World event (top right)
+	local eventPanel = Theme.Panel(gui, {
+		Name = "WorldEvent",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 56),
+		Size = UDim2.fromOffset(270, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+	})
+	Theme.Padding(eventPanel, 8, 12)
+	Theme.List(eventPanel, 4)
+	local eventTitle = Theme.Text(eventPanel, "", 15, { FontFace = Theme.Heavy })
+	local eventText = Theme.Text(eventPanel, "", 13, { TextColor3 = Theme.Colors.Muted })
+	local eventBarFrame, setEventBar = Theme.Bar(eventPanel, Theme.Colors.Primary, 8)
+	local eventFolder = ReplicatedStorage:WaitForChild("WorldEvent", 30)
+	task.spawn(function()
+		while eventFolder do
+			local kind = eventFolder:GetAttribute("Kind") :: string?
+			local now = Workspace:GetServerTimeNow()
+			local def = if kind and kind ~= "" then WorldEventConfig.Events[kind] else nil
+			if def then
+				local left = math.max(((eventFolder:GetAttribute("EndsAt") :: number?) or now) - now, 0)
+				eventTitle.Text =
+					`<font color="#{def.Color:ToHex()}">{def.Glyph}</font> {def.Name} · {Format.Duration(left)}`
+				eventPanel.BackgroundTransparency = 0.05
+				if kind == "Bloom" then
+					local progress = (eventFolder:GetAttribute("Progress") :: number?) or 0
+					local goal = math.max((eventFolder:GetAttribute("Goal") :: number?) or 1, 1)
+					eventText.Text =
+						`Server goal: {Format.Number(progress)} / {Format.Number(goal)} moonpetals collected. Collect at your farms to help!`
+					eventBarFrame.Visible = true
+					setEventBar(progress / goal)
+				elseif kind == "EmberRift" then
+					local teams = (eventFolder:GetAttribute("Teams") :: number?) or 0
+					local joinLeft = left - WorldEventConfig.Rift.JoinCutoff
+					eventText.Text = `{teams} team{if teams == 1 then "" else "s"} in the rift (+{math.floor(
+						WorldEvent.RiftBonus(teams + 1) * 100
+					)}% chance if you join).` .. (if joinLeft > 0
+						then ` Join from your Expedition Portal within {Format.Duration(joinLeft)}.`
+						else " Too late to join this one.")
+					eventBarFrame.Visible = false
+				else
+					eventText.Text = def.Description
+					eventBarFrame.Visible = false
+				end
+			else
+				local nextKind = eventFolder:GetAttribute("NextKind") :: string?
+				local nextDef = nextKind and WorldEventConfig.Events[nextKind]
+				local nextAt = (eventFolder:GetAttribute("NextAt") :: number?) or now
+				eventTitle.Text = if nextDef
+					then `<font color="#9aa6c4">Next event:</font> {nextDef.Glyph} {nextDef.Name}`
+					else "World events"
+				eventText.Text = `Starts in {Format.Duration(math.max(nextAt - now, 0))}`
+				eventBarFrame.Visible = false
+			end
+			task.wait(0.5)
 		end
 	end)
 

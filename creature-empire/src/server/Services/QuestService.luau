@@ -95,6 +95,9 @@ local Evaluators: { [string]: Evaluator } = {
 	Guardian = function(data)
 		return data.Quests.Progress
 	end,
+	WorldEvent = function(data)
+		return data.Quests.Progress
+	end,
 	Research = function(data)
 		local count = 0
 		for _ in data.Research do
@@ -284,6 +287,9 @@ function QuestService.Start()
 	end)
 	Events.Discovered:Connect(refresh)
 	Events.Researched:Connect(refresh)
+	Events.WorldEventJoined:Connect(function(player)
+		addCounter(player, "WorldEvent", nil, 1)
+	end)
 	Events.Ascended:Connect(refresh)
 	Events.Crafted:Connect(function(player, item, amount)
 		addCounter(player, "Craft", item, amount)

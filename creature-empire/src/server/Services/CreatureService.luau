@@ -260,14 +260,34 @@ local function setCompanion(player: Player, creatureId: string?): (boolean, any)
 end
 
 -- All anchors (after expeditions start or end).
+-- Re-syncs every anchor on the player's plot with their data (and removes anchors of
+-- creatures they no longer have, e.g. after a trade).
 function CreatureService.RefreshAll(player: Player)
 	local data = PlayerDataService.GetData(player)
-	if data then
-		for _, creature in data.Creatures do
-			updateAnchor(player, creature)
+	if not data then
+		return
+	end
+	for _, creature in data.Creatures do
+		updateAnchor(player, creature)
+	end
+	local plot = PlotService.Get(player)
+	local folder = plot and plot.Folder:FindFirstChild("Creatures")
+	if folder then
+		for _, anchor in folder:GetChildren() do
+			if not data.Creatures[anchor.Name] then
+				anchor:Destroy()
+			end
 		end
 	end
 end
+
+-- Abilities that act outside production (regions, guardians, expeditions) are handled by
+-- the service that owns that system; it registers a handler here at Start.
+-- handler(player, creature, power, duration) -> (ok, message)
+CreatureService.AbilityHandlers =
+	{} :: { [string]: (Player, Types.CreatureRecord, number, number) -> (boolean, string) }
+-- Kinds that only work while the creature is your companion.
+local COMPANION_ABILITIES = { Shield = true, Debuff = true, Stealth = true }
 
 local function useAbility(player: Player, creatureId: string): (boolean, any)
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
@@ -283,7 +303,7 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		return false, "It's away on an expedition."
 	end
 	local ability = species.Active
-	if not IMPLEMENTED_ABILITIES[ability.Kind] then
+	if not IMPLEMENTED_ABILITIES[ability.Kind] and not CreatureService.AbilityHandlers[ability.Kind] then
 		return false, "This ability isn't available yet."
 	end
 	local now = os.time()
@@ -291,7 +311,12 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		return false, `{ability.Name} is ready in {creature.AbilityReadyAt - now}s.`
 	end
 	local buildingId = creature.Assignment
-	local anywhere = ability.Kind == "GoldFind" or ability.Kind == "Collect"
+	local anywhere = ability.Kind == "GoldFind"
+		or ability.Kind == "Collect"
+		or CreatureService.AbilityHandlers[ability.Kind] ~= nil
+	if COMPANION_ABILITIES[ability.Kind] and data.Companion ~= creatureId then
+		return false, `Take {displayName(creature)} with you first (Creatures window → Take with me).`
+	end
 	if (ability.RequiresAssignment or not anywhere) and not buildingId then
 		return false, `Assign {displayName(creature)} to a job first.`
 	end
@@ -345,6 +370,13 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 			return false, "Nothing is waiting at your buildings (or your silo is full)."
 		end
 		message = `{ability.Name}! {displayName(creature)} carried {carried} items to your silo.`
+	elseif CreatureService.AbilityHandlers[ability.Kind] then
+		local ok, result =
+			CreatureService.AbilityHandlers[ability.Kind](player, creature, ability.Power * strength, duration)
+		if not ok then
+			return false, result
+		end
+		message = result
 	else
 		return false, "This ability isn't available yet."
 	end

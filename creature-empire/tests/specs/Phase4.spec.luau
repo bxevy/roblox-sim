@@ -347,6 +347,7 @@ describe("Update 4 content", function()
 			end
 		end
 		sources[AscensionConfig.FirstAscensionCreature] = true
+		sources[shared("Config", "WorldEventConfig").Bloom.FirstWinCreature] = true
 		for _, id in CreatureConfig.Starters do
 			sources[id] = true
 		end

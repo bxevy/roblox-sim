@@ -56,6 +56,10 @@ function Net.Check.String(value: any): boolean
 	return type(value) == "string" and #value <= 200
 end
 
+function Net.Check.Boolean(value: any): boolean
+	return type(value) == "boolean"
+end
+
 function Net.Check.Any(_value: any): boolean
 	return true
 end

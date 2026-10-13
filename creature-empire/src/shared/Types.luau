@@ -233,6 +233,9 @@ export type PlayerData = {
 	LastOnline: number,
 	Ascension: AscensionRecord,
 	Research: { [string]: number }, -- research node id -> os.time completed (this run)
+	Collaborators: { [string]: boolean }, -- user ids (as strings) allowed to help on this plot
+	WorldEvents: { [string]: number }, -- event id -> times completed (Grand Bloom wins)
+	Season: { Week: number, Gold: number }, -- gold earned this week (weekly leaderboard)
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids
@@ -259,6 +262,8 @@ export type ExpeditionRecord = {
 	Supplies: { string },
 	Seed: number,
 	Bonus: number?, -- research chance bonus fixed at launch
+	Party: number?, -- world event index for Ember Rift teams
+	PartySize: number?, -- teams in the rift when it closed (set by the server at the end)
 }
 
 return nil

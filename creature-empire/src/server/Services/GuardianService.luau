@@ -50,6 +50,8 @@ type Fight = {
 	Pending: { Pending },
 	RespawnAt: number,
 	EmptySince: number?,
+	HexUntil: number, -- os.clock: Night Howl makes it take more damage
+	HexPower: number,
 }
 
 local GuardianService = {}
@@ -101,6 +103,7 @@ local function reset(fight: Fight)
 	fight.Pending = {}
 	fight.NextSlam = 0
 	fight.EmptySince = nil
+	fight.HexUntil = 0
 	publish(fight)
 end
 
@@ -309,6 +312,9 @@ local function attack(player: Player, kind: string): (boolean, any)
 		special and not support,
 		others
 	)
+	if os.clock() < f.HexUntil then
+		damage = math.floor(damage * (1 + f.HexPower))
+	end
 	if support then
 		-- Support companions cool everyone nearby instead of a big hit.
 		for _, ally in playersInArena(f, ATTACK_RANGE_EXTRA) do
@@ -375,6 +381,8 @@ function GuardianService.Start()
 				Pending = {},
 				RespawnAt = 0,
 				EmptySince = nil,
+				HexUntil = 0,
+				HexPower = 0,
 			}
 			reset(fight)
 			fights[id] = fight
@@ -404,6 +412,26 @@ function GuardianService.Start()
 			end
 		end
 	end)
+end
+
+-- Duskfang's Night Howl: the guardian you're fighting takes more damage for a while.
+CreatureService.AbilityHandlers.Debuff = function(player: Player, _creature: any, power: number, duration: number)
+	local part = root(player)
+	for _, fight in fights do
+		if part and fight.Alive and flatDistance(part.Position, fight.Center) <= fight.Radius + ATTACK_RANGE_EXTRA then
+			fight.HexUntil = os.clock() + duration
+			fight.HexPower = math.clamp(power, 0, 1)
+			Remotes.Events.GameEvent:FireAllClients(
+				"GuardianHexed",
+				{ Guardian = fight.Def.Id, Seconds = duration, Power = fight.HexPower }
+			)
+			return true,
+				`Night Howl! {fight.Def.Name} takes {math.floor(fight.HexPower * 100)}% more damage for {math.floor(
+					duration
+				)}s.`
+		end
+	end
+	return false, "Use Night Howl while fighting a guardian."
 end
 
 return GuardianService

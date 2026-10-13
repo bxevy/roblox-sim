@@ -273,13 +273,21 @@ local function upgrade(player: Player, buildingId: string): (boolean, any)
 	return true, record.Level
 end
 
-local function collect(player: Player, buildingId: string): (boolean, any)
+-- Collects a building's storage into the OWNER's silo or wallet. `actor` is whoever
+-- pressed the prompt: the owner, or a collaborator standing next to the building.
+local function collectFor(owner: Player, actor: Player, buildingId: string): (boolean, any)
+	local player = owner
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
 	local record = data.Buildings[buildingId]
 	if not record then
 		return false, "That building isn't yours."
 	end
-	if not isNearBuilding(player, buildingId) then
+	local model = BuildingService.GetModel(player, buildingId)
+	if
+		not model
+		or not model.PrimaryPart
+		or not PlotService.IsNear(actor, model.PrimaryPart.Position, PlotConfig.InteractRange)
+	then
 		return false, "Walk closer to collect."
 	end
 	ProductionService.Flush(player)
@@ -309,7 +317,23 @@ local function collect(player: Player, buildingId: string): (boolean, any)
 	PlayerDataService.MarkDirty(player)
 	StateService.Push(player, "Buildings")
 	Remotes.Events.GameEvent:FireClient(player, "Collected", { Id = buildingId, Amount = total })
+	if actor ~= owner then
+		Remotes.Events.Notify:FireClient(
+			owner,
+			`{actor.DisplayName} collected {total} for you. Thanks, collaborator!`,
+			"Success"
+		)
+	end
 	return true, total
+end
+
+local function collect(player: Player, buildingId: string): (boolean, any)
+	return collectFor(player, player, buildingId)
+end
+
+-- Collecting on someone else's plot (SocialService checks the collaborator permission).
+function BuildingService.CollectFor(owner: Player, actor: Player, buildingId: string): (boolean, any)
+	return collectFor(owner, actor, buildingId)
 end
 
 local function sell(player: Player, resourceId: string, amount: any): (boolean, any)

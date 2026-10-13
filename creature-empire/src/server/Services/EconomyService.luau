@@ -9,6 +9,7 @@ local EconomyConfig = require(Shared.Config.EconomyConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local BuildingConfig = require(Shared.Config.BuildingConfig)
 local Research = require(Shared.Util.Research)
+local Leaderboard = require(Shared.Util.Leaderboard)
 
 local Core = script.Parent.Parent.Core
 local Log = require(Core.Log)
@@ -82,6 +83,13 @@ function EconomyService.Add(player: Player, id: string, amount: number, reason: 
 		if id == "Gold" then
 			data.Stats.GoldEarned = (data.Stats.GoldEarned or 0) + added
 			data.Ascension.RunGold = (data.Ascension.RunGold or 0) + added
+			-- Weekly leaderboard: a new week starts a new count.
+			local week = Leaderboard.Week(os.time())
+			if data.Season.Week ~= week then
+				data.Season.Week = week
+				data.Season.Gold = 0
+			end
+			data.Season.Gold += added
 		end
 	end
 	PlayerDataService.MarkDirty(player)

@@ -73,7 +73,7 @@ local BiomeConfig: { [string]: Biome } = {
 		},
 		Unlock = "Empire Core tier 4.",
 		Guardian = "Thundermaw",
-		Phase = 4,
+		Phase = 6,
 	},
 	SunkenArchive = {
 		Id = "SunkenArchive",
@@ -88,7 +88,7 @@ local BiomeConfig: { [string]: Biome } = {
 		},
 		Unlock = "Research: Diving Bells.",
 		Guardian = "Abyssquid",
-		Phase = 4,
+		Phase = 6,
 	},
 	UmbralFrontier = {
 		Id = "UmbralFrontier",
@@ -103,7 +103,7 @@ local BiomeConfig: { [string]: Biome } = {
 		},
 		Unlock = "First Ascension.",
 		Guardian = "Nocturnox",
-		Phase = 4,
+		Phase = 6,
 	},
 }
 

@@ -91,16 +91,30 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
   - Abyssquid (relic jobs)
 - PowerOperator, Breeder and RelicInvestigator jobs are Phase 5.
 
-## Phase 5: multiplayer
+## Phase 5: multiplayer ✔ built
 
-1. **Plot permissions** (visitor, collaborator, owner) checked in `Net` handlers. A saved list of collaborator user ids.
-2. **Trading** (`TradingService`):
-   - Two-player sessions, an offer summary, and both players confirming again after any change.
-   - Ownership is re-checked at commit, and both profiles are updated in one server-side step.
-   - Cancel on disconnect.
-   - Respect `Tradable` and `EconomyConfig.Trading`. Starter and quest creatures are already untradable.
-3. Cooperative expeditions and world events (`WorldEventService`).
-4. Leaderboards with OrderedDataStores: empire progression, efficiency, collection, expeditions, seasonal.
+- **Plot permissions.** `SocialService.Permission` returns Owner, Collaborator or Visitor. Each owner keeps a saved list of up to 5 collaborators. Collaborators can collect the owner's harvests into the owner's silo (`CollectFor`) and nothing else. Visitors can inspect and cheer. Cheering an Empire Core gives the owner's production buildings +10% work speed (`Boost`) for 10 min: up to 3 cheers stack, each visitor can cheer each empire once per 10 min, and the cheerer gets a small gift.
+- **Trading.** `TradingService` plus the pure `Shared/Util/Trade`:
+  - **Session:** an invite, then both offers (up to 4 creatures plus listed resources).
+  - **Confirming:** ready ticks clear on any change, then a 3 s countdown that any change also cancels.
+  - **Committing:** a full re-check of ownership, tradability, companions, expeditions, habitat and silo room, then one no-yield swap and an immediate save of both profiles.
+  - **Cancelling:** nothing moves on cancel or disconnect.
+  - **What can't be traded:** starter, quest and gift creatures.
+- **World events.** `WorldEventService` runs on a schedule computed from the shared server clock: one event every 15 minutes.
+  - **Golden Hour:** a server-wide +25% work-speed buff.
+  - **Grand Bloom:** the whole server collects Moonpetals toward one goal. If it's reached, every helper is rewarded, and a player's first win also grants Elderbark.
+  - **Ember Rift:** a cooperative expedition. Teams join from the Expedition Portal without using a slot, and every extra team adds +6% success for everyone (capped at +30%). Results stay seeded, and a team that left the server is resolved solo.
+- **Leaderboards.** `LeaderboardService` keeps OrderedDataStore boards for Empire score, Collection, Explorers and Weekly gold (a key per week, starting Monday UTC). There's a board in the plaza and a Rankings window. Every call is protected, and the board says so when DataStores are unavailable.
+- **Content.** Elderbark (Rootwall heat shield for nearby allies), Duskfang (Night Howl: the guardian takes +30% damage), Voidlark (Fold: running expeditions return 5 min sooner) and Shadeling (Veil: no heat build-up). Their abilities run through `CreatureService.AbilityHandlers`. There's 1 new quest, and saves move to schema v5.
+
+**Open for Phase 5:** run the manual checklist in [TESTING.md](TESTING.md) with 2–3 players (Studio → Test → Clients and Servers). Nothing in it has run in Roblox yet.
+
+### Phase 5 known limitations
+
+- Trades save both profiles right after the swap. If the server crashes between those two saves, one side could roll back. Session locks rule out cross-server duplication.
+- Collaborators can't build or assign; they only collect, and the harvest goes to the owner.
+- Leaderboards need a published game (or Studio API access).
+- Thundermaw, Nocturnox and Abyssquid, and the PowerOperator, Breeder and RelicInvestigator jobs, are Phase 6. Cross-server friends and party invites are not included.
 
 ## Phase 6: polish and release
 

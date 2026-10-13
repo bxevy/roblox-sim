@@ -43,7 +43,7 @@ local JobConfig: { [string]: Job } = {
 		Verb = "Generating power",
 		Description = "Powers machines and relays.",
 		Stats = { "EnergyEfficiency", "AbilityStrength" },
-		Phase = 5,
+		Phase = 6,
 	},
 	Alchemist = {
 		Id = "Alchemist",
@@ -91,7 +91,7 @@ local JobConfig: { [string]: Job } = {
 		Verb = "Caring for eggs",
 		Description = "Looks after eggs at breeding sanctuaries.",
 		Stats = { "Luck", "AbilityStrength" },
-		Phase = 5,
+		Phase = 6,
 	},
 	RelicInvestigator = {
 		Id = "RelicInvestigator",
@@ -99,7 +99,7 @@ local JobConfig: { [string]: Job } = {
 		Verb = "Studying relics",
 		Description = "Uncovers hidden relics and secrets.",
 		Stats = { "DiscoveryChance", "Exploration" },
-		Phase = 5,
+		Phase = 6,
 	},
 }
 

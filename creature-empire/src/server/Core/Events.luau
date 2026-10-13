@@ -45,4 +45,10 @@ return {
 	Researched = Signal.new() :: Signal.Signal<Player, string>,
 	-- (player, ascension count)
 	Ascended = Signal.new() :: Signal.Signal<Player, number>,
+	-- (player, ownerUserId)
+	Cheered = Signal.new() :: Signal.Signal<Player, number>,
+	-- (player, eventId) a world event the player took part in has ended (Rift joined, Bloom helped)
+	WorldEventJoined = Signal.new() :: Signal.Signal<Player, string>,
+	-- (playerA, playerB)
+	Traded = Signal.new() :: Signal.Signal<Player, Player>,
 }

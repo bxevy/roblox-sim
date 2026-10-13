@@ -80,6 +80,31 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Buy a perk with shards; the rank shows, the price rises, and it stops at max.
 - [ ] Load a Phase 3 save: it migrates to v4 and its lifetime gold counts as this run's gold.
 
+### Phase 5: multiplayer (Studio → Test → Clients and Servers, 2–3 players)
+- [ ] Players window (U): lists the others. Visit teleports to their plot entrance.
+- [ ] Trade: player A invites B, and B sees an Accept/Decline card that disappears after 30 s. Both windows open.
+  - [ ] Add creatures and gold. Both sides update live, and every change clears both Ready ticks.
+  - [ ] Ready on both sides: a 3 s countdown runs, and editing during it cancels.
+  - [ ] After the swap, creatures appear on the other plot, journals update, and the gold moved exactly once.
+- [ ] Trade refusals:
+  - [ ] Starter, quest and companion creatures show "Can't".
+  - [ ] A full habitat on the receiver refuses with a message.
+  - [ ] Closing the window or leaving cancels, and nothing moves.
+- [ ] Collaborators: A makes B a helper. B sees "Collect for owner" on A's farms, and the harvest lands in A's silo with a thank-you toast. Remove B: the prompts disappear. A visitor calling `CollectFor` from the command bar is refused.
+- [ ] Cheer: at another player's Empire Core, the owner gets a toast and +10% speed on their buildings (the panel shows the buff).
+  - [ ] Cheering again within 10 minutes is refused.
+  - [ ] A 4th cheerer is refused while 3 cheers are active.
+- [ ] World events (*Developer → Event: …*):
+  - [ ] Golden Hour: production rates rise by 25% for everyone, and the HUD shows a timer.
+  - [ ] Bloom: collecting Moonpetals moves the shared bar. Reaching the goal rewards helpers, and Elderbark arrives on the first win.
+  - [ ] Ember Rift: the portal offers the rift (no slot used), and the team count rises as players join.
+  - [ ] Ember Rift results: when the rift closes, everyone is told, and claimed results include the party bonus.
+- [ ] Abilities: Rootwall (Elderbark companion) stops heat for you and nearby allies, and Veil (Shadeling) stops heat for you. Night Howl near the Matriarch raises damage numbers. Fold shortens running expeditions.
+- [ ] Leaderboards:
+  - [ ] Published game: the plaza board and the Rankings window (L) fill within about 2 minutes.
+  - [ ] Studio without API access: the board shows the "needs DataStore access" message and nothing errors.
+- [ ] Load a Phase 4 save: it migrates to v5.
+
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.
 - [ ] When the silo is full, collecting leaves the remainder in the farm with a clear message.
@@ -105,7 +130,7 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] `Sell("Moonpetal", -5)`, `Sell("Gold", 10)` and `UseAbility` on another player's creature id are all refused.
 
 ### Input and accessibility
-- [ ] Keyboard shortcuts C / B / J / P / G / M toggle windows and don't fire while typing in chat.
+- [ ] Keyboard shortcuts C / B / J / P / G / M / U / L toggle windows and don't fire while typing in chat.
 - [ ] Gamepad: D-pad opens windows, B closes, selection highlight is visible, and placement works with Y / A / B.
 - [ ] Touch (device emulator, phone sizes): HUD readable, windows fit, tap-to-place works.
 - [ ] Settings: volumes apply, VFX Off removes particles and motion, Reduced Motion stops bobbing and popping, Fast reveals skips the build-up.

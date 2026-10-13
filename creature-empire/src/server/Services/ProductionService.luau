@@ -44,6 +44,24 @@ type Runtime = {
 local ProductionService = {}
 
 local runtimes: { [Player]: Runtime } = {}
+-- Server-wide buffs (world events), by id, applied to every production building.
+local globalBuffs: { [string]: Production.Buff } = {}
+
+-- Each building's own buffs plus the active server-wide ones.
+local function combinedBuffs(data: any, runtime: Runtime): { [string]: { Production.Buff } }
+	if next(globalBuffs) == nil then
+		return runtime.Buffs
+	end
+	local combined: { [string]: { Production.Buff } } = {}
+	for buildingId in data.Buildings do
+		local list = table.clone(runtime.Buffs[buildingId] or {})
+		for _, buff in globalBuffs do
+			table.insert(list, buff)
+		end
+		combined[buildingId] = list
+	end
+	return combined
+end
 
 local function getRuntime(player: Player): Runtime?
 	return runtimes[player]
@@ -65,8 +83,14 @@ local function recompute(player: Player, runtime: Runtime)
 			runtime.Buffs[buildingId] = nil
 		end
 	end
-	runtime.Rates = Production.Rates(data, runtime.Buffs)
-	runtime.Couriers = Production.Couriers(data, runtime.Buffs)
+	for id, buff in globalBuffs do
+		if buff.Expires <= now then
+			globalBuffs[id] = nil
+		end
+	end
+	local buffs = combinedBuffs(data, runtime)
+	runtime.Rates = Production.Rates(data, buffs)
+	runtime.Couriers = Production.Couriers(data, buffs)
 	-- Buildings with no workers can't be "starved".
 	for buildingId in runtime.Starved do
 		local rate = runtime.Rates[buildingId]
@@ -272,6 +296,11 @@ local function tick(player: Player, runtime: Runtime)
 	runtime.LastTick = now
 
 	local hasExpiredBuff = false
+	for _, buff in globalBuffs do
+		if buff.Expires <= now then
+			hasExpiredBuff = true
+		end
+	end
 	for _, buffs in runtime.Buffs do
 		for _, buff in buffs do
 			if buff.Expires <= now then
@@ -383,6 +412,40 @@ function ProductionService.GetWorkerRate(player: Player, creatureId: string): Pr
 	return nil
 end
 
+-- Starts (or with nil, ends) a server-wide buff for every player's production buildings.
+function ProductionService.SetGlobalBuff(
+	id: string,
+	buff: { Stat: string, Category: string, Value: number, Duration: number }?
+)
+	for player, runtime in runtimes do
+		tick(player, runtime) -- settle production at the old rates first
+	end
+	if buff then
+		globalBuffs[id] =
+			{ Stat = buff.Stat, Category = buff.Category, Value = buff.Value, Expires = os.clock() + buff.Duration }
+	else
+		globalBuffs[id] = nil
+	end
+	for player, runtime in runtimes do
+		recompute(player, runtime)
+		StateService.Push(player, "Buildings", "Creatures")
+	end
+end
+
+-- Active buff count of one category on a building (cheers use it to cap stacking).
+function ProductionService.CountBuffs(player: Player, buildingId: string, category: string): number
+	local runtime = getRuntime(player)
+	local n = 0
+	local now = os.clock()
+	local list: { Production.Buff } = runtime and runtime.Buffs[buildingId] or {}
+	for _, buff in list do
+		if buff.Category == category and buff.Expires > now then
+			n += 1
+		end
+	end
+	return n
+end
+
 -- A Courier Post's workers and carry rate (for the UI), and whether the silo blocked them.
 function ProductionService.GetCourier(
 	player: Player,
@@ -423,9 +486,14 @@ function ProductionService.GetBuffs(
 ): { { Stat: string, Value: number, Remaining: number } }
 	local runtime = getRuntime(player)
 	local list = {}
+	local now = os.clock()
 	if runtime and runtime.Buffs[buildingId] then
-		local now = os.clock()
 		for _, buff in runtime.Buffs[buildingId] do
+			table.insert(list, { Stat = buff.Stat, Value = buff.Value, Remaining = math.max(buff.Expires - now, 0) })
+		end
+	end
+	if runtime and runtime.Rates[buildingId] then
+		for _, buff in globalBuffs do
 			table.insert(list, { Stat = buff.Stat, Value = buff.Value, Remaining = math.max(buff.Expires - now, 0) })
 		end
 	end

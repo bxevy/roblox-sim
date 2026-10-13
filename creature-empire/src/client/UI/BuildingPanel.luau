@@ -22,6 +22,8 @@ local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
 local CraftConfig = require(Shared.Config.CraftConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local ResearchConfig = require(Shared.Config.ResearchConfig)
+local WorldEventConfig = require(Shared.Config.WorldEventConfig)
+local WorldEvent = require(Shared.Util.WorldEvent)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local SynergyConfig = require(Shared.Config.SynergyConfig)
 local Theme = require(script.Parent.Theme)
@@ -592,7 +594,9 @@ function BuildingPanel.new(ctx: any)
 		end)
 		for _, id in ids do
 			local record = expeditions.List[id]
-			count += 1
+			if not record.Party then
+				count += 1 -- rift teams don't use a portal slot
+			end
 			local destination = ExpeditionConfig.Destinations[record.Destination]
 			local names = {}
 			for _, creatureId in record.Creatures do
@@ -636,14 +640,28 @@ function BuildingPanel.new(ctx: any)
 		-- Planner
 		local planner = Window.Section(win.Body, "PLAN AN EXPEDITION", 3)
 		local destinations = {}
+		-- The Ember Rift is only offered while the world event is open for teams.
+		local eventFolder = ReplicatedStorage:FindFirstChild("WorldEvent")
+		local riftOpen = eventFolder ~= nil
+			and eventFolder:GetAttribute("Kind") == "EmberRift"
+			and ((eventFolder:GetAttribute("EndsAt") :: number?) or 0) - Workspace:GetServerTimeNow()
+				> WorldEventConfig.Rift.JoinCutoff
 		for _, destination in ExpeditionConfig.Destinations do
-			if destination.Phase <= GameConfig.Phase then
+			if destination.Phase <= GameConfig.Phase and (not destination.EventOnly or riftOpen) then
 				table.insert(destinations, destination)
 			end
 		end
 		table.sort(destinations, function(a, b)
+			if (a.EventOnly == true) ~= (b.EventOnly == true) then
+				return a.EventOnly == true
+			end
 			return a.Duration < b.Duration
 		end)
+		if not ExpeditionConfig.Destinations[plan.Destination].EventOnly or not riftOpen then
+			if ExpeditionConfig.Destinations[plan.Destination].EventOnly then
+				plan.Destination = "Foothills"
+			end
+		end
 		local row = Window.Row(planner, 40)
 		for _, destination in destinations do
 			local b = Theme.Button(
@@ -662,6 +680,17 @@ function BuildingPanel.new(ctx: any)
 		end
 		local destination = ExpeditionConfig.Destinations[plan.Destination]
 		Theme.Text(planner, destination.Description, 14)
+		if destination.EventOnly then
+			local teams = eventFolder and (eventFolder:GetAttribute("Teams") :: number?) or 0
+			Theme.Text(
+				planner,
+				`✸ World event: {teams} team{if teams == 1 then "" else "s"} already in. Your team comes back when the rift closes, and every team in the server adds +{math.floor(
+					WorldEventConfig.Rift.BonusPerParticipant * 100
+				)}% success for everyone. It doesn't use a portal slot.`,
+				13,
+				{ TextColor3 = Theme.Colors.Gold }
+			)
+		end
 		local recommended = {}
 		for stat, value in destination.Recommended do
 			table.insert(recommended, `{stat} {value}`)
@@ -677,7 +706,7 @@ function BuildingPanel.new(ctx: any)
 		end
 		Theme.Text(
 			planner,
-			`Takes {Format.Duration(destination.Duration)} · Risk: <b>{destination.Risk}</b> · Recommended (team average): {table.concat(
+			`Takes {if destination.EventOnly then "until the rift closes" else Format.Duration(destination.Duration)} · Risk: <b>{destination.Risk}</b> · Recommended (team average): {table.concat(
 				recommended,
 				", "
 			)}`,
@@ -826,7 +855,14 @@ function BuildingPanel.new(ctx: any)
 			table.insert(members, { Species = c.Species, Level = c.Level, Stage = c.Stage })
 		end
 		if #members > 0 then
-			local chance = Expedition.Chance(destination, members, plan.Approach, plan.Supplies)
+			local research = State.Get("Research")
+			local done = research and research.Done or {}
+			local bonus = if done.FieldKits then 0.05 else 0
+			if destination.EventOnly then
+				local teams = eventFolder and (eventFolder:GetAttribute("Teams") :: number?) or 0
+				bonus += WorldEvent.RiftBonus(teams + 1)
+			end
+			local chance = Expedition.Chance(destination, members, plan.Approach, plan.Supplies, bonus)
 			Theme.Text(planner, `Success chance: <b>{math.floor(chance * 100 + 0.5)}%</b>`, 18, {
 				TextColor3 = if chance >= 0.7
 					then Theme.Colors.Success
@@ -842,6 +878,7 @@ function BuildingPanel.new(ctx: any)
 		end
 		local slotsFree = count < expeditions.Slots
 		local launch = Theme.Button(planner, "✈ Launch expedition", "Primary", { Size = UDim2.fromOffset(240, 42) })
+		slotsFree = slotsFree or destination.EventOnly == true
 		Theme.SetEnabled(launch, tierOk and slotsFree and #members > 0 and affordable)
 		launch.Activated:Connect(function()
 			if launch:GetAttribute("Disabled") then
@@ -1261,6 +1298,12 @@ function BuildingPanel.new(ctx: any)
 	State.OnChanged("Hatchery", schedule)
 	State.OnChanged("Expeditions", schedule)
 	State.OnChanged("Research", schedule)
+	task.spawn(function()
+		local eventFolder = ReplicatedStorage:WaitForChild("WorldEvent", 30)
+		if eventFolder then
+			eventFolder:GetAttributeChangedSignal("Kind"):Connect(schedule)
+		end
+	end)
 	State.OnChanged("Ascension", function()
 		local b = State.Get("Buildings")
 		local info = buildingId and b and b.List[buildingId]

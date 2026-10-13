@@ -53,6 +53,9 @@ UIController.Register("Befriend", require(UIFolder.BefriendWindow).new(ctx))
 UIController.Register("Map", require(UIFolder.MapWindow).new(ctx))
 UIController.Register("ExpeditionResult", require(UIFolder.ExpeditionResultWindow).new(ctx))
 UIController.Register("Ascension", require(UIFolder.AscensionWindow).new(ctx))
+UIController.Register("Trade", require(UIFolder.TradeWindow).new(ctx))
+UIController.Register("Players", require(UIFolder.PlayersWindow).new(ctx))
+UIController.Register("Leaderboards", require(UIFolder.LeaderboardWindow).new(ctx))
 local starter = require(UIFolder.StarterSelect).new(ctx)
 UIController.Register("Starter", starter)
 local reveal = require(UIFolder.RevealOverlay).new(ctx)
@@ -131,6 +134,10 @@ Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: a
 		AudioController.Play("QuestComplete")
 	elseif name == "Scorched" then
 		EffectsController.Flash(Color3.fromRGB(255, 90, 30))
+	elseif name == "WorldEventStarted" then
+		AudioController.Play("QuestComplete")
+	elseif name == "Cheered" then
+		BuildingController.CheerFx(payload.OwnerUserId)
 	elseif name == "Researched" then
 		AudioController.Play("Upgrade")
 	elseif name == "Ascended" then

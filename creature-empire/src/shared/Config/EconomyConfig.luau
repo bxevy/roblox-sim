@@ -63,7 +63,7 @@ EconomyConfig.GoldFindPerCoreLevel = 0.75
 
 -- Trading (Phase 5). Listed here so restrictions live with the rest of the economy.
 EconomyConfig.Trading = {
-	Enabled = false,
+	Enabled = true, -- see SocialConfig.Trade and TradingService
 	MaxCreaturesPerSide = 4,
 	UntradableSources = { "Starter", "Quest" },
 }

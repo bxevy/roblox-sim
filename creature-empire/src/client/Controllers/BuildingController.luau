@@ -28,6 +28,23 @@ local BuildingController = {}
 -- Set by Main: open the building panel / the visitor inspect window.
 BuildingController.OpenPanel = function(_buildingId: string) end
 BuildingController.OpenInspect = function(_ownerUserId: number) end
+
+-- Confetti over an empire that was just cheered.
+function BuildingController.CheerFx(ownerUserId: number)
+	local plots = game:GetService("Workspace"):FindFirstChild("PlayerPlots")
+	for _, plot in plots and plots:GetChildren() or {} do
+		if plot:GetAttribute("OwnerUserId") == ownerUserId then
+			local buildings = plot:FindFirstChild("Buildings")
+			local core = buildings and buildings:FindFirstChild("core")
+			if core and core:IsA("Model") and core.PrimaryPart then
+				local position = core.PrimaryPart.Position + Vector3.new(0, 10, 0)
+				EffectsController.Burst(position, Color3.fromRGB(255, 210, 90), 50, { Speed = 16 })
+				EffectsController.Burst(position, Color3.fromRGB(150, 220, 255), 30, { Speed = 12 })
+				AudioController.Play("QuestComplete", position)
+			end
+		end
+	end
+end
 BuildingController.Notify = function(_message: string, _kind: string) end
 
 type Tracked = {
@@ -126,7 +143,7 @@ local function makeBubble(t: Tracked, color: Color3)
 	t.BubbleFill = fill
 end
 
-local function track(model: Instance, owned: boolean)
+local function track(model: Instance, owned: boolean, helper: boolean?)
 	if not model:IsA("Model") then
 		return
 	end
@@ -174,14 +191,49 @@ local function track(model: Instance, owned: boolean)
 			BuildingController.OpenPanel(id)
 		end)
 	else
+		local ownerId = model:GetAttribute("OwnerUserId") :: number?
 		local inspect = prompt(base, "Inspect empire", def.Name, Enum.KeyCode.F, Enum.KeyCode.ButtonY, 0)
 		inspect.MaxActivationDistance = 12
 		inspect.Triggered:Connect(function()
-			local ownerId = model:GetAttribute("OwnerUserId") :: number?
 			if ownerId then
 				BuildingController.OpenInspect(ownerId)
 			end
 		end)
+		-- Collaborators collect for the owner (into the owner's silo).
+		if helper and def.Recipe and ownerId then
+			local collect = prompt(base, "Collect for owner", def.Name, Enum.KeyCode.E, Enum.KeyCode.ButtonX, 0)
+			collect.Triggered:Connect(function()
+				local ok, result = StateController.Request("CollectFor", ownerId, id)
+				if ok then
+					AudioController.Play("Collect", base.Position)
+					EffectsController.Popup(
+						base.Position + Vector3.new(0, 6, 0),
+						"+" .. Format.Number(result) .. " " .. outputDef.Icon .. " (for owner)",
+						outputDef.Color
+					)
+				else
+					BuildingController.Notify(result, "Error")
+				end
+			end)
+		end
+		-- Anyone can cheer at someone else's Empire Core.
+		if typeId == "EmpireCore" and ownerId then
+			local cheer = prompt(base, "Cheer!", "Boost their creatures", Enum.KeyCode.E, Enum.KeyCode.ButtonX, 0.5)
+			cheer.MaxActivationDistance = 14
+			cheer.Triggered:Connect(function()
+				local ok, result = StateController.Request("Cheer", ownerId)
+				if ok then
+					BuildingController.Notify(
+						if result and result.Gift
+							then "Cheered! Their creatures work faster for 10 minutes. +50 gold thank-you gift."
+							else "Cheered! Their creatures work faster for 10 minutes.",
+						"Success"
+					)
+				else
+					BuildingController.Notify(result, "Error")
+				end
+			end)
+		end
 	end
 
 	for _, descendant in model:GetDescendants() do
@@ -206,6 +258,10 @@ local function watchPlot(plot: Instance)
 	local function owned(): boolean
 		return plot:GetAttribute("OwnerUserId") == localPlayer.UserId
 	end
+	local function helper(): boolean
+		local list = plot:GetAttribute("Collaborators") :: string?
+		return list ~= nil and string.find(list, "," .. localPlayer.UserId .. ",", 1, true) ~= nil
+	end
 	local function refreshAll()
 		for model, t in tracked do
 			if model.Parent == buildings then
@@ -215,22 +271,23 @@ local function watchPlot(plot: Instance)
 					end
 				end
 				tracked[model] = nil
-				task.spawn(track, model, owned())
+				task.spawn(track, model, owned(), helper())
 			end
 			local _ = t
 		end
 	end
 	for _, model in buildings:GetChildren() do
-		task.spawn(track, model, owned())
+		task.spawn(track, model, owned(), helper())
 	end
 	buildings.ChildAdded:Connect(function(model)
 		task.wait() -- let the model's descendants replicate
-		track(model, owned())
+		track(model, owned(), helper())
 	end)
 	buildings.ChildRemoved:Connect(function(model)
 		tracked[model :: Model] = nil
 	end)
 	plot:GetAttributeChangedSignal("OwnerUserId"):Connect(refreshAll)
+	plot:GetAttributeChangedSignal("Collaborators"):Connect(refreshAll)
 end
 
 -- Per-frame display updates (cheap: a handful of buildings).

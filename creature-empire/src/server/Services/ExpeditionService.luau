@@ -17,6 +17,7 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local Research = require(Shared.Util.Research)
+local WorldEvent = require(Shared.Util.WorldEvent)
 local Expedition = require(Shared.Util.Expedition)
 local Production = require(Shared.Util.Production)
 local Format = require(Shared.Util.Format)
@@ -32,6 +33,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local CreatureService = require(script.Parent.CreatureService)
 local ProductionService = require(script.Parent.ProductionService)
 local BuildingService = require(script.Parent.BuildingService)
+local WorldEventService = require(script.Parent.WorldEventService)
 
 local ExpeditionService = {}
 
@@ -48,10 +50,13 @@ local function portalSlots(data: Types.PlayerData): number
 	return best
 end
 
+-- Portal slots in use (Ember Rift teams don't take one).
 local function activeCount(data: Types.PlayerData): number
 	local count = 0
-	for _ in data.Expeditions do
-		count += 1
+	for _, record in data.Expeditions do
+		if record.Party == nil then
+			count += 1
+		end
 	end
 	return count
 end
@@ -107,7 +112,18 @@ local function launch(
 	if slots == 0 then
 		return false, "Build an Expedition Portal first."
 	end
-	if activeCount(data) >= slots then
+	-- The Ember Rift (a world event): open now, one team per player, ends with the event.
+	local rift = if destination.EventOnly then WorldEventService.OpenRift() else nil
+	if destination.EventOnly then
+		if not rift then
+			return false, "The Ember Rift isn't open right now (watch for the world event)."
+		end
+		for _, record in data.Expeditions do
+			if record.Party == (rift :: any).Index then
+				return false, "You already have a team in the rift."
+			end
+		end
+	elseif activeCount(data) >= slots then
 		return false, "All portal slots are busy. Upgrade the portal to send more teams."
 	end
 	if not ExpeditionConfig.Approaches[approach] then
@@ -155,7 +171,10 @@ local function launch(
 		Destination = destinationId,
 		Creatures = table.clone(creatureIds),
 		StartedAt = now,
-		EndsAt = now + destination.Duration,
+		EndsAt = if rift
+			then now + math.max(math.ceil(rift.EndsAt - Workspace:GetServerTimeNow()), 1)
+			else now + destination.Duration,
+		Party = if rift then rift.Index else nil,
 		Approach = approach,
 		Supplies = chosen,
 		Seed = rng:NextInteger(1, 2 ^ 30),
@@ -170,6 +189,9 @@ local function launch(
 		end
 	end
 	PlayerDataService.MarkDirty(player)
+	if rift then
+		WorldEventService.JoinRift(player)
+	end
 	ProductionService.Invalidate(player)
 	CreatureService.RefreshAll(player)
 	StateService.Push(player, "Expeditions", "Creatures", "Exploration")
@@ -199,7 +221,7 @@ local function claim(player: Player, expeditionId: string): (boolean, any)
 		record.Approach,
 		record.Supplies,
 		record.Seed,
-		record.Bonus
+		(record.Bonus or 0) + WorldEvent.RiftBonus(record.PartySize or 1)
 	)
 	data.Expeditions[expeditionId] = nil
 
@@ -264,7 +286,34 @@ local function claim(player: Player, expeditionId: string): (boolean, any)
 	return true, result
 end
 
+-- Voidlark's Fold: running expeditions (not the rift) come back sooner. The result is
+-- already fixed by the seed, so only the wait changes.
+local function fold(
+	player: Player,
+	_creature: Types.CreatureRecord,
+	power: number,
+	_duration: number
+): (boolean, string)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local now = os.time()
+	local seconds = math.floor(power)
+	local any = false
+	for _, record in data.Expeditions do
+		if record.Party == nil and record.EndsAt > now then
+			record.EndsAt = math.max(record.EndsAt - seconds, now)
+			any = true
+		end
+	end
+	if not any then
+		return false, "You have no expeditions running to fold."
+	end
+	PlayerDataService.MarkDirty(player)
+	StateService.Push(player, "Expeditions")
+	return true, `Fold! Your expeditions come back {Format.Duration(seconds)} sooner.`
+end
+
 function ExpeditionService.Start()
+	CreatureService.AbilityHandlers.Teleport = fold
 	StateService.Register("Expeditions", function(_player, profile)
 		local data = profile.Data
 		local list = {}
@@ -279,6 +328,8 @@ function ExpeditionService.Start()
 				Duration = record.EndsAt - record.StartedAt,
 				Approach = record.Approach,
 				Supplies = table.clone(record.Supplies),
+				Party = record.Party,
+				PartySize = record.PartySize,
 			}
 		end
 		return { List = list, Slots = portalSlots(data) }

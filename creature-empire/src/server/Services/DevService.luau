@@ -13,6 +13,7 @@
 --   insight <n>         add Insight
 --   shards <n>          add Empire Shards
 --   coremax             raise the Empire Core to tier 5 (to test Ascension)
+--   event <kind>        start a world event now (GoldenHour, Bloom, EmberRift)
 --   finishexpeditions   bring every active expedition home now (and end creature rest)
 --   levelup             +5 levels and +200 work cycles per job for every creature
 --   grant <speciesId>   add a creature
@@ -40,6 +41,7 @@ local EconomyService = require(script.Parent.EconomyService)
 local CreatureService = require(script.Parent.CreatureService)
 local ProductionService = require(script.Parent.ProductionService)
 local QuestService = require(script.Parent.QuestService)
+local WorldEventService = require(script.Parent.WorldEventService)
 
 local DevService = {}
 
@@ -98,6 +100,13 @@ commands.coremax = function(player)
 	ProductionService.Invalidate(player)
 	StateService.Push(player, "Buildings", "Ascension")
 	return true, "Empire Core is tier 5 (rejoin to see the model change)."
+end
+
+commands.event = function(_player, kind)
+	if type(kind) ~= "string" or not WorldEventService.Force(kind) then
+		return false, "Unknown event. Try GoldenHour, Bloom or EmberRift."
+	end
+	return true, `{kind} started.`
 end
 
 commands.finishexpeditions = function(player)

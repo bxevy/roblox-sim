@@ -4,7 +4,7 @@ A creature-collecting simulator and empire-building tycoon for Roblox, written i
 
 You start with a small plot, one partner creature and a single Moonpetal Farm. Creatures walk to their jobs and work there. You collect the harvest, sell it, and grow the farm into a glowing empire.
 
-This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)** and **Phase 4 (research, synergies, courier automation, mutations and Ascension)**. The [roadmap](docs/ROADMAP.md) lists what Phases 5–6 add and exactly what is unfinished.
+This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)** **Phase 4 (research, synergies, courier automation, mutations and Ascension)** and **Phase 5 (multiplayer: trading, collaborators, cheering, world events and leaderboards)**. The [roadmap](docs/ROADMAP.md) lists what Phase 6 adds and exactly what is unfinished.
 
 | Doc                                       | What's in it                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------ |
@@ -100,6 +100,28 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
 - **Arcane Egg** (Insight + Essence) and **7 newly obtainable species**, all with working jobs and abilities. That includes Gearhound's *Fetch*, which hauls everything to the silo at once.
 - **New models** for the Research Station, Courier Post and Expedition Portal.
 - **7 more quests** and **schema v4**. Older saves migrate automatically.
+
+## Added in Phase 5
+
+- **Players window (U).** Lists everyone in the server. From it you can visit their plot, inspect it, invite them to trade, or make them a collaborator.
+- **Trading.** Swap up to 4 creatures plus Gold, Essence and materials.
+  - Both players see exactly what they'll get.
+  - Any change clears both "Ready" ticks, and a short countdown runs before the swap.
+  - The server re-checks everything at the end, then saves both profiles.
+  - Starter, quest and gift creatures can't be traded.
+- **Collaborators.** Chosen friends can collect your harvests into *your* silo, and can't do anything else.
+- **Cheering.** Press *Cheer!* at another player's Empire Core. Their creatures work 10% faster for 10 minutes, and you get a small thank-you gift.
+- **World events** every 15 minutes, shown top right:
+  - **Golden Hour:** everyone's creatures work 25% faster.
+  - **Grand Bloom:** a server-wide Moonpetal goal. Your first win brings Elderbark.
+  - **Ember Rift:** a cooperative expedition. Every team that joins makes everyone's trip safer, and it can bring home Duskfang, Voidlark or Shadeling.
+- **Leaderboards.** A board in the plaza and a Rankings window (L): greatest empires, collectors, explorers and this week's earners.
+- **4 new species** with team-play abilities:
+  - **Rootwall:** a heat shield for nearby allies.
+  - **Night Howl:** the guardian takes more damage.
+  - **Fold:** expeditions come back sooner.
+  - **Veil:** no heat build-up.
+- **Schema v5.**
 
 ## Run it
 

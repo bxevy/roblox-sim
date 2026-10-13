@@ -28,11 +28,18 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local StateService = require(script.Parent.StateService)
 local EconomyService = require(script.Parent.EconomyService)
 local PlotService = require(script.Parent.PlotService)
+local CreatureService = require(script.Parent.CreatureService)
 
 local TICK = 0.5
 local TRAVEL_COOLDOWN = 4
 
-type Runtime = { Region: string?, Heat: number, VentHit: { [number]: number }, LastTravel: number }
+type Runtime = {
+	Region: string?,
+	Heat: number,
+	VentHit: { [number]: number },
+	LastTravel: number,
+	ProtectedUntil: number, -- os.clock: no heat builds (Rootwall, Veil)
+}
 
 local RegionService = {}
 
@@ -167,6 +174,10 @@ local function tickPlayer(player: Player, runtime: Runtime, now: number)
 		OnBridge = offset.Y > 4.3,
 		Ward = wardOf(player),
 	})
+	local protected = os.clock() < runtime.ProtectedUntil
+	if protected then
+		rate = math.min(rate, 0)
+	end
 	local heat = runtime.Heat + rate * TICK
 	for index, vent in region.Vents do
 		if RegionConfig.VentPhase(region, index, now) == "Active" then
@@ -175,6 +186,7 @@ local function tickPlayer(player: Player, runtime: Runtime, now: number)
 			if
 				flat.Magnitude <= region.VentCycle.Radius
 				and now - (runtime.VentHit[index] or 0) > region.VentCycle.Active
+				and not protected
 			then
 				runtime.VentHit[index] = now
 				heat += region.Heat.VentBurst
@@ -213,7 +225,7 @@ function RegionService.Start()
 	end)
 
 	PlayerDataService.Loaded:Connect(function(player)
-		runtimes[player] = { Region = nil, Heat = 0, VentHit = {}, LastTravel = 0 }
+		runtimes[player] = { Region = nil, Heat = 0, VentHit = {}, LastTravel = 0, ProtectedUntil = 0 }
 		player:SetAttribute("Heat", 0)
 		player:SetAttribute("Region", "")
 	end)
@@ -241,11 +253,55 @@ function RegionService.Start()
 end
 
 -- Adds or removes heat (guardian slams, support cooling).
+-- Elderbark's Rootwall: no heat for you and allies within 30 studs.
+local function rootwall(player: Player, _creature: any, _power: number, duration: number): (boolean, string)
+	local me = root(player)
+	local runtime = runtimes[player]
+	if not me or not runtime or not runtime.Region then
+		return false, "Use Rootwall in a hot region, like Emberfall Basin."
+	end
+	local count = 0
+	for other, otherRuntime in runtimes do
+		local part = root(other)
+		if part and (part.Position - me.Position).Magnitude <= 30 then
+			otherRuntime.ProtectedUntil = math.max(otherRuntime.ProtectedUntil, os.clock() + duration)
+			count += 1
+			if other ~= player then
+				Remotes.Events.Notify:FireClient(
+					other,
+					`{player.DisplayName}'s Rootwall shields you from heat for {math.floor(duration)}s!`,
+					"Success"
+				)
+			end
+		end
+	end
+	return true,
+		`Rootwall! {count} {if count == 1 then "explorer is" else "explorers are"} shielded from heat for {math.floor(
+			duration
+		)}s.`
+end
+
+-- Shadeling's Veil: heat doesn't build for you.
+local function veil(player: Player, _creature: any, _power: number, duration: number): (boolean, string)
+	local runtime = runtimes[player]
+	if not runtime or not runtime.Region then
+		return false, "Use Veil in a hot region, like Emberfall Basin."
+	end
+	runtime.ProtectedUntil = math.max(runtime.ProtectedUntil, os.clock() + duration)
+	return true, `Veil! Heat can't touch you for {math.floor(duration)}s.`
+end
+
 function RegionService.AddHeat(player: Player, amount: number)
 	local runtime = runtimes[player]
+	if runtime and amount > 0 and os.clock() < runtime.ProtectedUntil then
+		return -- shielded
+	end
 	if runtime then
 		setHeat(player, runtime, runtime.Heat + amount)
 	end
 end
+
+CreatureService.AbilityHandlers.Shield = rootwall
+CreatureService.AbilityHandlers.Stealth = veil
 
 return RegionService
