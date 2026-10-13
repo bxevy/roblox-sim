@@ -348,11 +348,11 @@ Config.LimitedClassOrder = { "PumpkinWarlock" }
 
 -- Classes are rolled, not chosen. New players get one free roll.
 Config.ClassRoll = {
-	CoinCost = 2500,
-	-- Robux rolls: create a Developer Product on your game's page (Creator Dashboard >
+	CoinCost = 10000,
+	-- Robux rolls: create a Developer Product priced at 150 Robux on your game's page (Creator Dashboard >
 	-- your experience > Monetization > Developer Products) and paste its id here.
 	RobuxProductId = 0,
-	RobuxPriceLabel = "R$ 25",
+	RobuxPriceLabel = "R$ 150",
 }
 
 -- Class slots: keep several rolled classes and switch between them in town (Classes

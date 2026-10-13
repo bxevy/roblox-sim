@@ -18,8 +18,8 @@ pieces with hand-built models in Studio.
 
 ## How to play
 
-1. **Roll a class** (your first roll is free; open the **Class** button to roll again for 2,500
-   coins or Robux; a new roll replaces your class):
+1. **Roll a class** (your first roll is free; open the **Class** button to roll again for 10,000
+   coins or 150 Robux; a new roll replaces your class):
    | Class       | Weapon     | Rarity / odds    | Passive                                        | Q / E                            |
    | ----------- | ---------- | ---------------- | ---------------------------------------------- | -------------------------------- |
    | Warrior     | Sword      | Common 20%       | +30% health, +10% defense                      | Whirlwind / Shield Wall          |
