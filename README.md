@@ -115,6 +115,20 @@ jack-o'-lantern east of the fountain, and a 7th portal.
 - **Limited armor:** Pumpkin Reaper (jack-o'-lantern helm, cape, embers) and Vampire Lord
   (high collar, bat wings, blood mist).
 
+#### Event art
+
+In `assets/halloween/`:
+- `halloween_thumbnail_1920x1080.png` - game thumbnail for the event (Creator Hub > your
+  experience > Places > Thumbnails).
+- `halloween_icon_512.png` - event icon with the HALLOWEEN banner (badges, social posts, game icon).
+- `halloween_icon_hud_256.png` - text-free version for in-game UI. Upload it (Studio: Game Explorer >
+  Images) and put its id in `Config.Events.Halloween.Icon`; it then shows on the HUD event button
+  and in the event window.
+
+They're drawn by the scripts in `tools/art/` (`python3 tools/art/icon.py assets/halloween`,
+`python3 tools/art/thumb.py assets/halloween/halloween_thumbnail_1920x1080.png`; needs Pillow
+and numpy), so colors and text are easy to change.
+
 ### Boss mechanics
 
 Bosses don't just hit you: they rotate through telegraphed attacks. **Red** on the floor means

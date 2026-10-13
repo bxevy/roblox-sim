@@ -128,6 +128,17 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		Visible = false,
 	})
 	eventButton.Activated:Connect(actions.ToggleEvent)
+	local eventIcon = Config.Events.Halloween.Icon
+	if eventIcon ~= "" then
+		Util.make("ImageLabel", eventButton, {
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 4, 0.5, 0),
+			Size = UDim2.fromOffset(30, 30),
+			BackgroundTransparency = 1,
+			Image = eventIcon,
+		})
+		Util.make("UIPadding", eventButton, { PaddingLeft = UDim.new(0, 34) })
+	end
 	function self.SetEventButton(visible: boolean, text: string?)
 		eventButton.Visible = visible
 		if text then

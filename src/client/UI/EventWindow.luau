@@ -62,15 +62,24 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 		window.Visible = false
 	end)
 
+	local hasIcon = event.Icon ~= ""
+	if hasIcon then
+		Util.make("ImageLabel", body, {
+			Size = UDim2.fromOffset(46, 46),
+			BackgroundTransparency = 1,
+			Image = event.Icon,
+		})
+	end
 	local header = Util.text(body, {
-		Size = UDim2.new(1, 0, 0, 26),
+		Position = UDim2.fromOffset(if hasIcon then 54 else 0, 0),
+		Size = UDim2.new(1, if hasIcon then -54 else 0, 0, 26),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = ORANGE,
 		Text = "",
 	})
 	Util.text(body, {
-		Position = UDim2.fromOffset(0, 28),
-		Size = UDim2.new(1, 0, 0, 18),
+		Position = UDim2.fromOffset(if hasIcon then 54 else 0, 28),
+		Size = UDim2.new(1, if hasIcon then -54 else 0, 0, 18),
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextColor3 = Color3.fromRGB(200, 190, 210),
 		Text = `Clear the Haunted Manor for {event.CandiesPerClear} candies. Crates: {crate.CandyCost} candies or {crate.RobuxPriceLabel}.`,

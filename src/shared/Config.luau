@@ -752,6 +752,10 @@ Config.Events = {
 	Halloween = {
 		DisplayName = "Halloween Event",
 		Enabled = true,
+		-- Event icon (assets/halloween/halloween_icon_hud_256.png): upload it in Studio
+		-- (Game Explorer > Images, or Creator Hub > Development Items > Images) and paste the
+		-- id here as "rbxassetid://<id>". Shown on the HUD button and in the event window.
+		Icon = "",
 		StartsAt = 1790812800, -- 2026-10-01 00:00 UTC
 		EndsAt = 1794182400, -- 2026-11-09 00:00 UTC
 		Dungeon = "Haunted", -- event dungeon (only has a portal while the event runs)
