@@ -49,7 +49,8 @@ EconomyConfig.BonusRules = {
 		Synergy = { Cap = 0.75 }, -- creatures working well together (SynergyConfig)
 		Research = { Cap = 0.5 }, -- research tree (ResearchConfig)
 		Mutation = { Cap = 0.25 }, -- rare mutations (MutationConfig)
-		Ascension = { Cap = 1.0 }, -- Ascension count and perks (AscensionConfig)
+		Ascension = { Cap = 1.0 }, -- +10% yield per Ascension (AscensionConfig)
+		Perk = { Cap = 0.5 }, -- Ascension perks bought with Empire Shards
 		Boost = { Cap = 1.0 }, -- Phase 6 optional boosts
 	},
 	MaxMultiplier = 6,

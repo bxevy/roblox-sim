@@ -42,15 +42,51 @@ local function ascend(player: Player): (boolean, any)
 	local shards = Ascension.Apply(data, os.time())
 	PlayerDataService.MarkDirty(player)
 
-	-- Rebuild the world around the reset data.
-	ProductionService.Reset(player)
-	BuildingService.RebuildAll(player)
-	PlotService.RefreshBounds(player)
-	CreatureService.RefreshAll(player)
-	if count == 1 then
-		CreatureService.Grant(player, AscensionConfig.FirstAscensionCreature, "Ascension", false)
+	-- Rebuild the world around the reset data. The data is already reset, so a failure
+	-- here is logged and the rest still runs (a rejoin rebuilds everything from data).
+	local steps: { () -> () } = {
+		function()
+			ProductionService.Reset(player)
+		end,
+		function()
+			BuildingService.RebuildAll(player)
+		end,
+		function()
+			PlotService.RefreshBounds(player)
+		end,
+		function()
+			CreatureService.RefreshAll(player)
+		end,
+		function()
+			-- Back to the plot: regions need Empire Core tiers you no longer have.
+			PlotService.SendHome(player)
+		end,
+		function()
+			if count == 1 then
+				CreatureService.Grant(player, AscensionConfig.FirstAscensionCreature, "Ascension", false)
+			end
+		end,
+	}
+	for index, step in steps do
+		local stepOk, err = pcall(function()
+			step()
+			return true
+		end)
+		if not stepOk then
+			Log.Warn("Ascension", "Rebuild step failed", { user = player.UserId, step = index, error = tostring(err) })
+		end
 	end
-	StateService.Push(player, "Wallet", "Buildings", "Creatures", "Empire", "Research", "Ascension", "Quests")
+	StateService.Push(
+		player,
+		"Wallet",
+		"Buildings",
+		"Creatures",
+		"Empire",
+		"Research",
+		"Ascension",
+		"Quests",
+		"Expeditions"
+	)
 	Events.Ascended:Fire(player, count)
 	Remotes.Events.GameEvent:FireClient(player, "Ascended", { Count = count, Shards = shards })
 	Log.Info("Ascension", "Ascended", { user = player.UserId, count = count, shards = shards })

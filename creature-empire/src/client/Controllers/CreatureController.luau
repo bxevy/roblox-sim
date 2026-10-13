@@ -417,11 +417,15 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 					local building = buildings and mine.Assignment and buildings.List[mine.Assignment]
 					local petal = building and building.Output and ResourceConfig[building.Output]
 						or ResourceConfig.Moonpetal
-					EffectsController.Popup(
-						entity.Model.PrimaryPart.Position + Vector3.new(0, entity.Height + 1.5, 0),
-						"+" .. Format.Rate(amount) .. " " .. petal.Icon,
-						petal.Color
-					)
+					-- Couriers have no output of their own (their deliveries show in the silo).
+					local showPopup = not (building and building.Output == nil)
+					if showPopup then
+						EffectsController.Popup(
+							entity.Model.PrimaryPart.Position + Vector3.new(0, entity.Height + 1.5, 0),
+							"+" .. Format.Rate(amount) .. " " .. petal.Icon,
+							petal.Color
+						)
+					end
 					local species = CreatureConfig.Species[entity.Species]
 					if species then
 						AudioController.Play(species.Sounds.Work, entity.Position)

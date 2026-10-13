@@ -62,10 +62,16 @@ function CreaturesWindow.new(ctx: any)
 	local function previewRate(info: any, building: any): number
 		local buildings = State.Get("Buildings")
 		local coreLevel = buildings and buildings.List.core and buildings.List.core.Level or 1
-		local fakeData: any = { Buildings = { core = { Level = coreLevel } } }
+		local research = State.Get("Research")
+		local ascension = State.Get("Ascension")
+		local fakeData: any = {
+			Buildings = { core = { Level = coreLevel } },
+			Research = research and research.Done or {},
+			Ascension = { Count = ascension and ascension.Count or 0, Perks = ascension and ascension.Perks or {} },
+		}
 		local worker = Production.WorkerAt(
 			fakeData,
-			{ Id = info.Id, Species = info.Species, Level = info.Level, Stage = info.Stage } :: any,
+			{ Id = info.Id, Species = info.Species, Level = info.Level, Stage = info.Stage, Mutation = info.Mutation } :: any,
 			{ Type = building.Type, Level = building.Level } :: any,
 			nil
 		)

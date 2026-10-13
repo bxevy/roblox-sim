@@ -223,7 +223,9 @@ local function species(def: { [string]: any }): Types.SpeciesDef
 		Active = def.Active,
 		Passive = def.Passive,
 		Evolution = evolution,
-		Mutations = def.Mutations or { "Prismatic", "Ancient" },
+		-- Shadow mutations only happen to Umbral creatures.
+		Mutations = def.Mutations
+			or (if def.Family == "Umbral" then { "Prismatic", "Ancient", "Shadow" } else { "Prismatic", "Ancient" }),
 		Appearance = appearance,
 		-- Sound keys resolve through AssetConfig.Sounds; missing ids play nothing.
 		Sounds = { Idle = key .. "_idle", Move = key .. "_move", Work = key .. "_work" },

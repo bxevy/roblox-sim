@@ -94,7 +94,8 @@ local function evolve(player: Player, creatureId: string): (boolean, any)
 		Stage = creature.Stage,
 		Name = check.NextStage.Name,
 		Unlocks = check.NextStage.Unlocks,
-		Mutation = if mutated then creature.Mutation else nil,
+		Mutation = creature.Mutation,
+		NewMutation = mutated,
 	})
 	Events.Evolved:Fire(player, creatureId, creature.Stage)
 	Log.Info(

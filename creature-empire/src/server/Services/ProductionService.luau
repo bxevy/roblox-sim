@@ -250,15 +250,19 @@ local function runCouriers(player: Player, runtime: Runtime, dt: number, efficie
 	local perSecond = runtime.Couriers.PerSecond
 	if perSecond <= 0 then
 		runtime.CarryBudget = 0
+		if runtime.CourierBlocked then
+			runtime.CourierBlocked = false
+			StateService.Push(player, "Buildings")
+		end
 		return
 	end
 	runtime.CarryBudget += perSecond * efficiency * dt
 	runtime.CarryTimer += dt
 	if force or runtime.CarryTimer >= CARRY_INTERVAL then
 		runtime.CarryTimer = 0
-		carry(player, runtime, runtime.CarryBudget, efficiency >= 1)
-		-- Unused capacity isn't banked: couriers can't save up trips while nothing waits.
-		runtime.CarryBudget = math.min(runtime.CarryBudget, 1)
+		local carried = carry(player, runtime, runtime.CarryBudget, efficiency >= 1)
+		-- Keep only the fractional leftover: unused trips aren't banked while nothing waits.
+		runtime.CarryBudget = math.clamp(runtime.CarryBudget - carried, 0, 1)
 	end
 end
 

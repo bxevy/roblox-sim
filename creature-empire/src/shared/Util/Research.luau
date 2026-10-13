@@ -69,7 +69,7 @@ function Research.Bonuses(data: Types.PlayerData, job: string): { Bonus }
 	for _, stat in { "WorkSpeed", "Yield" } do
 		local value = Research.PerkTotal(data, "Modifier", stat)
 		if value > 0 then
-			table.insert(bonuses, { Stat = stat, Category = "Ascension", Value = value })
+			table.insert(bonuses, { Stat = stat, Category = "Perk", Value = value })
 		end
 	end
 	return bonuses

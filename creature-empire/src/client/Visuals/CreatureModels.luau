@@ -673,7 +673,14 @@ local function applyMutation(model: Model, mutation: string, size: number)
 	end
 	local index = 0
 	for _, part in model:GetDescendants() do
-		if part:IsA("BasePart") and part.Transparency < 1 and part.Material ~= Enum.Material.Neon then
+		-- Eyes (near-black pupils, white highlights) and glowing parts keep their colour.
+		local h, sat, value = 0, 0, 0
+		if part:IsA("BasePart") then
+			h, sat, value = part.Color:ToHSV()
+		end
+		local _ = h
+		local isEye = value < 0.15 or (value > 0.95 and sat < 0.05)
+		if part:IsA("BasePart") and part.Transparency < 1 and part.Material ~= Enum.Material.Neon and not isEye then
 			index += 1
 			if mutation == "Prismatic" then
 				local hue = (index * 0.13) % 1

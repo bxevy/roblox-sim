@@ -78,6 +78,8 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 ### Phase 4 known limitations
 
 - Couriers make one delivery for a whole offline period. Storage caps it, so they move less than they would have online.
+- After an Ascension the Habitat is back to level 1. You keep every creature, but hatching and befriending wait until the Habitat has room again.
+- Players who migrate from a Phase 3 save get their first Ascension payout from all the gold they ever earned.
 - Only one new automation building. Conveyors, power and the Mutation Lab are still to come, and so are the Alchemy Lab recipes and new biomes.
 - These species were moved to Phase 5 because their abilities need systems that don't exist yet:
   - Elderbark (Verdant guardian)

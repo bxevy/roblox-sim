@@ -162,6 +162,17 @@ function BuildingPanel.new(ctx: any)
 		end)
 	end
 
+	-- Enough saved-data shape for Production.WorkerAt previews (research, Ascension, perks).
+	local function previewData(coreLevel: number): any
+		local research = State.Get("Research")
+		local ascension = State.Get("Ascension")
+		return {
+			Buildings = { core = { Level = coreLevel } },
+			Research = research and research.Done or {},
+			Ascension = { Count = ascension and ascension.Count or 0, Perks = ascension and ascension.Perks or {} },
+		}
+	end
+
 	local function workersSection(info: any, def: any)
 		local job = def.Job and JobConfig[def.Job]
 		local workers =
@@ -212,8 +223,8 @@ function BuildingPanel.new(ctx: any)
 					if affinity > 0 then
 						candidates += 1
 						local worker = Production.WorkerAt(
-							{ Buildings = { core = { Level = coreLevel } } } :: any,
-							{ Id = id, Species = c.Species, Level = c.Level, Stage = c.Stage } :: any,
+							previewData(coreLevel),
+							{ Id = id, Species = c.Species, Level = c.Level, Stage = c.Stage, Mutation = c.Mutation } :: any,
 							{ Type = info.Type, Level = info.Level } :: any,
 							nil
 						)
@@ -1005,9 +1016,14 @@ function BuildingPanel.new(ctx: any)
 					`{mutation.Glyph} {mutation.Name} {string.format("%.1f%%", mutation.Chance * mutationBoost * 100)}`
 				)
 			end
-			Theme.Text(text, "Mutation chance per hatch: " .. table.concat(mutationParts, " · "), 12, {
-				TextColor3 = Theme.Colors.Muted,
-			})
+			Theme.Text(
+				text,
+				"Mutation chances: " .. table.concat(mutationParts, " · ") .. " (Shadow: Umbral creatures only)",
+				12,
+				{
+					TextColor3 = Theme.Colors.Muted,
+				}
+			)
 			local pity = hatchery.Pity[eggId] or 0
 			local guaranteed = Hatching.PityReady(egg, pity)
 			Theme.Text(

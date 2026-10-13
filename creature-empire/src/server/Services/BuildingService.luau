@@ -185,7 +185,7 @@ local function place(player: Player, typeId: string, x: number, z: number, rot: 
 	PlayerDataService.MarkDirty(player)
 	spawnModel(player, record)
 	ProductionService.Invalidate(player)
-	StateService.Push(player, "Buildings")
+	StateService.Push(player, "Buildings", "Expeditions") -- portal slots may change
 	Remotes.Events.GameEvent:FireClient(player, "BuildingPlaced", { Id = id, Type = typeId })
 	Events.BuildingChanged:Fire(player, id, "Placed")
 	Log.Info("Building", "Placed", { user = player.UserId, type = typeId, x = x, z = z, rot = rot })
