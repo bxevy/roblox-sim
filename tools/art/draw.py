@@ -53,7 +53,7 @@ def draw_outlined_polygon(d, pts, fill, outline, width):
     d.polygon(pts, fill=fill)
     d.line(pts + [pts[0]], fill=outline, width=width, joint="curve")
 
-def pumpkin(img, cx, cy, w, h, seed=1, face=True, outline_w=None):
+def pumpkin(img, cx, cy, w, h, seed=1, face=True, outline_w=None, ko=False):
     """A carved jack-o'-lantern: ribbed body, outlined, carved face lit from inside."""
     ow = outline_w or max(2, int(w * 0.018))
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
@@ -86,6 +86,24 @@ def pumpkin(img, cx, cy, w, h, seed=1, face=True, outline_w=None):
              (cx + mw * 0.2, mouth_top + h * 0.03), (cx + mw * 0.45, mouth_top - h * 0.03), (cx + mw * 0.55, mouth_top + h * 0.03), (cx + mw, mouth_top),
              (cx + mw * 0.7, mouth_top + h * 0.17), (cx + mw * 0.3, mouth_top + h * 0.21), (cx + mw * 0.15, mouth_top + h * 0.14), (cx - mw * 0.05, mouth_top + h * 0.22),
              (cx - mw * 0.3, mouth_top + h * 0.21), (cx - mw * 0.7, mouth_top + h * 0.17)]
+    if ko:
+        # Knocked out: carved X eyes and a wobbly, gaping mouth
+        def bar(x, y, length, thick, angle):
+            a = math.radians(angle)
+            dx, dy = math.cos(a) * length / 2, math.sin(a) * length / 2
+            nx, ny = -math.sin(a) * thick / 2, math.cos(a) * thick / 2
+            return [(x - dx + nx, y - dy + ny), (x + dx + nx, y + dy + ny), (x + dx - nx, y + dy - ny), (x - dx - nx, y - dy - ny)]
+        eyes = []
+        for ex in (cx - w * 0.19, cx + w * 0.19):
+            eyes += [bar(ex, cy - h * 0.1, w * 0.2, w * 0.06, 45), bar(ex, cy - h * 0.1, w * 0.2, w * 0.06, -45)]
+        nose = []
+        mouth = []
+        for i in range(13):
+            t = i / 12
+            mouth.append((cx - w * 0.22 + t * w * 0.44, cy + h * 0.2 + math.sin(t * math.pi * 3) * h * 0.035))
+        for i in range(13):
+            t = 1 - i / 12
+            mouth.append((cx - w * 0.22 + t * w * 0.44, cy + h * 0.31 + math.sin(t * math.pi * 3) * h * 0.035))
     shapes = eyes + nose + [mouth]
     bloom = Image.new("RGBA", img.size, (0, 0, 0, 0))
     bd = ImageDraw.Draw(bloom)

@@ -120,7 +120,8 @@ jack-o'-lantern east of the fountain, and a 7th portal.
 In `assets/halloween/`:
 - `halloween_thumbnail_1920x1080.png` - game thumbnail for the event (Creator Hub > your
   experience > Places > Thumbnails).
-- `halloween_icon_512.png` - event icon with the HALLOWEEN banner (badges, social posts, game icon).
+- `halloween_icon_512.png` - update icon: the Pumpkin King sliced in half (crown flying, X'd-out
+  eyes) with a green UPDATE badge and the HALLOWEEN banner (game icon, badges, social posts).
 - `halloween_icon_hud_256.png` - text-free version for in-game UI. Upload it (Studio: Game Explorer >
   Images) and put its id in `Config.Events.Halloween.Icon`; it then shows on the HUD event button
   and in the event window.
