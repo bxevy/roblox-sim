@@ -32,6 +32,18 @@ function EffectsController.Settings()
 	return settings
 end
 
+-- A brief colour tint over the whole screen (e.g. a scorching vent). Gentle on reduced motion.
+function EffectsController.Flash(color: Color3)
+	local Lighting = game:GetService("Lighting")
+	local tint = Instance.new("ColorCorrectionEffect")
+	tint.Name = "CE_Flash"
+	tint.TintColor = color:Lerp(Color3.new(1, 1, 1), if settings.ReducedMotion then 0.75 else 0.4)
+	tint.Parent = Lighting
+	local tween = TweenService:Create(tint, TweenInfo.new(0.6), { TintColor = Color3.new(1, 1, 1) })
+	tween:Play()
+	Debris:AddItem(tint, 0.7)
+end
+
 local function particleScale(): number
 	return if settings.Vfx == "Off" then 0 elseif settings.Vfx == "Reduced" then 0.5 else 1
 end

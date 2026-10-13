@@ -6,6 +6,7 @@
 --   J / D-pad right   Quests
 --   P / D-pad down    Settings
 --   G                 Inventory
+--   M                 World map
 --   B (gamepad)       close the open window
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -20,6 +21,7 @@ function InputController.Start(ui: any, placement: any)
 		[Enum.KeyCode.J] = "Quests",
 		[Enum.KeyCode.P] = "Settings",
 		[Enum.KeyCode.G] = "Inventory",
+		[Enum.KeyCode.M] = "Map",
 		[Enum.KeyCode.DPadUp] = "Creatures",
 		[Enum.KeyCode.DPadLeft] = "Build",
 		[Enum.KeyCode.DPadRight] = "Quests",

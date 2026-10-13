@@ -29,6 +29,8 @@ Formats: OGG or MP3, mono for 3D effects, normalised to about −14 LUFS. Every 
 | `<species>_work` | Creature | 0.3 s | Working: snip, crackle, dig. |
 | `MusicEmpire` | Music | 2–3 min loop | Calm, optimistic plucked strings and woodwinds. Must loop seamlessly. |
 | `AmbienceVerdant` | Ambience | 1–2 min loop | Meadow: wind, birds. Night variant later. |
+| `AmbienceEmberfall` (to add, Phase 3) | Ambience | 1–2 min loop | Low lava rumble, distant hiss, crackling embers. Not wired yet: add the key and play it from `RegionController.applyMood`. |
+| `GuardianSlam` / `GuardianRoar` (to add, Phase 3) | Creature | 1 s | Huge stone impact; deep molten roar on phase change. The slam currently reuses `AbilityCast`. |
 
 ## Images → `AssetConfig.Images`
 

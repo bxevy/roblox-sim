@@ -35,6 +35,10 @@ function EconomyService.Capacity(player: Player, id: string): number
 	if not data or sectionFor(id) ~= "Resources" then
 		return EconomyConfig.MaxBalance
 	end
+	local resource = ResourceConfig[id]
+	if resource.Kind == "Item" then
+		return resource.MaxStack or 99
+	end
 	local capacity = 0
 	for _, building in data.Buildings do
 		local def = BuildingConfig[building.Type]
@@ -118,7 +122,7 @@ function EconomyService.Start()
 	StateService.Register("Wallet", function(player, profile)
 		local capacity = {}
 		for id, def in ResourceConfig do
-			if def.Kind == "Material" then
+			if def.Kind == "Material" or def.Kind == "Item" then
 				capacity[id] = EconomyService.Capacity(player, id)
 			end
 		end

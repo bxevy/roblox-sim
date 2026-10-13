@@ -63,7 +63,7 @@ describe("Save migration v1 -> v2", function()
 		v1.Creatures.a.JobCycles = nil -- v1 records had no per-job counts
 		v1.Creatures.b.JobCycles = nil
 		truthy(Schema.Migrate(v1))
-		eq(v1.Version, 2)
+		eq(v1.Version, Schema.CURRENT_VERSION, "migrates all the way up")
 		eq(v1.Creatures.a.JobCycles.Farmer, 420)
 		eq(next(v1.Creatures.b.JobCycles), nil)
 		truthy(type(v1.Pity) == "table" and type(v1.Expansions) == "table")

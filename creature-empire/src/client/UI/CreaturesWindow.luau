@@ -127,6 +127,36 @@ function CreaturesWindow.new(ctx: any)
 			status ..= `  ·  {Format.Rate(info.PerSecond * 60)} {ResourceConfig.Moonpetal.Icon}/min`
 		end
 		Theme.Text(jobCard, status, 17, { FontFace = Theme.Bold })
+		if info.RestIn > 0 and not info.Expedition then
+			Theme.Text(
+				jobCard,
+				`Resting after an expedition: ready to explore again in {Format.Duration(info.RestIn)}.`,
+				13,
+				{
+					TextColor3 = Theme.Colors.Muted,
+				}
+			)
+		end
+		-- Companion: follows you into the wild, helps befriend and gather, and resists heat.
+		if not info.Expedition then
+			local follow = Theme.Button(
+				jobCard,
+				if info.Companion then "Stop following" else "★ Take with me",
+				if info.Companion then "Secondary" else "Gold",
+				{ Size = UDim2.fromOffset(200, 36), TextSize = 15 }
+			)
+			follow.Activated:Connect(function()
+				local ok, result = ctx.Request("SetCompanion", if info.Companion then nil else info.Id)
+				if not ok then
+					ctx.Notify(result, "Error")
+				elseif not info.Companion then
+					ctx.Notify(
+						`{info.Name} will follow you. Companions help you befriend wild creatures and gather.`,
+						"Success"
+					)
+				end
+			end)
+		end
 		if info.SpeedMultiplier then
 			Theme.Text(
 				jobCard,
@@ -135,7 +165,7 @@ function CreaturesWindow.new(ctx: any)
 				{ TextColor3 = Theme.Colors.Muted }
 			)
 		end
-		if buildings then
+		if buildings and not info.Expedition then
 			local ids = {}
 			for id, b in buildings.List do
 				local def = BuildingConfig[b.Type]
@@ -583,7 +613,7 @@ function CreaturesWindow.new(ctx: any)
 				).Ready
 			table.insert(
 				parts,
-				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}`
+				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}`
 			)
 		end
 		local buildings = State.Get("Buildings")

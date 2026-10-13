@@ -40,6 +40,8 @@ Bootstrap starts the services in this order. PlayerDataService starts last, so e
 
 Services talk through direct calls (downward) and `Core/Events` signals (sideways). For example, BuildingService fires `Events.Collected` and QuestService counts it. There are no circular requires.
 
+**Regions (Phase 3).** A region is data in `RegionConfig` plus a builder in `World/`. Everything time-based in a region (vents, eruptions, guardian telegraphs) runs on `Workspace:GetServerTimeNow()`, so the client draws the same cycle the server applies without extra network traffic. `RegionService` owns where each player is and their heat; `NodeService`, `WildService`, `ExpeditionService` and `GuardianService` ask it (`RegionOf`, `AddHeat`, `CompanionFamily`). Expedition outcomes are computed by the pure `Shared/Util/Expedition` from a seed saved at launch, which is why the planner can show the server's exact chance and a rejoin can't re-roll.
+
 ## Data flow: collecting a harvest
 
 ```

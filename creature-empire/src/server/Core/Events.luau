@@ -25,6 +25,20 @@ return {
 	Hatched = Signal.new() :: Signal.Signal<Player, string, string>,
 	-- (player, creatureId, newStage)
 	Evolved = Signal.new() :: Signal.Signal<Player, string, number>,
+	-- (player, regionId)
+	RegionEntered = Signal.new() :: Signal.Signal<Player, string>,
+	-- (player, resourceId, amount)
+	Gathered = Signal.new() :: Signal.Signal<Player, string, number>,
+	-- (player, landmarkId)
+	Discovered = Signal.new() :: Signal.Signal<Player, string>,
+	-- (player, itemId, amount)
+	Crafted = Signal.new() :: Signal.Signal<Player, string, number>,
+	-- (player, speciesId)
+	Befriended = Signal.new() :: Signal.Signal<Player, string>,
+	-- (player, destinationId, success)
+	ExpeditionCompleted = Signal.new() :: Signal.Signal<Player, string, boolean>,
+	-- (player, guardianId)
+	GuardianDefeated = Signal.new() :: Signal.Signal<Player, string>,
 	-- (player, speciesId)
 	StarterChosen = Signal.new() :: Signal.Signal<Player, string>,
 }

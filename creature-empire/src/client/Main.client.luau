@@ -21,6 +21,8 @@ local BuildingController = require(Controllers.BuildingController)
 local PlacementController = require(Controllers.PlacementController)
 local TutorialController = require(Controllers.TutorialController)
 local InputController = require(Controllers.InputController)
+local RegionController = require(Controllers.RegionController)
+local GuardianController = require(Controllers.GuardianController)
 
 StateController.Start()
 AudioController.Start()
@@ -33,6 +35,8 @@ UIController.Start({
 	Building = BuildingController,
 	Placement = PlacementController,
 	UI = UIController,
+	Region = RegionController,
+	Guardian = GuardianController,
 })
 local ctx = UIController.Context()
 
@@ -45,6 +49,9 @@ UIController.Register("Settings", require(UIFolder.SettingsWindow).new(ctx))
 UIController.Register("Quests", require(UIFolder.QuestJournal).new(ctx))
 UIController.Register("Inspect", require(UIFolder.InspectWindow).new(ctx))
 UIController.Register("Inventory", require(UIFolder.InventoryWindow).new(ctx))
+UIController.Register("Befriend", require(UIFolder.BefriendWindow).new(ctx))
+UIController.Register("Map", require(UIFolder.MapWindow).new(ctx))
+UIController.Register("ExpeditionResult", require(UIFolder.ExpeditionResultWindow).new(ctx))
 local starter = require(UIFolder.StarterSelect).new(ctx)
 UIController.Register("Starter", starter)
 local reveal = require(UIFolder.RevealOverlay).new(ctx)
@@ -57,11 +64,18 @@ BuildingController.OpenInspect = function(ownerUserId)
 	UIController.Open("Inspect", ownerUserId)
 end
 BuildingController.Notify = UIController.Notify
+RegionController.Notify = UIController.Notify
+GuardianController.Notify = UIController.Notify
+CreatureController.OnBefriend = function(wildId, speciesId)
+	UIController.Open("Befriend", { WildId = wildId, Species = speciesId })
+end
 
 CreatureController.Start()
 BuildingController.Start()
 PlacementController.Start()
 TutorialController.Start()
+RegionController.Start()
+GuardianController.Start()
 InputController.Start(UIController, PlacementController)
 
 -- First-time flow: pick a starter (modal until chosen).
@@ -111,5 +125,12 @@ Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: a
 		)
 	elseif name == "Sold" then
 		AudioController.Play("Sell")
+	elseif name == "Discovered" then
+		AudioController.Play("QuestComplete")
+	elseif name == "Scorched" then
+		EffectsController.Flash(Color3.fromRGB(255, 90, 30))
+	elseif name == "ExpeditionResult" then
+		UIController.Open("ExpeditionResult", payload)
+		AudioController.Play(if payload.Success then "QuestComplete" else "Notify")
 	end
 end)

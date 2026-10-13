@@ -38,16 +38,25 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 - Creature nicknames exist in the data but there's no rename UI. Renaming needs `TextService` filtering.
 - The plot count is fixed at 6. Set the place's max players to 6.
 
-## Phase 3: world and exploration
+## Phase 3: world and exploration ✔ built
 
-1. Emberfall Basin region: terrain, landmarks, lighting and its heat mechanic (`BiomeConfig`).
-2. Resource nodes. These are server-validated gather actions with distance checks and respawn timers.
-3. Wild encounters and rescue missions that grant creatures (`CreatureService.Grant(..., "Wild")`).
-4. Expeditions (`ExpeditionService`):
-   - Pick creatures, supplies and a destination. Timed or active.
-   - Success uses Exploration, CombatPower and Luck, plus player choices.
-   - Fatigue is a saved field on creatures.
-5. The first guardian fight with telegraphs and phases, and region quests.
+- **Region.** `RegionConfig` (layout, heat tuning, vent and eruption cycles on the shared server clock), `World/EmberfallBuilder` (terrain, lava, bridges, pools, vents, landmarks, caldera, gates) and `RegionService` (travel, heat, rescue, discoveries). The client mood and vent visuals live in `RegionController`.
+- **Resource nodes.** `NodeService`: per-player cooldowns, distance checks and companion bonus rolls.
+- **Wild encounters.** `WildService` spawns from a weighted table and an eruption-only Pyrewing. Befriending consumes an Ember Lure (`CraftingService`, `CraftConfig`). The chance comes from `Shared/Util/Encounter`.
+- **Expeditions.** `ExpeditionService`, `ExpeditionConfig` and `Shared/Util/Expedition`: seeded outcomes, approaches, supplies, rest (the saved `RestUntil` field on creatures) and an Expedition Portal with 1–3 slots.
+- **Guardian.** `GuardianService` and `CombatConfig`: three phases, telegraphed slams that add heat, health scaling with players, contribution-shared rewards with a cooldown, and a first-win creature. `GuardianController` draws it.
+- **Interface.** World Map with a region journal (M), Befriend window, expedition planner and report, Trading Post crafting, companion controls, and the heat and combat HUD.
+- **Content and data.** 7 region quests, Emberstone, Ember Lure, Pyrewing and Coilhorn. Schema v3.
+
+**Open for Phase 3:** the manual checklist in [TESTING.md](TESTING.md). The region geometry, heat feel, guardian balance and companion following have only been checked by reading the code, not by playing.
+
+### Phase 3 known limitations
+
+- Guardian combat is "stand near and press attack" with your companion's stats. There's no dodging the guardian except walking out of the telegraphs.
+- Wild creatures wander in straight lines and pass through rocks. Companions teleport to you if they fall more than 60 studs behind.
+- Rescue missions (the spec's "wild encounters and rescue missions") are covered by the expedition events; there's no separate rescue mode.
+- Only Emberfall is built. Other biomes show in the map as later updates.
+- Boltbug, Runemoth, Shadeling and Bubblot moved to Phase 4 because their abilities need Phase 4 systems.
 
 ## Phase 4: advanced empire systems
 

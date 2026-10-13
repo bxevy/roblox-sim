@@ -2,13 +2,16 @@
 -- The always-on HUD: wallet, empire tier, quest tracker, menu buttons, creature bar,
 -- placement controls and the loading / save-status indicators.
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BuildingConfig = require(Shared.Config.BuildingConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
+local RegionConfig = require(Shared.Config.RegionConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local Format = require(Shared.Util.Format)
@@ -250,7 +253,8 @@ function Hud.new(ctx: any)
 	menuButton("⌂", "Build", "B", "Build", 2)
 	menuButton("✎", "Quests", "J", "Quests", 3)
 	menuButton("▤", "Inventory", "G", "Inventory", 4)
-	menuButton("⚙", "Settings", "P", "Settings", 5)
+	menuButton("✈", "Map", "M", "Map", 5)
+	menuButton("⚙", "Settings", "P", "Settings", 6)
 
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {
@@ -433,6 +437,163 @@ function Hud.new(ctx: any)
 		Theme.SetEnabled(confirm, info.Valid)
 	end
 	Placement.Notify = ctx.Notify
+
+	------------------------------------------------------------------ Region (heat, eruption, home)
+	local localPlayer = Players.LocalPlayer
+	local regionPanel = Theme.Panel(gui, {
+		Name = "RegionPanel",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 60),
+		Size = UDim2.fromOffset(340, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	})
+	Theme.Padding(regionPanel, 8, 12)
+	Theme.List(regionPanel, 4)
+	local regionTitle = Theme.Text(regionPanel, "", 15, { FontFace = Theme.Heavy })
+	local heatRow = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 16) }, regionPanel)
+	local heatBar, setHeat = Theme.Bar(heatRow, Color3.fromRGB(255, 120, 50), 12)
+	heatBar.Size = UDim2.new(1, -110, 0, 12)
+	heatBar.Position = UDim2.fromOffset(0, 2)
+	local heatText = Theme.Text(heatRow, "", 13, {
+		FontFace = Theme.Bold,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromOffset(105, 16),
+		AutomaticSize = Enum.AutomaticSize.None,
+		TextXAlignment = Enum.TextXAlignment.Right,
+	})
+	local eruptionText = Theme.Text(regionPanel, "", 12, { TextColor3 = Theme.Colors.Muted })
+	local homeButton =
+		Theme.Button(regionPanel, "⌂ Return home", "Secondary", { Size = UDim2.new(1, 0, 0, 32), TextSize = 14 })
+	homeButton.Activated:Connect(function()
+		local ok, result = ctx.Request("Travel", "Home")
+		if not ok then
+			ctx.Notify(result, "Error")
+		end
+	end)
+	local function refreshRegion()
+		local regionId = localPlayer:GetAttribute("Region") :: string?
+		local region = regionId and regionId ~= "" and RegionConfig.Regions[regionId] or nil
+		regionPanel.Visible = region ~= nil
+		if not region then
+			return
+		end
+		regionTitle.Text = region.Name
+		local heat = (localPlayer:GetAttribute("Heat") :: number?) or 0
+		setHeat(heat / region.Heat.Max)
+		local word = if heat >= 80 then "SCORCHING" elseif heat >= 50 then "Hot" else "Warm"
+		heatText.Text = `♨ {word} {math.floor(heat)}%`
+		heatText.TextColor3 = if heat >= 80
+			then Theme.Colors.Danger
+			elseif heat >= 50 then Theme.Colors.Warning
+			else Theme.Colors.Text
+		local now = Workspace:GetServerTimeNow()
+		if RegionConfig.EruptionActive(region, now) then
+			eruptionText.Text =
+				`<font color="#{Theme.Colors.Danger:ToHex()}"><b>ERUPTION</b></font> · ends in {Format.Duration(
+					region.Eruption.Duration - now % region.Eruption.Period
+				)}`
+		else
+			eruptionText.Text =
+				`Next eruption in {Format.Duration(RegionConfig.NextEruptionIn(region, now))} · cool off in the blue pools`
+		end
+	end
+	localPlayer:GetAttributeChangedSignal("Heat"):Connect(refreshRegion)
+	localPlayer:GetAttributeChangedSignal("Region"):Connect(refreshRegion)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			refreshRegion()
+		end
+	end)
+
+	------------------------------------------------------------------ Guardian combat bar
+	local Guardian = ctx.Controllers.Guardian
+	local combat = Theme.Panel(gui, {
+		Name = "CombatBar",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -134),
+		Size = UDim2.fromOffset(460, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Visible = false,
+	})
+	Theme.Padding(combat, 10, 14)
+	Theme.List(combat, 6, nil, Enum.HorizontalAlignment.Center)
+	local bossName = Theme.Text(combat, "", 18, { FontFace = Theme.Heavy, TextXAlignment = Enum.TextXAlignment.Center })
+	local _, setBoss = Theme.Bar(combat, Theme.Colors.Danger, 14)
+	local bossText =
+		Theme.Text(combat, "", 13, { TextColor3 = Theme.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Center })
+	local combatButtons = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 42) }, combat)
+	Theme.List(combatButtons, 10, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+	local attackButton = Theme.Button(combatButtons, "", "Primary", { Size = UDim2.fromOffset(190, 40), TextSize = 15 })
+	local specialButton = Theme.Button(combatButtons, "", "Gold", { Size = UDim2.fromOffset(190, 40), TextSize = 15 })
+	attackButton.Activated:Connect(function()
+		Guardian.Attack("Attack")
+	end)
+	specialButton.Activated:Connect(function()
+		Guardian.Attack("Special")
+	end)
+	local companionHint =
+		Theme.Text(combat, "", 12, { TextColor3 = Theme.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Center })
+	local function companionInfo(): any
+		local creatures = State.Get("Creatures")
+		for _, c in creatures and creatures.List or {} do
+			if c.Companion then
+				return c
+			end
+		end
+		return nil
+	end
+	Guardian.OnNearChanged = function(isNear: boolean, info: any?)
+		combat.Visible = isNear
+		if info then
+			Guardian.OnHealth(info)
+		end
+	end
+	Guardian.OnHealth = function(info: any)
+		bossName.Text = info.Name or "Guardian"
+		if info.Alive then
+			setBoss(info.Health / math.max(info.MaxHealth, 1))
+			local phaseText = if info.Phase >= 3 then "ENRAGED" elseif info.Phase == 2 then "Furious" else "Watchful"
+			bossText.Text =
+				`{Format.Number(info.Health)} / {Format.Number(info.MaxHealth)} · {phaseText} · dodge the glowing circles!`
+		else
+			setBoss(0)
+			bossText.Text =
+				`Defeated · returns in {Format.Duration(math.max(info.RespawnAt - Workspace:GetServerTimeNow(), 0))}`
+		end
+	end
+	local keys = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
+	task.spawn(function()
+		while true do
+			task.wait(0.2)
+			if combat.Visible then
+				local companion = companionInfo()
+				local cds = Guardian.Cooldowns()
+				local now = os.clock()
+				local support = false
+				if companion then
+					local species = CreatureConfig.Species[companion.Species]
+					support = species and (species.Family == "Verdant" or species.Family == "Tideborn") or false
+					companionHint.Text =
+						`Fighting with {companion.Name} (Lv {companion.Level}). Water and crystal creatures hit harder; fire creatures barely scratch her.`
+				else
+					companionHint.Text = "You need a companion: open Creatures and choose “Take with me”."
+				end
+				local a = cds.Attack - now
+				local sp = cds.Special - now
+				attackButton.Text = if a > 0
+					then `⟳ {string.format("%.1f", a)}s`
+					else "⚔ Attack" .. (if keys then " [1]" else "")
+				specialButton.Text = if sp > 0
+					then `⟳ {math.ceil(sp)}s`
+					else (if support then "❄ Cool allies" else "✦ Special") .. (if keys then " [2]" else "")
+				Theme.SetEnabled(attackButton, a <= 0 and companion ~= nil)
+				Theme.SetEnabled(specialButton, sp <= 0 and companion ~= nil)
+			end
+		end
+	end)
 
 	------------------------------------------------------------------ Loading veil
 	local veil = Theme.Make("Frame", {

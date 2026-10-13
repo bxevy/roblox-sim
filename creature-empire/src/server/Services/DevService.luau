@@ -9,6 +9,8 @@
 --   petals <n>          add moonpetals (up to silo capacity)
 --   essence <n>         add essence
 --   crystals <n>        add raw and refined crystal (up to silo capacity)
+--   ember <n>           add emberstone (up to silo capacity) and 5 ember lures
+--   finishexpeditions   bring every active expedition home now (and end creature rest)
 --   levelup             +5 levels and +200 work cycles per job for every creature
 --   grant <speciesId>   add a creature
 --   offline <minutes>   pretend you were away (sets LastOnline back; rejoin to apply)
@@ -66,6 +68,31 @@ commands.crystals = function(player, n)
 	return true, `Added {raw} raw and {refined} refined crystal (up to silo capacity).`
 end
 
+commands.ember = function(player, n)
+	local amount = tonumber(n) or 50
+	local stone = EconomyService.Add(player, "Emberstone", amount, "Dev")
+	local lures = EconomyService.Add(player, "EmberLure", 5, "Dev")
+	return true, `Added {stone} emberstone and {lures} ember lures.`
+end
+
+commands.finishexpeditions = function(player)
+	local data = PlayerDataService.GetData(player)
+	if not data then
+		return false, "Not loaded."
+	end
+	local now = os.time()
+	for _, record in data.Expeditions do
+		record.StartedAt -= math.max(record.EndsAt - now, 0)
+		record.EndsAt = math.min(record.EndsAt, now)
+	end
+	for _, creature in data.Creatures do
+		creature.RestUntil = 0
+	end
+	PlayerDataService.MarkDirty(player)
+	StateService.Push(player, "Expeditions", "Creatures")
+	return true, "Every expedition is back. Claim them at the Expedition Portal."
+end
+
 commands.levelup = function(player)
 	local data = PlayerDataService.GetData(player)
 	if not data then
@@ -73,7 +100,7 @@ commands.levelup = function(player)
 	end
 	for _, creature in data.Creatures do
 		creature.Level = math.min(creature.Level + 5, 30)
-		for _, job in { "Farmer", "Miner", "Smelter", "Alchemist" } do
+		for _, job in { "Farmer", "Miner", "Smelter", "Alchemist", "Explorer" } do
 			creature.JobCycles[job] = (creature.JobCycles[job] or 0) + 200
 		end
 	end

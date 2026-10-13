@@ -107,6 +107,8 @@ export type BuildingLevel = {
 	Capacity: { [string]: number }?,
 	-- Habitat
 	CreatureCapacity: number?,
+	-- Expedition Portal
+	ExpeditionSlots: number?,
 	-- Empire Core
 	BuildingLimits: { [string]: number }?,
 	EmpireBonus: number?,
@@ -143,11 +145,12 @@ export type RecipeDef = {
 export type ResourceDef = {
 	Id: string,
 	Name: string,
-	Kind: "Currency" | "Material",
+	Kind: "Currency" | "Material" | "Item",
 	Description: string,
 	Icon: string, -- short glyph used until an image asset is configured
 	Color: Color3,
 	SellPrice: number?, -- Gold per unit at the Trading Post
+	MaxStack: number?, -- items: how many you can carry (materials use silo capacity)
 	Image: string?, -- rbxassetid, see AssetConfig
 }
 
@@ -185,6 +188,8 @@ export type CreatureRecord = {
 	Tradable: boolean,
 	WorkCycles: number, -- lifetime count
 	JobCycles: { [string]: number }, -- work cycles per job, used by evolution requirements
+	Expedition: string?, -- id of the expedition it's on (can't work or follow meanwhile)
+	RestUntil: number, -- os.time when it can go on another expedition
 	AbilityReadyAt: number, -- os.time when the active ability can be used again (saved so rejoining does not reset it)
 }
 
@@ -229,6 +234,21 @@ export type PlayerData = {
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids
+	Companion: string?, -- creature id following the player
+	Expeditions: { [string]: ExpeditionRecord },
+	Discoveries: { [string]: number }, -- landmark id -> os.time discovered
+	Guardians: { [string]: { Defeats: number, LastRewardAt: number } },
+}
+
+export type ExpeditionRecord = {
+	Id: string,
+	Destination: string,
+	Creatures: { string },
+	StartedAt: number,
+	EndsAt: number,
+	Approach: string,
+	Supplies: { string },
+	Seed: number,
 }
 
 return nil

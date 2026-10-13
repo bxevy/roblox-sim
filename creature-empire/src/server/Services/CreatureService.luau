@@ -60,6 +60,9 @@ local function updateAnchor(player: Player, creature: Types.CreatureRecord)
 	a:SetAttribute("Stage", creature.Stage)
 	a:SetAttribute("Mutation", creature.Mutation or "")
 	a:SetAttribute("Assignment", creature.Assignment or "")
+	local data = PlayerDataService.GetData(player)
+	a:SetAttribute("Companion", data ~= nil and data.Companion == creature.Id)
+	a:SetAttribute("Away", creature.Expedition ~= nil) -- on an expedition: not shown on the plot
 	a:SetAttribute("OwnerUserId", player.UserId)
 end
 
@@ -94,6 +97,7 @@ function CreatureService.Grant(
 		Tradable = if tradable == nil then false else tradable,
 		WorkCycles = 0,
 		JobCycles = {},
+		RestUntil = 0,
 		AbilityReadyAt = 0,
 	}
 	data.Creatures[record.Id] = record
@@ -167,6 +171,14 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 	if creature.Assignment == buildingId then
 		return true, nil
 	end
+	if creature.Expedition then
+		return false, "It's away on an expedition."
+	end
+	if buildingId ~= nil and data.Companion == creatureId then
+		-- Going to work: it stops following you.
+		data.Companion = nil
+		StateService.Push(player, "Exploration")
+	end
 	if buildingId == nil then
 		creature.Assignment = nil
 	else
@@ -206,6 +218,44 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 	return true, nil
 end
 
+local function setCompanion(player: Player, creatureId: string?): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local previous = data.Companion and data.Creatures[data.Companion]
+	if creatureId == nil then
+		data.Companion = nil
+	else
+		local creature = data.Creatures[creatureId]
+		if not creature then
+			return false, "That creature isn't yours."
+		end
+		if creature.Expedition then
+			return false, "It's away on an expedition."
+		end
+		if creature.Assignment then
+			creature.Assignment = nil -- leaves its job to come with you
+			ProductionService.Invalidate(player)
+		end
+		data.Companion = creatureId
+		updateAnchor(player, creature)
+	end
+	if previous then
+		updateAnchor(player, previous)
+	end
+	PlayerDataService.MarkDirty(player)
+	StateService.Push(player, "Exploration", "Creatures")
+	return true, nil
+end
+
+-- All anchors (after expeditions start or end).
+function CreatureService.RefreshAll(player: Player)
+	local data = PlayerDataService.GetData(player)
+	if data then
+		for _, creature in data.Creatures do
+			updateAnchor(player, creature)
+		end
+	end
+end
+
 local function useAbility(player: Player, creatureId: string): (boolean, any)
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
 	local creature = data.Creatures[creatureId]
@@ -215,6 +265,9 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 	local species = CreatureConfig.Species[creature.Species]
 	if not species then
 		return false, "Unknown creature."
+	end
+	if creature.Expedition then
+		return false, "It's away on an expedition."
 	end
 	local ability = species.Active
 	if not IMPLEMENTED_ABILITIES[ability.Kind] then
@@ -306,7 +359,10 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 			local building = creature.Assignment and data.Buildings[creature.Assignment]
 			local def = building and BuildingConfig[building.Type]
 			local job = def and def.Job and JobConfig[def.Job]
-			local task = "Relaxing in the habitat"
+			local task = if data.Companion == id
+				then "Following you"
+				elseif creature.Expedition then "Away on an expedition"
+				else "Relaxing in the habitat"
 			if job and building then
 				local rate = ProductionService.GetRate(player, building.Id)
 				local full = rate and (building.Stored[rate.Output] or 0) >= rate.Capacity
@@ -335,6 +391,9 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 				Tradable = creature.Tradable,
 				WorkCycles = creature.WorkCycles,
 				JobCycles = table.clone(creature.JobCycles),
+				Expedition = creature.Expedition,
+				RestIn = math.max(creature.RestUntil - now, 0),
+				Companion = data.Companion == id,
 				ObtainedAt = creature.ObtainedAt,
 			}
 		end
@@ -371,6 +430,7 @@ function CreatureService.Start()
 	Net.Handle("ChooseStarter", { Rate = { 2, 0.5 }, Args = { Check.Id } }, chooseStarter)
 	Net.Handle("AssignCreature", { Rate = { 6, 2 }, Args = { Check.Id, Check.OptionalId } }, assign)
 	Net.Handle("UseAbility", { Rate = { 4, 1 }, Args = { Check.Id } }, useAbility)
+	Net.Handle("SetCompanion", { Rate = { 4, 1 }, Args = { Check.OptionalId } }, setCompanion)
 end
 
 return CreatureService

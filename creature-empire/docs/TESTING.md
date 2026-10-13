@@ -55,6 +55,20 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Rejoin: pity, expansions, evolutions, job cycles and moved buildings all persist.
 - [ ] Load an account saved by the Phase 1 build. It migrates to v2, its creatures keep their farming work as Farmer cycles, and nothing is lost.
 
+### Phase 3: Emberfall Basin, expeditions, guardian
+- [ ] Below core tier 2, the plaza gate refuses travel with a clear message. At tier 2 the gate (and the Map's Travel button) puts you at the basin's arrival point, on solid ground.
+- [ ] In the basin: the sky turns ash-orange, ash drifts, and the HUD shows a heat bar and the next eruption time. *Return home* works from anywhere.
+- [ ] Heat rises slowly, quickly on lava, and jumps at an erupting vent (a red flash). Vents glow yellow before they fire. Standing in a blue pool cools you. At 100% you're carried back to the gate with a message and the heat resets to 30%.
+- [ ] Take Cindercub as a companion: it follows you through the gate, and heat rises about half as fast.
+- [ ] Gather from an Emberstone deposit (hold E). Emberstone appears in the silo. The deposit dims and can't be gathered again until its timer ends. Gathering from 20+ studs away (command bar) is refused.
+- [ ] Find all 5 landmarks. Each gives a reward toast once, and the Map journal ticks it off. The grotto shows as ??? until found.
+- [ ] *Developer → +50 emberstone*, craft an Ember Lure at the Trading Post. Throw it at a wild creature: the window shows the chance first, the creature leaves either way, and a success plays the reveal.
+- [ ] Wait for an eruption (the HUD timer counts down): the mood darkens and a Pyrewing appears near the overlook.
+- [ ] Build an Expedition Portal. Pick a team, approach and supplies: the chance changes live. Launch: the creatures leave their jobs and vanish from the plot. *Developer → Finish expeditions*, claim: the report lists events and loot, creatures return and rest (or not, with Rations).
+- [ ] Rejoin with an expedition running: it's still running, and the result after claiming matches what it would have been (seeded).
+- [ ] Guardian: walk into the caldera with a companion. The combat bar appears. 1/2 attack, slam circles fill before impact, getting hit adds heat. With two players the guardian has more health and both get rewards. The first win grants a Magmaul. She returns after 3 minutes.
+- [ ] Load a Phase 2 save. It migrates to v3 without losing anything.
+
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.
 - [ ] When the silo is full, collecting leaves the remainder in the farm with a clear message.
@@ -80,7 +94,7 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] `Sell("Moonpetal", -5)`, `Sell("Gold", 10)` and `UseAbility` on another player's creature id are all refused.
 
 ### Input and accessibility
-- [ ] Keyboard shortcuts C / B / J / P / G toggle windows and don't fire while typing in chat.
+- [ ] Keyboard shortcuts C / B / J / P / G / M toggle windows and don't fire while typing in chat.
 - [ ] Gamepad: D-pad opens windows, B closes, selection highlight is visible, and placement works with Y / A / B.
 - [ ] Touch (device emulator, phone sizes): HUD readable, windows fit, tap-to-place works.
 - [ ] Settings: volumes apply, VFX Off removes particles and motion, Reduced Motion stops bobbing and popping, Fast reveals skips the build-up.

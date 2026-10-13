@@ -88,13 +88,14 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 			},
 			{
 				Cost = gold(600, 3.6, 2),
-				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter and Evolution Chamber, +5% creature yield.",
+				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter, Evolution Chamber and Expedition Portal, +5% creature yield. Opens Emberfall Basin.",
 				BuildingLimits = {
 					MoonpetalFarm = 3,
 					Hatchery = 1,
 					CrystalMine = 1,
 					CrystalSmelter = 1,
 					EvolutionChamber = 1,
+					ExpeditionPortal = 1,
 				},
 				EmpireBonus = 0.05,
 			},
@@ -108,6 +109,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 					CrystalSmelter = 1,
 					EssenceCondenser = 1,
 					EvolutionChamber = 1,
+					ExpeditionPortal = 1,
 				},
 				EmpireBonus = 0.1,
 			},
@@ -121,6 +123,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 					CrystalSmelter = 2,
 					EssenceCondenser = 1,
 					EvolutionChamber = 1,
+					ExpeditionPortal = 1,
 				},
 				EmpireBonus = 0.15,
 			},
@@ -134,6 +137,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 					CrystalSmelter = 2,
 					EssenceCondenser = 2,
 					EvolutionChamber = 1,
+					ExpeditionPortal = 1,
 				},
 				EmpireBonus = 0.2,
 			},
@@ -250,6 +254,31 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		}),
 	},
 
+	ExpeditionPortal = {
+		Id = "ExpeditionPortal",
+		Name = "Expedition Portal",
+		Category = "Research",
+		Description = "Sends teams of creatures on timed expeditions. Each level runs one more expedition at a time.",
+		Footprint = { X = 4, Z = 4 },
+		Placeable = true,
+		PlaceCost = { Gold = 2000, Emberstone = 10 },
+		PlaceGrowth = 1,
+		Phase = 3,
+		Levels = {
+			{ ExpeditionSlots = 1 },
+			{
+				Cost = goldAnd(4000, 2.5, 2, "Emberstone", 30),
+				Description = "Run 2 expeditions at once.",
+				ExpeditionSlots = 2,
+			},
+			{
+				Cost = goldAnd(4000, 2.5, 3, "Emberstone", 30),
+				Description = "Run 3 expeditions at once.",
+				ExpeditionSlots = 3,
+			},
+		},
+	},
+
 	Hatchery = {
 		Id = "Hatchery",
 		Name = "Hatchery",
@@ -286,26 +315,26 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Fixed = true,
 		Phase = 1,
 		Levels = {
-			{ Capacity = { Moonpetal = 150, RawCrystal = 120, RefinedCrystal = 40 } },
+			{ Capacity = { Moonpetal = 150, RawCrystal = 120, RefinedCrystal = 40, Emberstone = 60 } },
 			{
 				Cost = gold(100, 2.4, 2),
 				Description = "Bigger tank: about twice the room for everything.",
-				Capacity = { Moonpetal = 300, RawCrystal = 250, RefinedCrystal = 80 },
+				Capacity = { Moonpetal = 300, RawCrystal = 250, RefinedCrystal = 80, Emberstone = 120 },
 			},
 			{
 				Cost = gold(100, 2.4, 3),
 				Description = "Adds a second tank.",
-				Capacity = { Moonpetal = 650, RawCrystal = 550, RefinedCrystal = 180 },
+				Capacity = { Moonpetal = 650, RawCrystal = 550, RefinedCrystal = 180, Emberstone = 260 },
 			},
 			{
 				Cost = goldAnd(100, 2.4, 4, "RefinedCrystal", 5),
 				Description = "Reinforced tanks.",
-				Capacity = { Moonpetal = 1400, RawCrystal = 1200, RefinedCrystal = 400 },
+				Capacity = { Moonpetal = 1400, RawCrystal = 1200, RefinedCrystal = 400, Emberstone = 550 },
 			},
 			{
 				Cost = goldAnd(100, 2.4, 5, "RefinedCrystal", 5),
 				Description = "Crowned with a glowing cap.",
-				Capacity = { Moonpetal = 3000, RawCrystal = 2600, RefinedCrystal = 900 },
+				Capacity = { Moonpetal = 3000, RawCrystal = 2600, RefinedCrystal = 900, Emberstone = 1200 },
 			},
 		},
 	},

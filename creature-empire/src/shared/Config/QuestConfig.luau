@@ -11,6 +11,13 @@
 --   EarnGold    (Amount)                gold earned during this step
 --   Hatch       (Amount)                eggs hatched during this step
 --   Evolve      (Amount)                creatures evolved during this step
+--   Visit       (Target, Amount)        times you entered a region during this step
+--   Gather      (Target, Amount)        units gathered from resource nodes during this step
+--   Discover    (Amount)                landmarks discovered in total
+--   Craft       (Target, Amount)        items crafted during this step
+--   Befriend    (Amount)                wild creatures befriended during this step
+--   Expedition  (Amount)                expeditions completed during this step
+--   Guardian    (Target, Amount)        guardian defeats during this step
 --
 -- `Pointer` is the building type the tutorial arrow points at.
 
@@ -176,6 +183,69 @@ QuestConfig.Tutorial = {
 		Amount = 3,
 		Reward = { Gold = 1500, Essence = 40 },
 		Pointer = "EmpireCore",
+	},
+	-- Update 3: Emberfall Basin
+	{
+		Id = "Basin",
+		Title = "Into the heat",
+		Description = "Step through the Emberfall Gate in the plaza (press M for the map). Watch your heat meter!",
+		Kind = "Visit",
+		Target = "Emberfall",
+		Amount = 1,
+		Reward = { Gold = 500 },
+	},
+	{
+		Id = "Gather",
+		Title = "Warm stones",
+		Description = "Gather 10 Emberstone from deposits in the basin (hold the prompt).",
+		Kind = "Gather",
+		Target = "Emberstone",
+		Amount = 10,
+		Reward = { Gold = 400 },
+	},
+	{
+		Id = "Landmarks",
+		Title = "Cartographer",
+		Description = "Discover 3 landmarks in Emberfall Basin.",
+		Kind = "Discover",
+		Amount = 3,
+		Reward = { Essence = 30 },
+	},
+	{
+		Id = "Lure",
+		Title = "Something sweet",
+		Description = "Craft an Ember Lure at your Trading Post.",
+		Kind = "Craft",
+		Target = "EmberLure",
+		Amount = 1,
+		Reward = { Gold = 300 },
+		Pointer = "TradingPost",
+	},
+	{
+		Id = "Befriend",
+		Title = "New friends",
+		Description = "Befriend a wild creature in the basin with a lure.",
+		Kind = "Befriend",
+		Amount = 1,
+		Reward = { Gold = 800, Essence = 20 },
+	},
+	{
+		Id = "Expedition",
+		Title = "Beyond the walls",
+		Description = "Build an Expedition Portal and bring a team home from an expedition.",
+		Kind = "Expedition",
+		Amount = 1,
+		Reward = { Gold = 1500 },
+		Pointer = "ExpeditionPortal",
+	},
+	{
+		Id = "Guardian",
+		Title = "The Matriarch",
+		Description = "Defeat the Magmaul Matriarch in the Guardian's Caldera (bring friends, or a Tideborn companion).",
+		Kind = "Guardian",
+		Target = "Matriarch",
+		Amount = 1,
+		Reward = { Gold = 3000, Shards = 2 },
 	},
 } :: { Types.QuestStep }
 

@@ -76,6 +76,31 @@ local Evaluators: { [string]: Evaluator } = {
 	Evolve = function(data)
 		return data.Quests.Progress
 	end,
+	Visit = function(data)
+		return data.Quests.Progress
+	end,
+	Gather = function(data)
+		return data.Quests.Progress
+	end,
+	Craft = function(data)
+		return data.Quests.Progress
+	end,
+	Befriend = function(data)
+		return data.Quests.Progress
+	end,
+	Expedition = function(data)
+		return data.Quests.Progress
+	end,
+	Guardian = function(data)
+		return data.Quests.Progress
+	end,
+	Discover = function(data)
+		local count = 0
+		for _ in data.Discoveries do
+			count += 1
+		end
+		return count
+	end,
 }
 QuestService.Evaluators = Evaluators
 
@@ -225,6 +250,25 @@ function QuestService.Start()
 	end)
 	Events.Evolved:Connect(function(player)
 		addCounter(player, "Evolve", nil, 1)
+	end)
+	Events.RegionEntered:Connect(function(player, regionId)
+		addCounter(player, "Visit", regionId, 1)
+	end)
+	Events.Gathered:Connect(function(player, resource, amount)
+		addCounter(player, "Gather", resource, amount)
+	end)
+	Events.Discovered:Connect(refresh)
+	Events.Crafted:Connect(function(player, item, amount)
+		addCounter(player, "Craft", item, amount)
+	end)
+	Events.Befriended:Connect(function(player)
+		addCounter(player, "Befriend", nil, 1)
+	end)
+	Events.ExpeditionCompleted:Connect(function(player)
+		addCounter(player, "Expedition", nil, 1)
+	end)
+	Events.GuardianDefeated:Connect(function(player, guardianId)
+		addCounter(player, "Guardian", guardianId, 1)
 	end)
 	Events.CurrencyEarned:Connect(function(player, currency, amount, reason)
 		-- Quest rewards don't count towards "earn gold" steps.

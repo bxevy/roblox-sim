@@ -15,10 +15,11 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local QuestConfig = require(Shared.Config.QuestConfig)
+local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 2
+Schema.CURRENT_VERSION = 3
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -90,6 +91,10 @@ function Schema.Default(now: number): Types.PlayerData
 		Receipts = {},
 		Pity = {},
 		Expansions = {},
+		Companion = nil,
+		Expeditions = {},
+		Discoveries = {},
+		Guardians = {},
 	}
 end
 
@@ -116,6 +121,19 @@ Schema.Migrations = {
 		end
 		data.Pity = if type(data.Pity) == "table" then data.Pity else {}
 		data.Expansions = if type(data.Expansions) == "table" then data.Expansions else {}
+	end,
+	-- v2 -> v3 (update 3): companion, expeditions, landmark discoveries, guardian records.
+	[2] = function(data: { [string]: any })
+		data.Expeditions = if type(data.Expeditions) == "table" then data.Expeditions else {}
+		data.Discoveries = if type(data.Discoveries) == "table" then data.Discoveries else {}
+		data.Guardians = if type(data.Guardians) == "table" then data.Guardians else {}
+		if type(data.Creatures) == "table" then
+			for _, creature in data.Creatures do
+				if type(creature) == "table" and type(creature.RestUntil) ~= "number" then
+					creature.RestUntil = 0
+				end
+			end
+		end
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
@@ -237,6 +255,10 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 				record.JobCycles[job] = cleanAmount(count)
 			end
 		end
+		record.RestUntil = if isFiniteNumber(record.RestUntil) then math.min(record.RestUntil, now + 86400) else 0
+		if record.Expedition ~= nil and type(record.Expedition) ~= "string" then
+			record.Expedition = nil
+		end
 		record.AbilityReadyAt = if isFiniteNumber(record.AbilityReadyAt)
 			then math.min(record.AbilityReadyAt, now + 3600)
 			else 0
@@ -305,7 +327,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	if data.StarterChosen ~= nil and type(data.StarterChosen) ~= "string" then
 		data.StarterChosen = nil
 	end
-	for _, key in { "Collection", "Stats", "Receipts", "Pity", "Expansions" } do
+	for _, key in { "Collection", "Stats", "Receipts", "Pity", "Expansions", "Expeditions", "Discoveries", "Guardians" } do
 		if type(data[key]) ~= "table" then
 			data[key] = (defaults :: any)[key]
 			fix(key .. " missing")
@@ -317,6 +339,67 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	for eggId, count in data.Pity do
 		data.Pity[eggId] = cleanInteger(count, 0, 1000, 0)
 	end
+	-- Expeditions: drop broken ones and free their creatures; creatures can only be on an
+	-- expedition that exists and lists them.
+	for id, expedition in data.Expeditions do
+		local valid = type(id) == "string"
+			and type(expedition) == "table"
+			and type(expedition.Destination) == "string"
+			and ExpeditionConfig.Destinations[expedition.Destination] ~= nil
+			and type(expedition.Creatures) == "table"
+			and isFiniteNumber(expedition.EndsAt)
+			and isFiniteNumber(expedition.Seed)
+		if valid then
+			expedition.Id = id
+			expedition.Approach = if type(expedition.Approach) == "string" then expedition.Approach else "Balanced"
+			expedition.Supplies = if type(expedition.Supplies) == "table" then expedition.Supplies else {}
+			expedition.StartedAt = if isFiniteNumber(expedition.StartedAt) then expedition.StartedAt else now
+			local members = {}
+			for _, creatureId in expedition.Creatures do
+				if type(creatureId) == "string" and data.Creatures[creatureId] then
+					table.insert(members, creatureId)
+				end
+			end
+			expedition.Creatures = members
+			if #members == 0 then
+				valid = false
+			end
+		end
+		if not valid then
+			data.Expeditions[id] = nil
+			fix(`Expedition {tostring(id)} removed`)
+		end
+	end
+	for id, record in data.Creatures do
+		local expedition = record.Expedition and data.Expeditions[record.Expedition]
+		if record.Expedition and (not expedition or not table.find(expedition.Creatures, id)) then
+			record.Expedition = nil
+			fix(`Creature {id} expedition cleared`)
+		end
+		if record.Expedition then
+			record.Assignment = nil
+		end
+	end
+	if data.Companion ~= nil then
+		local companion = type(data.Companion) == "string" and data.Creatures[data.Companion]
+		if not companion or companion.Expedition or companion.Assignment then
+			data.Companion = nil
+		end
+	end
+	for id, at in data.Discoveries do
+		if type(id) ~= "string" or not isFiniteNumber(at) then
+			data.Discoveries[id] = nil
+		end
+	end
+	for id, record in data.Guardians do
+		if type(record) ~= "table" then
+			data.Guardians[id] = nil
+		else
+			record.Defeats = cleanInteger(record.Defeats, 0, 1e6, 0)
+			record.LastRewardAt = if isFiniteNumber(record.LastRewardAt) then record.LastRewardAt else 0
+		end
+	end
+
 	for zoneId, owned in data.Expansions do
 		if owned ~= true or not PlotConfig.Zone(zoneId) then
 			data.Expansions[zoneId] = nil

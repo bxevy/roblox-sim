@@ -29,6 +29,13 @@ local QUEST_KINDS = {
 	"EarnGold",
 	"Hatch",
 	"Evolve",
+	"Visit",
+	"Gather",
+	"Discover",
+	"Craft",
+	"Befriend",
+	"Expedition",
+	"Guardian",
 }
 local PHASE1_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true }
 

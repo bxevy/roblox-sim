@@ -4,7 +4,7 @@ A creature-collecting simulator and empire-building tycoon for Roblox, written i
 
 You start with a small plot, one partner creature and a single Moonpetal Farm. Creatures walk to their jobs and work there. You collect the harvest, sell it, and grow the farm into a glowing empire.
 
-This folder contains **Phase 1 (the playable foundation)** and **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)**. The [roadmap](docs/ROADMAP.md) lists what Phases 3–6 add and exactly what is unfinished.
+This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** and **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)**. The [roadmap](docs/ROADMAP.md) lists what Phases 4–6 add and exactly what is unfinished.
 
 | Doc                                       | What's in it                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------ |
@@ -71,6 +71,24 @@ This folder contains **Phase 1 (the playable foundation)** and **Phase 2 (the co
 - **Inventory window** (G) listing every currency and material, what it's for and its storage limit.
 - **7 more quests** that lead through hatching, mining, smelting, evolving and Empire Core tier 3.
 - **Saves move to schema v2.** Old v1 profiles migrate automatically: earlier work counts as farming, and pity and expansions are added.
+
+## Added in Phase 3
+
+- **Emberfall Basin**, a volcanic region reached through the gate in the central plaza (Empire Core tier 2), or from the World Map (M).
+  - Lava rivers with bridges, cooling pools, timed vents that glow before they erupt, an ash-filled sky and colour grading.
+  - **Heat** builds while you explore and spikes on lava and erupting vents. Blue pools cool you. A fire-resistant companion (Emberkin, Tideborn) slows it. At 100% heat your creatures carry you back to the gate; nothing is lost.
+  - **Eruptions** every 8 minutes for 90 seconds: hotter, darker, and a rare Pyrewing circles the Ashen Overlook.
+- **Resource nodes.** Emberstone deposits and crystal clusters. Hold E to gather; the server checks distance and each node's personal cooldown. A companion can find bonus materials.
+- **Companions.** *Take with me* in the Creatures window: the creature follows you everywhere, helps befriend and gather, and resists heat.
+- **Wild creatures and befriending.** Up to 5 wild creatures roam the basin. Craft an **Ember Lure** at the Trading Post (5 Emberstone + 10 Moonpetals) and throw it. The window shows the exact chance first (rarity, same-family companion +15%, Luck). Win or lose, the creature leaves.
+- **Discoveries.** 5 landmarks, including a hidden grotto (follow the glowing footprints). Each pays a one-time reward and is listed in the map's journal.
+- **Expedition Portal** (new building, tier 2). Send 1–3 creatures to the Foothills (5 min), Tunnels (15 min) or Caldera Rim (45 min).
+  - Pick an approach (Cautious, Balanced, Bold) and supplies (Heat Shield, Rations). The success chance is shown live and uses the team's Exploration, CombatPower and Luck against the recommended stats.
+  - Results are rolled from a seed saved at launch, so rejoining never re-rolls. Failures still return 25% of the loot. Creatures rest afterwards (unless you packed Rations) and gain XP and Explorer cycles. Some trips find new creatures.
+- **Guardian: the Magmaul Matriarch** in the caldera. Cooperative: everyone nearby fights with their companion (1 = Attack, 2 = Special, or the on-screen buttons). Slams are telegraphed with filling circles; step out of them. Three phases, health scales with players, rewards are shared by contribution, and the first win grants a Magmaul.
+- **Emberstone** material, **Pyrewing** and **Coilhorn** become obtainable, and the Explorer job is live.
+- **7 more quests** that lead through the basin, gathering, discoveries, crafting, befriending, an expedition and the guardian.
+- **Saves move to schema v3.** Older profiles migrate automatically.
 
 ## Run it
 

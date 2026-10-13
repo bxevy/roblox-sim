@@ -16,6 +16,10 @@ local Evolution = require(Shared.Util.Evolution)
 local EggConfig = require(Shared.Config.EggConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local Format = require(Shared.Util.Format)
+local Expedition = require(Shared.Util.Expedition)
+local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
+local CraftConfig = require(Shared.Config.CraftConfig)
+local GameConfig = require(Shared.Config.GameConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 local Viewport = require(script.Parent.Viewport)
@@ -354,6 +358,340 @@ function BuildingPanel.new(ctx: any)
 		end
 	end
 
+	local function craftSection()
+		local card = Window.Section(win.Body, "CRAFT", 3)
+		local wallet = State.Get("Wallet")
+		for _, recipe in CraftConfig do
+			if recipe.Phase > GameConfig.Phase then
+				continue
+			end
+			local output = ResourceConfig[recipe.Output]
+			local have = wallet and wallet.Resources[recipe.Output] or 0
+			Theme.Text(
+				card,
+				`{output.Icon} <b>{recipe.Name}</b> (you have {have}) · {Format.Cost(recipe.Inputs, ResourceConfig)}`,
+				16
+			)
+			Theme.Text(card, output.Description or "", 13, { TextColor3 = Theme.Colors.Muted })
+			local affordable = true
+			for id, amount in recipe.Inputs do
+				if (wallet and wallet.Resources[id] or 0) < amount then
+					affordable = false
+				end
+			end
+			local b = Theme.Button(card, "Craft", "Primary", { Size = UDim2.fromOffset(160, 36) })
+			Theme.SetEnabled(b, affordable)
+			b.Activated:Connect(function()
+				if b:GetAttribute("Disabled") then
+					ctx.Notify("You need " .. Format.Cost(recipe.Inputs, ResourceConfig) .. ".", "Error")
+					return
+				end
+				if request("Craft", recipe.Id) then
+					ctx.Notify(`Crafted {recipe.Name}!`, "Success")
+				end
+			end)
+		end
+	end
+
+	-- Expedition Portal: plan a trip (destination, team, approach, supplies) with the exact
+	-- success chance the server will use, then watch active trips and claim them.
+	local plan =
+		{ Destination = "Foothills", Team = {} :: { string }, Approach = "Balanced", Supplies = {} :: { string } }
+
+	local function portalSection()
+		local expeditions = State.Get("Expeditions") or { List = {}, Slots = 0 }
+		local creatures = State.Get("Creatures")
+		local buildings = State.Get("Buildings")
+		local tier = buildings and buildings.List.core and buildings.List.core.Level or 1
+		local wallet = State.Get("Wallet")
+
+		-- Active trips
+		local active = Window.Section(win.Body, "TEAMS OUT EXPLORING", 2)
+		local count = 0
+		local ids = {}
+		for id in expeditions.List do
+			table.insert(ids, id)
+		end
+		table.sort(ids, function(a, b)
+			return expeditions.List[a].EndsIn < expeditions.List[b].EndsIn
+		end)
+		for _, id in ids do
+			local record = expeditions.List[id]
+			count += 1
+			local destination = ExpeditionConfig.Destinations[record.Destination]
+			local names = {}
+			for _, creatureId in record.Creatures do
+				local c = creatures and creatures.List[creatureId]
+				table.insert(names, c and c.Name or "?")
+			end
+			Theme.Text(
+				active,
+				`<b>{destination and destination.Name or record.Destination}</b> · {table.concat(names, ", ")}`,
+				15
+			)
+			-- Countdown estimated from when the state arrived.
+			local endsAt = os.clock() + record.EndsIn
+			local label = Theme.Text(active, "", 13, { TextColor3 = Theme.Colors.Muted })
+			local _, setBar = Theme.Bar(active, Theme.Colors.Primary, 6)
+			local claim = Theme.Button(active, "Claim", "Gold", { Size = UDim2.fromOffset(160, 36) })
+			local function tick()
+				local left = math.max(endsAt - os.clock(), 0)
+				label.Text = if left > 0 then `Back in {Format.Duration(left)}` else "They're back! Claim the rewards."
+				setBar(1 - left / math.max(record.Duration, 1))
+				Theme.SetEnabled(claim, left <= 0)
+				return label.Parent ~= nil
+			end
+			tick()
+			task.spawn(function()
+				while task.wait(1) and tick() do
+				end
+			end)
+			claim.Activated:Connect(function()
+				if claim:GetAttribute("Disabled") then
+					return
+				end
+				Theme.SetEnabled(claim, false)
+				request("ClaimExpedition", id)
+			end)
+		end
+		Theme.Text(
+			active,
+			`Portal slots in use: {count} / {expeditions.Slots}`,
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
+		)
+
+		-- Planner
+		local planner = Window.Section(win.Body, "PLAN AN EXPEDITION", 3)
+		local destinations = {}
+		for _, destination in ExpeditionConfig.Destinations do
+			if destination.Phase <= GameConfig.Phase then
+				table.insert(destinations, destination)
+			end
+		end
+		table.sort(destinations, function(a, b)
+			return a.Duration < b.Duration
+		end)
+		local row = Window.Row(planner, 40)
+		for _, destination in destinations do
+			local b = Theme.Button(
+				row,
+				destination.Name,
+				if plan.Destination == destination.Id then "Primary" else "Secondary",
+				{
+					Size = UDim2.fromOffset(150, 36),
+					TextSize = 14,
+				}
+			)
+			b.Activated:Connect(function()
+				plan.Destination = destination.Id
+				render()
+			end)
+		end
+		local destination = ExpeditionConfig.Destinations[plan.Destination]
+		Theme.Text(planner, destination.Description, 14)
+		local recommended = {}
+		for stat, value in destination.Recommended do
+			table.insert(recommended, `{stat} {value}`)
+		end
+		table.sort(recommended)
+		local rewards = {}
+		for _, reward in destination.Rewards do
+			local def = ResourceConfig[reward.Resource]
+			table.insert(
+				rewards,
+				`{def and def.Icon or ""} {reward.Min}–{reward.Max} {def and def.Name or reward.Resource}`
+			)
+		end
+		Theme.Text(
+			planner,
+			`Takes {Format.Duration(destination.Duration)} · Risk: <b>{destination.Risk}</b> · Recommended (team average): {table.concat(
+				recommended,
+				", "
+			)}`,
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
+		)
+		Theme.Text(planner, "Rewards: " .. table.concat(rewards, ", "), 13, { TextColor3 = Theme.Colors.Muted })
+		local tierOk = tier >= destination.CoreTier
+		if not tierOk then
+			Theme.Text(
+				planner,
+				`🔒 Needs Empire Core tier {destination.CoreTier}.`,
+				14,
+				{ TextColor3 = Theme.Colors.Warning }
+			)
+		end
+
+		-- Team picker
+		Theme.Text(
+			planner,
+			`<b>Team</b> (pick up to {ExpeditionConfig.MaxTeam}; working creatures leave their jobs):`,
+			14
+		)
+		local list = {}
+		for _, c in creatures and creatures.List or {} do
+			table.insert(list, c)
+		end
+		table.sort(list, function(a, b)
+			if a.Level ~= b.Level then
+				return a.Level > b.Level
+			end
+			return a.Id < b.Id
+		end)
+		-- Drop picks that are no longer available.
+		local team = {}
+		for _, id in plan.Team do
+			local c = creatures and creatures.List[id]
+			if c and not c.Expedition and c.RestIn <= 0 then
+				table.insert(team, id)
+			end
+		end
+		plan.Team = team
+		local grid = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+		}, planner)
+		Theme.Make("UIGridLayout", {
+			CellSize = UDim2.fromOffset(176, 40),
+			CellPadding = UDim2.fromOffset(6, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}, grid)
+		for order, c in list do
+			local picked = table.find(plan.Team, c.Id) ~= nil
+			local busy = c.Expedition ~= nil or c.RestIn > 0
+			local label = `{if picked then "✔ " else ""}{c.Name} · Lv {c.Level}`
+			if c.Expedition then
+				label = `{c.Name} · away`
+			elseif c.RestIn > 0 then
+				label = `{c.Name} · resting {Format.Duration(c.RestIn)}`
+			end
+			local b = Theme.Button(
+				grid,
+				label,
+				if picked then "Primary" else "Secondary",
+				{ TextSize = 13, LayoutOrder = order }
+			)
+			Theme.SetEnabled(b, not busy)
+			b.Activated:Connect(function()
+				if busy then
+					return
+				end
+				local index = table.find(plan.Team, c.Id)
+				if index then
+					table.remove(plan.Team, index)
+				elseif #plan.Team < ExpeditionConfig.MaxTeam then
+					table.insert(plan.Team, c.Id)
+				else
+					ctx.Notify(`A team has at most {ExpeditionConfig.MaxTeam} creatures.`, "Error")
+					return
+				end
+				render()
+			end)
+		end
+
+		-- Approach
+		Theme.Text(planner, "<b>Approach</b>", 14)
+		local approachRow = Window.Row(planner, 40)
+		for _, id in { "Cautious", "Balanced", "Bold" } do
+			local approach = ExpeditionConfig.Approaches[id]
+			local b = Theme.Button(approachRow, approach.Name, if plan.Approach == id then "Primary" else "Secondary", {
+				Size = UDim2.fromOffset(130, 36),
+				TextSize = 14,
+			})
+			b.Activated:Connect(function()
+				plan.Approach = id
+				render()
+			end)
+		end
+		Theme.Text(
+			planner,
+			ExpeditionConfig.Approaches[plan.Approach].Description,
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
+		)
+
+		-- Supplies
+		Theme.Text(planner, "<b>Supplies</b> (optional)", 14)
+		local supplyCost: { [string]: number } = {}
+		for _, id in { "HeatShield", "Rations" } do
+			local supply = ExpeditionConfig.Supplies[id]
+			local on = table.find(plan.Supplies, id) ~= nil
+			if on then
+				for resource, amount in supply.Cost do
+					supplyCost[resource] = (supplyCost[resource] or 0) + amount
+				end
+			end
+			local b = Theme.Button(
+				planner,
+				`{if on then "✔" else "○"} {supply.Name} · {Format.Cost(supply.Cost, ResourceConfig)} · {supply.Description}`,
+				if on then "Primary" else "Secondary",
+				{ Size = UDim2.new(1, 0, 0, 36), TextSize = 13 }
+			)
+			b.Activated:Connect(function()
+				local index = table.find(plan.Supplies, id)
+				if index then
+					table.remove(plan.Supplies, index)
+				else
+					table.insert(plan.Supplies, id)
+				end
+				render()
+			end)
+		end
+		local affordable = true
+		for resource, amount in supplyCost do
+			if (wallet and (wallet.Resources[resource] or wallet.Currencies[resource]) or 0) < amount then
+				affordable = false
+			end
+		end
+
+		-- Live chance (same maths as the server).
+		local members = {}
+		for _, id in plan.Team do
+			local c = creatures.List[id]
+			table.insert(members, { Species = c.Species, Level = c.Level, Stage = c.Stage })
+		end
+		if #members > 0 then
+			local chance = Expedition.Chance(destination, members, plan.Approach, plan.Supplies)
+			Theme.Text(planner, `Success chance: <b>{math.floor(chance * 100 + 0.5)}%</b>`, 18, {
+				TextColor3 = if chance >= 0.7
+					then Theme.Colors.Success
+					elseif chance >= 0.4 then Theme.Colors.Warning
+					else Theme.Colors.Danger,
+			})
+			Theme.Text(
+				planner,
+				"Higher stats than recommended raise the chance. Even a failed trip brings back a quarter of the loot.",
+				12,
+				{ TextColor3 = Theme.Colors.Muted }
+			)
+		end
+		local slotsFree = count < expeditions.Slots
+		local launch = Theme.Button(planner, "✈ Launch expedition", "Primary", { Size = UDim2.fromOffset(240, 42) })
+		Theme.SetEnabled(launch, tierOk and slotsFree and #members > 0 and affordable)
+		launch.Activated:Connect(function()
+			if launch:GetAttribute("Disabled") then
+				ctx.Notify(
+					if not tierOk
+						then `Needs Empire Core tier {destination.CoreTier}.`
+						elseif not slotsFree then "All portal slots are busy. Upgrade the portal to send more teams."
+						elseif #members == 0 then "Pick at least one creature for the team."
+						else "You need " .. Format.Cost(supplyCost, ResourceConfig) .. " for those supplies.",
+					"Error"
+				)
+				return
+			end
+			Theme.SetEnabled(launch, false)
+			local ok = request("LaunchExpedition", plan.Destination, plan.Team, plan.Approach, plan.Supplies)
+			if ok then
+				ctx.Notify(`The team set off for {destination.Name}!`, "Success")
+				plan.Team = {}
+				plan.Supplies = {}
+			end
+		end)
+	end
+
 	local function siloSection()
 		local card = Window.Section(win.Body, "STORED MATERIALS", 2)
 		local wallet = State.Get("Wallet")
@@ -639,6 +977,9 @@ function BuildingPanel.new(ctx: any)
 
 		if info.Type == "TradingPost" then
 			tradingSection()
+			craftSection()
+		elseif info.Type == "ExpeditionPortal" then
+			portalSection()
 		elseif info.Type == "ResourceSilo" then
 			siloSection()
 		elseif info.Type == "EmpireCore" then
@@ -714,6 +1055,14 @@ function BuildingPanel.new(ctx: any)
 	State.OnChanged("Wallet", schedule)
 	State.OnChanged("Empire", schedule)
 	State.OnChanged("Hatchery", schedule)
+	State.OnChanged("Expeditions", schedule)
+	State.OnChanged("Creatures", function()
+		local b = State.Get("Buildings")
+		local info = buildingId and b and b.List[buildingId]
+		if info and info.Type == "ExpeditionPortal" then
+			schedule()
+		end
+	end)
 
 	return {
 		Root = win.Root,
