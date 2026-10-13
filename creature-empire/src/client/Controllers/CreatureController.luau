@@ -135,7 +135,9 @@ local function ensureModel(entity: Entity)
 	if entity.Model or modelCount >= MAX_MODELS then
 		return
 	end
-	local ok, model = pcall(CreatureModels.Build, entity.Species, entity.Stage)
+	local mutation = entity.Anchor:GetAttribute("Mutation") :: string?
+	local ok, model =
+		pcall(CreatureModels.Build, entity.Species, entity.Stage, if mutation and mutation ~= "" then mutation else nil)
 	if not ok then
 		warn("[CE] creature model failed:", model)
 		return
@@ -502,7 +504,7 @@ local function addEntity(plot: Folder, anchor: Instance)
 	entities[entity.Id] = entity
 
 	anchor.AttributeChanged:Connect(function(attribute)
-		if attribute == "Stage" or attribute == "Name" or attribute == "Level" then
+		if attribute == "Stage" or attribute == "Name" or attribute == "Level" or attribute == "Mutation" then
 			entity.Stage = (anchor:GetAttribute("Stage") :: number?) or 1
 			dropModel(entity) -- rebuilt next frame with the new look/label
 		end

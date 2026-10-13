@@ -52,6 +52,7 @@ UIController.Register("Inventory", require(UIFolder.InventoryWindow).new(ctx))
 UIController.Register("Befriend", require(UIFolder.BefriendWindow).new(ctx))
 UIController.Register("Map", require(UIFolder.MapWindow).new(ctx))
 UIController.Register("ExpeditionResult", require(UIFolder.ExpeditionResultWindow).new(ctx))
+UIController.Register("Ascension", require(UIFolder.AscensionWindow).new(ctx))
 local starter = require(UIFolder.StarterSelect).new(ctx)
 UIController.Register("Starter", starter)
 local reveal = require(UIFolder.RevealOverlay).new(ctx)
@@ -105,6 +106,7 @@ Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: a
 			Stage = payload.Stage,
 			Name = payload.Name,
 			Unlocks = payload.Unlocks,
+			Mutation = payload.Mutation,
 		})
 	elseif name == "Expanded" then
 		AudioController.Play("Upgrade")
@@ -129,6 +131,15 @@ Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: a
 		AudioController.Play("QuestComplete")
 	elseif name == "Scorched" then
 		EffectsController.Flash(Color3.fromRGB(255, 90, 30))
+	elseif name == "Researched" then
+		AudioController.Play("Upgrade")
+	elseif name == "Ascended" then
+		UIController.Close()
+		AudioController.Play("Evolve")
+		UIController.Notify(
+			`Ascension {payload.Count}! +{payload.Shards} Empire Shards. Your creatures are ready to build again, stronger than before.`,
+			"Reward"
+		)
 	elseif name == "ExpeditionResult" then
 		UIController.Open("ExpeditionResult", payload)
 		AudioController.Play(if payload.Success then "QuestComplete" else "Notify")

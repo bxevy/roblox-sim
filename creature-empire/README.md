@@ -4,7 +4,7 @@ A creature-collecting simulator and empire-building tycoon for Roblox, written i
 
 You start with a small plot, one partner creature and a single Moonpetal Farm. Creatures walk to their jobs and work there. You collect the harvest, sell it, and grow the farm into a glowing empire.
 
-This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** and **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)**. The [roadmap](docs/ROADMAP.md) lists what Phases 4–6 add and exactly what is unfinished.
+This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)** and **Phase 4 (research, synergies, courier automation, mutations and Ascension)**. The [roadmap](docs/ROADMAP.md) lists what Phases 5–6 add and exactly what is unfinished.
 
 | Doc                                       | What's in it                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------ |
@@ -89,6 +89,17 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
 - **Emberstone** material, **Pyrewing** and **Coilhorn** become obtainable, and the Explorer job is live.
 - **7 more quests** that lead through the basin, gathering, discoveries, crafting, befriending, an expedition and the guardian.
 - **Saves move to schema v3.** Older profiles migrate automatically.
+
+## Added in Phase 4
+
+- **Research Station.** Assign researchers (Wisplet, Runemoth, Starweaver, Bubblot) to turn Moonpetals into **Insight**, then spend it on a 10-node research tree. Production, logistics, exploration and arcane branches give bigger yields, a bigger silo, longer offline hours, better expeditions, heat wards, stronger synergies and double mutation odds.
+- **Synergies.** The right creatures working side by side boost each other. For example, a Verdant and an Emberkin farming together give +15% yield, and three of one family at a building give +10%. Every building panel shows which synergies are active and which are possible.
+- **Courier Post.** Unlocked by research. Couriers (Cogling, Boltbug, Gearhound) carry harvests to your silo on their own, fullest building first.
+- **Mutations.** Prismatic, Ancient and Shadow creatures look different and work a little better. There's a small chance each time a creature hatches, is befriended, comes back from an expedition, or evolves. The Hatchery shows the exact odds.
+- **Ascension.** At Empire Core tier 5 you can start a fresh run. You keep every creature, earn Empire Shards and get +10% yield per Ascension. The window lists exactly what resets and what stays before you confirm. Spend shards on 5 permanent perks. Your first Ascension brings Titanicore.
+- **Arcane Egg** (Insight + Essence) and **7 newly obtainable species**, all with working jobs and abilities. That includes Gearhound's *Fetch*, which hauls everything to the silo at once.
+- **New models** for the Research Station, Courier Post and Expedition Portal.
+- **7 more quests** and **schema v4**. Older saves migrate automatically.
 
 ## Run it
 

@@ -58,21 +58,36 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 - Only Emberfall is built. Other biomes show in the map as later updates.
 - Boltbug, Runemoth, Shadeling and Bubblot moved to Phase 4 because their abilities need Phase 4 systems.
 
-## Phase 4: advanced empire systems
+## Phase 4: advanced empire systems ✔ built
 
-1. **Synergies.**
-   - `SynergyConfig` lists pairs of families or species working at the same building, or within N cells.
-   - Each synergy is a bonus in the existing `Synergy` category, so it is capped automatically.
-   - Show active synergies in the BuildingPanel's Synergies section, which is already there.
-2. **Research tree** (unlock the Research Station, Researcher job).
-3. **Mutations.**
-   - A deterministic roll on hatch or evolve, using a seed of creature id and event.
-   - Probabilities in `MutationConfig`, a visual layer in CreatureModels, and capped stat effects.
-4. **Ascension.**
-   - Reset the listed sections and keep `Ascension`, `Receipts`, settings and the collection.
-   - Grant Empire Shards.
-   - Show a full "what resets / what stays" summary before confirming.
-5. More biomes, recipes and automation buildings (couriers, conveyors as visuals over logical transfers).
+- **Research.** The Research Station works: researchers turn Moonpetals into Insight (`StudyInsight`). `ResearchConfig` has 10 nodes in 4 branches. Their effects are production bonuses (category `Research`), silo size, offline hours, expedition chance, heat resistance, mutation odds, synergy strength, and unlocking the Courier Post. `ResearchService` buys nodes; `Shared/Util/Research` applies them.
+- **Synergies.** `SynergyConfig` has 9 synergies: family pairs per job, three of a family, and the three starters together. `Production.Rates` works out each building's crew first, then adds capped `Synergy` bonuses. The building panel lists active and possible synergies.
+- **Automation.** The Courier Post (research: Courier Routes) uses the new Courier job: couriers carry stored output to the silo or wallet, fullest building first, in batches every 5 s, and stop when the silo is full. Gearhound's *Fetch* (new `Collect` ability) carries a batch instantly.
+- **Mutations.** Prismatic, Ancient and Shadow (`MutationConfig`). Each is rolled deterministically from creature id + event when a creature hatches, is befriended, comes back from an expedition, or evolves. They recolour the model, add a sparkle and give a capped bonus. The odds are listed in the Hatchery.
+- **Ascension.** At Empire Core tier 5, from the Empire Core panel:
+  - Resets gold, Essence, Insight, materials, buildings, land and research.
+  - Keeps creatures, the collection, discoveries, quests, pity, lures and perks.
+  - Pays `10 × √(run gold / 100k)` Empire Shards (minimum 10) and adds +10% yield per Ascension.
+  - Shards buy 5 permanent perks.
+  - The first Ascension grants Titanicore.
+  - The whole reset is the pure `Shared/Util/Ascension.Apply`, which is unit-tested.
+- **Content.** Arcane Egg (Insight + Essence). Runemoth, Starweaver, Bubblot, Coralisk, Boltbug, Gearhound and Titanicore become obtainable, with working abilities and passives. 7 new quests. Schema v4.
+
+**Open for Phase 4:** the manual checklist in [TESTING.md](TESTING.md). Nothing in it has run inside Roblox yet.
+
+### Phase 4 known limitations
+
+- Couriers make one delivery for a whole offline period. Storage caps it, so they move less than they would have online.
+- Only one new automation building. Conveyors, power and the Mutation Lab are still to come, and so are the Alchemy Lab recipes and new biomes.
+- These species were moved to Phase 5 because their abilities need systems that don't exist yet:
+  - Elderbark (Verdant guardian)
+  - Thundermaw (power)
+  - Voidlark (teleport)
+  - Shadeling (stealth)
+  - Duskfang (debuff)
+  - Nocturnox (mutate)
+  - Abyssquid (relic jobs)
+- PowerOperator, Breeder and RelicInvestigator jobs are Phase 5.
 
 ## Phase 5: multiplayer
 

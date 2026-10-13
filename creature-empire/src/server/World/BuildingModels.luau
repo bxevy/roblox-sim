@@ -774,48 +774,163 @@ builders.EvolutionChamber = function(ctx)
 end
 
 builders.ResearchStation = function(ctx)
-	local w, d = ctx.W, ctx.D
+	local w, d, level = ctx.W, ctx.D, ctx.Level
 	block(ctx, Vector3.new(w - 1, 0.6, d - 1), at(ctx, 0, 0.3, 0), C.DarkStone, Enum.Material.Slate)
-	-- Half-built dome frame and scaffolding
+	-- Round study hall with copper pillars and a glass dome.
+	Parts.Cylinder(ctx.Model, at(ctx, 0, 2.6, 1), 4, 9, { Color = C.Stone, Material = Enum.Material.Brick })
 	for i = 0, 5 do
-		local angle = math.rad(i * 30)
+		local angle = math.rad(i * 60)
 		block(
 			ctx,
-			Vector3.new(0.4, 8, 0.4),
-			at(ctx, math.cos(angle) * 5.5, 4, math.sin(angle) * 5.5),
+			Vector3.new(0.5, 4.4, 0.5),
+			at(ctx, math.cos(angle) * 4.6, 2.8, 1 + math.sin(angle) * 4.6),
 			C.Copper,
 			Enum.Material.Metal
 		)
 	end
-	for _, y in { 3, 6 } do
-		block(ctx, Vector3.new(w - 2, 0.3, 0.3), at(ctx, 0, y, -d / 2 + 1.2), C.Wood, Enum.Material.Wood, true)
+	local dome = Parts.Ball(ctx.Model, (at(ctx, 0, 4.6, 1)).Position, 8.6, {
+		Color = Color3.fromRGB(150, 220, 230),
+		Material = Enum.Material.Glass,
+		Transparency = 0.45,
+	})
+	dome.CanCollide = false
+	-- Door and desk
+	block(ctx, Vector3.new(2.2, 3, 0.3), at(ctx, 0, 1.5, -3.6), C.DarkWood, Enum.Material.Wood, true)
+	block(ctx, Vector3.new(3, 1, 1.4), at(ctx, -4.5, 0.5, -5), C.Wood, Enum.Material.WoodPlanks)
+	-- Floating rune orb (glows Insight green)
+	local orb = Parts.Ball(ctx.Model, (at(ctx, 0, 9.4, 1)).Position, 1.6, {
+		Color = Color3.fromRGB(120, 230, 200),
+		Material = Enum.Material.Neon,
+	})
+	orb.CanCollide = false
+	orb:SetAttribute("BobHeight", 0.4)
+	CollectionService:AddTag(orb, "CE_Bob")
+	Parts.Light(orb, Color3.fromRGB(120, 230, 200), 14, 1)
+	-- Telescope (level 3+ gains a second, level 5 an observatory ring)
+	local telescopes: { number } = if level >= 3 then { 4, -4 } else { 4 }
+	for _, x in telescopes do
+		local telescope = Parts.Cylinder(
+			ctx.Model,
+			at(ctx, x, 5.5, 5) * CFrame.Angles(0, 0, math.rad(-40)),
+			3.5,
+			0.7,
+			{ Color = C.Gold, Material = Enum.Material.Metal }
+		)
+		telescope.CanCollide = false
+	end
+	for i = 2, level do
+		block(ctx, Vector3.new(0.9, 1.2, 0.6), at(ctx, -6 + i * 1.1, 1.2, -5.2), C.Cloth1, Enum.Material.Fabric, true)
+	end
+	if level >= 5 then
+		local ring = spinner(ctx, "Observatory", at(ctx, 0, 9.4, 1), 20, "Y")
+		for i = 0, 7 do
+			local angle = math.rad(i * 45)
+			Parts.Decor(ring, {
+				Size = Vector3.new(0.5, 0.5, 0.5),
+				CFrame = at(ctx, math.cos(angle) * 3, 9.4, 1 + math.sin(angle) * 3),
+				Color = C.Gold,
+				Material = Enum.Material.Neon,
+			})
+		end
+	end
+	workSpot(ctx, 1, -4.5, -6.4)
+	workSpot(ctx, 2, 0, -6.4)
+	workSpot(ctx, 3, 4.5, -6.4)
+	Parts.Label(ctx.Base, "Research Station · Lv " .. level, { Offset = Vector3.new(0, 12, 0), MaxDistance = 60 })
+end
+
+builders.CourierPost = function(ctx)
+	local w, d, level = ctx.W, ctx.D, ctx.Level
+	block(ctx, Vector3.new(w - 1, 0.4, d - 1), at(ctx, 0, 0.2, 0), C.Stone, Enum.Material.Cobblestone)
+	-- Little depot with a striped awning
+	block(ctx, Vector3.new(6, 3.6, 4), at(ctx, 0, 2.2, 2), C.Wood, Enum.Material.WoodPlanks)
+	block(ctx, Vector3.new(6.6, 0.4, 4.6), at(ctx, 0, 4.2, 2), C.DarkWood, Enum.Material.Wood)
+	for i = 0, 3 do
 		block(
 			ctx,
-			Vector3.new(w - 2, 0.2, 1.4),
-			at(ctx, 0, y - 0.25, -d / 2 + 1.8),
-			C.Wood,
-			Enum.Material.WoodPlanks,
+			Vector3.new(1.65, 0.2, 2),
+			at(ctx, -2.5 + i * 1.65, 3.4, -0.9) * CFrame.Angles(math.rad(-20), 0, 0),
+			if i % 2 == 0 then C.Cloth1 else C.Cloth2,
+			Enum.Material.Fabric,
 			true
 		)
 	end
-	local tarp = block(
+	-- Parcels and a cart per slot level
+	for i = 0, math.min(level, 4) - 1 do
+		block(
+			ctx,
+			Vector3.new(1, 1, 1),
+			at(ctx, -4.4 + (i % 2) * 1.1, 0.9 + math.floor(i / 2), -2.2),
+			C.Copper,
+			Enum.Material.Cardboard
+		)
+	end
+	block(ctx, Vector3.new(2.2, 0.8, 1.4), at(ctx, 3.6, 0.9, -3), C.DarkWood, Enum.Material.Wood)
+	for _, x in { 2.7, 4.5 } do
+		Parts.Cylinder(
+			ctx.Model,
+			at(ctx, x, 0.5, -3) * CFrame.Angles(math.rad(90), 0, 0),
+			0.25,
+			1,
+			{ Color = C.DarkStone, Material = Enum.Material.Metal }
+		)
+	end
+	if level >= 4 then
+		-- Rail line
+		for _, z in { -4.6, -3.8 } do
+			block(ctx, Vector3.new(w - 2, 0.15, 0.2), at(ctx, 0, 0.45, z), C.DarkStone, Enum.Material.Metal, true)
+		end
+	end
+	-- Signal flag
+	block(ctx, Vector3.new(0.25, 6, 0.25), at(ctx, -4.6, 3, 4.6), C.DarkWood, Enum.Material.Wood)
+	block(ctx, Vector3.new(0.1, 1, 1.6), at(ctx, -4.6, 5.4, 3.8), C.Cloth1, Enum.Material.Fabric, true)
+	workSpot(ctx, 1, 0, -4)
+	workSpot(ctx, 2, -2.5, -4)
+	workSpot(ctx, 3, 2.5, -4)
+	Parts.Label(ctx.Base, "Courier Post · Lv " .. level, { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
+end
+
+builders.ExpeditionPortal = function(ctx)
+	local w, d, level = ctx.W, ctx.D, ctx.Level
+	block(ctx, Vector3.new(w - 1, 0.6, d - 1), at(ctx, 0, 0.3, 0), C.DarkStone, Enum.Material.Slate)
+	-- Two stone pillars and an arch around a shimmering gate
+	for _, x in { -4.5, 4.5 } do
+		block(ctx, Vector3.new(1.6, 9, 1.6), at(ctx, x, 5, 1), C.Stone, Enum.Material.Cobblestone)
+	end
+	block(ctx, Vector3.new(11, 1.4, 1.8), at(ctx, 0, 10, 1), C.Stone, Enum.Material.Cobblestone)
+	local gate = block(
 		ctx,
-		Vector3.new(6, 0.2, 5),
-		at(ctx, -3, 5, 2) * CFrame.Angles(0.2, 0, 0.3),
-		Color3.fromRGB(70, 110, 160),
-		Enum.Material.Fabric,
+		Vector3.new(7.4, 8.4, 0.3),
+		at(ctx, 0, 5.1, 1),
+		Color3.fromRGB(255, 150, 90),
+		Enum.Material.Neon,
 		true
 	)
-	tarp.Transparency = 0.1
-	local telescope = Parts.Cylinder(
-		ctx.Model,
-		at(ctx, 3, 3, 3) * CFrame.Angles(0, 0, math.rad(-40)),
-		4,
-		0.8,
-		{ Color = C.Gold, Material = Enum.Material.Metal }
-	)
-	telescope.CanCollide = false
-	Parts.Sign(ctx.Model, at(ctx, 0, 0, -d / 2 - 0.6), "RESEARCH · SOON", 8)
+	gate.Transparency = 0.45
+	Parts.Light(gate, Color3.fromRGB(255, 150, 90), 16, 1)
+	local motes = Instance.new("ParticleEmitter")
+	motes.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	motes.Color = ColorSequence.new(Color3.fromRGB(255, 220, 160))
+	motes.Size = NumberSequence.new(0.3, 0)
+	motes.Lifetime = NumberRange.new(1, 2)
+	motes.Rate = 8
+	motes.Speed = NumberRange.new(0.5, 1.5)
+	motes.Parent = gate
+	-- One glowing rune stone per expedition slot
+	for i = 1, level do
+		local rune = block(
+			ctx,
+			Vector3.new(1, 1.6, 1),
+			at(ctx, -3 + (i - 1) * 3, 0.8, -4),
+			Color3.fromRGB(255, 200, 120),
+			Enum.Material.Neon,
+			true
+		)
+		rune:SetAttribute("BobHeight", 0.2)
+		CollectionService:AddTag(rune, "CE_Bob")
+	end
+	workSpot(ctx, 1, 0, -6)
+	Parts.Label(ctx.Base, "Expedition Portal · Lv " .. level, { Offset = Vector3.new(0, 13, 0), MaxDistance = 60 })
 end
 
 -- Public ----------------------------------------------------------------------------------

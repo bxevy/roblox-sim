@@ -21,6 +21,9 @@ local Expedition = require(Shared.Util.Expedition)
 local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
 local CraftConfig = require(Shared.Config.CraftConfig)
 local GameConfig = require(Shared.Config.GameConfig)
+local ResearchConfig = require(Shared.Config.ResearchConfig)
+local MutationConfig = require(Shared.Config.MutationConfig)
+local SynergyConfig = require(Shared.Config.SynergyConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 local Viewport = require(script.Parent.Viewport)
@@ -157,8 +160,9 @@ function BuildingPanel.new(ctx: any)
 				ctx.Notify(`Collected {Format.Number(amount)} {output and output.Name or ""}.`, "Success")
 			end
 		end)
+	end
 
-		-- Workers
+	local function workersSection(info: any, def: any)
 		local job = def.Job and JobConfig[def.Job]
 		local workers =
 			Window.Section(win.Body, `WORKERS ({#info.Assigned}/{info.Slots}) · {job and job.Name or ""}`, 3)
@@ -244,16 +248,171 @@ function BuildingPanel.new(ctx: any)
 				Theme.Text(workers, "No other creature can do this job yet.", 14, { TextColor3 = Theme.Colors.Muted })
 			end
 		end
+	end
 
-		local synergy = Window.Section(win.Body, "SYNERGIES", 4)
+	-- Active synergies here, and the ones this building could have.
+	local function synergySection(info: any, def: any)
+		local card = Window.Section(win.Body, "SYNERGIES", 4)
+		local active = {}
+		for _, id in info.Synergies or {} do
+			active[id] = true
+		end
+		local research = State.Get("Research")
+		local harmony = research and research.Done and research.Done.Harmony ~= nil
+		local any = false
+		for _, synergy in SynergyConfig do
+			if synergy.Job == nil or synergy.Job == def.Job then
+				local on = active[synergy.Id] == true
+				any = any or on
+				Theme.Text(
+					card,
+					(if on then "✔ " else "○ ") .. `<b>{synergy.Name}</b>: {synergy.Description}`,
+					14,
+					{ TextColor3 = if on then Theme.Colors.Success else Theme.Colors.Muted }
+				)
+			end
+		end
 		Theme.Text(
-			synergy,
-			"No active synergies. Certain creature families will boost each other when they work side by side (coming in a later update).",
-			14,
-			{
-				TextColor3 = Theme.Colors.Muted,
-			}
+			card,
+			if any
+				then "Synergy bonuses stack up to +75% per stat" .. (if harmony
+					then " (Harmony Studies makes them 50% stronger)."
+					else ".")
+				else "Put the right creatures together here to switch these on.",
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
 		)
+	end
+
+	-- The research tree, by branch. Effects and costs come from ResearchConfig.
+	local function researchSection()
+		local research = State.Get("Research") or { Done = {} }
+		local wallet = State.Get("Wallet")
+		local done = research.Done or {}
+		local function have(id: string): number
+			return wallet and (wallet.Currencies[id] or wallet.Resources[id]) or 0
+		end
+		local intro = Window.Section(win.Body, "RESEARCH", 5)
+		Theme.Text(
+			intro,
+			`{ResourceConfig.Insight.Icon} You have <b>{Format.Number(math.floor(have("Insight")))} Insight</b>. Researchers here turn Moonpetals into Insight; collect it, then spend it below. Research resets when you Ascend.`,
+			14
+		)
+		for order, branch in ResearchConfig.Branches do
+			local card = Window.Section(win.Body, string.upper(branch), 5 + order)
+			for _, nodeId in ResearchConfig.Order do
+				local node = ResearchConfig.Nodes[nodeId]
+				if node.Branch == branch and node.Phase <= GameConfig.Phase then
+					local finished = done[nodeId] ~= nil
+					local missing = nil
+					for _, required in node.Requires do
+						if done[required] == nil then
+							missing = ResearchConfig.Nodes[required].Name
+						end
+					end
+					local affordable = true
+					for id, amount in node.Cost do
+						if have(id) < amount then
+							affordable = false
+						end
+					end
+					local row = Window.Row(card, 58)
+					Theme.Text(
+						row,
+						(if finished then "✔ " elseif missing then "🔒 " else "")
+							.. `<b>{node.Name}</b>: {node.Description}`
+							.. (
+								if finished
+									then ""
+									else `\n<font color="#9aa6c4">{Format.Cost(node.Cost, ResourceConfig)}{if missing
+										then " · needs " .. missing
+										else ""}</font>`
+							),
+						14,
+						{
+							Size = UDim2.new(1, -150, 1, 0),
+							AutomaticSize = Enum.AutomaticSize.None,
+							TextYAlignment = Enum.TextYAlignment.Center,
+							TextColor3 = if finished then Theme.Colors.Success else Theme.Colors.Text,
+						}
+					)
+					if not finished then
+						local b = Theme.Button(
+							row,
+							"Research",
+							"Primary",
+							{ Size = UDim2.fromOffset(140, 36), TextSize = 15 }
+						)
+						Theme.SetEnabled(b, missing == nil and affordable)
+						b.Activated:Connect(function()
+							if b:GetAttribute("Disabled") then
+								ctx.Notify(
+									if missing
+										then `Research {missing} first.`
+										else "You need " .. Format.Cost(node.Cost, ResourceConfig) .. ".",
+									"Error"
+								)
+								return
+							end
+							if request("Research", nodeId) then
+								ctx.Notify(`Researched {node.Name}!`, "Reward")
+							end
+						end)
+					end
+				end
+			end
+		end
+	end
+
+	local function ascensionSection()
+		local ascension = State.Get("Ascension")
+		if not ascension then
+			return
+		end
+		local card = Window.Section(win.Body, "ASCENSION", 3)
+		Theme.Text(
+			card,
+			if ascension.Count > 0
+				then `You have Ascended {ascension.Count} time{if ascension.Count == 1 then "" else "s"} (+{ascension.Count * 10}% yield for every creature).`
+				else "Ascend to start a new run with permanent bonuses. You keep every creature.",
+			14
+		)
+		Theme.Text(
+			card,
+			if ascension.CanAscend
+				then `Ready! Ascending now pays <b>{ascension.Payout} Empire Shards</b>.`
+				else `{ascension.Reason or ""} (Ascending now would pay {ascension.Payout} shards.)`,
+			14,
+			{ TextColor3 = if ascension.CanAscend then Theme.Colors.Gold else Theme.Colors.Muted }
+		)
+		local open = Theme.Button(card, "⬢ Ascension and perks", "Gold", { Size = UDim2.fromOffset(240, 38) })
+		open.Activated:Connect(function()
+			ctx.Open("Ascension")
+		end)
+	end
+
+	local function courierSection(info: any)
+		local card = Window.Section(win.Body, "DELIVERIES", 2)
+		local perMinute = info.PerSecond * 60
+		Theme.Text(
+			card,
+			if perMinute > 0
+				then `Carrying up to {Format.Rate(perMinute)} items per minute to your silo`
+				else "Not delivering: assign a courier below (Cogling, Boltbug, Gearhound…).",
+			16,
+			{ FontFace = Theme.Bold, TextColor3 = if perMinute > 0 then Theme.Colors.Success else Theme.Colors.Warning }
+		)
+		Theme.Text(
+			card,
+			"Couriers empty your fullest buildings first, every few seconds. Currencies (Essence, Insight) go straight to your wallet. Offline, they make one delivery when you return.",
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
+		)
+		if info.CourierBlocked then
+			Theme.Text(card, "⚠ Your silo is full: sell or upgrade it so couriers can keep delivering.", 14, {
+				TextColor3 = Theme.Colors.Warning,
+			})
+		end
 	end
 
 	local function upgradeSection(info: any, def: any)
@@ -836,6 +995,19 @@ function BuildingPanel.new(ctx: any)
 					13
 				)
 			end
+			local research = State.Get("Research")
+			local mutationBoost = if research and research.Done and research.Done.MutationTheory then 2 else 1
+			local mutationParts = {}
+			for _, mutationId in { "Prismatic", "Ancient", "Shadow" } do
+				local mutation = MutationConfig.Mutations[mutationId]
+				table.insert(
+					mutationParts,
+					`{mutation.Glyph} {mutation.Name} {string.format("%.1f%%", mutation.Chance * mutationBoost * 100)}`
+				)
+			end
+			Theme.Text(text, "Mutation chance per hatch: " .. table.concat(mutationParts, " · "), 12, {
+				TextColor3 = Theme.Colors.Muted,
+			})
 			local pity = hatchery.Pity[eggId] or 0
 			local guaranteed = Hatching.PityReady(egg, pity)
 			Theme.Text(
@@ -987,6 +1159,7 @@ function BuildingPanel.new(ctx: any)
 			siloSection()
 		elseif info.Type == "EmpireCore" then
 			coreSection(info, def)
+			ascensionSection()
 			expansionSection()
 		elseif info.Type == "Hatchery" then
 			hatcherySection()
@@ -994,8 +1167,17 @@ function BuildingPanel.new(ctx: any)
 			chamberSection()
 		elseif info.Type == "Habitat" then
 			habitatSection()
+		elseif info.Type == "CourierPost" then
+			courierSection(info)
+			workersSection(info, def)
+			synergySection(info, def)
 		elseif def.Recipe then
 			productionSection(info, def)
+			workersSection(info, def)
+			synergySection(info, def)
+			if info.Type == "ResearchStation" then
+				researchSection()
+			end
 		end
 		upgradeSection(info, def)
 		if def.Placeable then
@@ -1048,7 +1230,10 @@ function BuildingPanel.new(ctx: any)
 		local info = buildingId and b.List[buildingId]
 		-- Ignore pure storage ticks; the live label handles those.
 		local signature = if info
-			then `{info.Level}:{#info.Assigned}:{#info.Buffs}:{info.PerSecond}:{info.UpgradeBlocker}:{info.Starved}`
+			then `{info.Level}:{#info.Assigned}:{#info.Buffs}:{info.PerSecond}:{info.UpgradeBlocker}:{info.Starved}:{table.concat(
+				info.Synergies or {},
+				","
+			)}:{info.CourierBlocked}`
 			else "gone"
 		if signature ~= lastSignature then
 			lastSignature = signature
@@ -1059,6 +1244,14 @@ function BuildingPanel.new(ctx: any)
 	State.OnChanged("Empire", schedule)
 	State.OnChanged("Hatchery", schedule)
 	State.OnChanged("Expeditions", schedule)
+	State.OnChanged("Research", schedule)
+	State.OnChanged("Ascension", function()
+		local b = State.Get("Buildings")
+		local info = buildingId and b and b.List[buildingId]
+		if info and info.Type == "EmpireCore" then
+			schedule()
+		end
+	end)
 	State.OnChanged("Creatures", function()
 		local b = State.Get("Buildings")
 		local info = buildingId and b and b.List[buildingId]

@@ -10,6 +10,9 @@
 --   essence <n>         add essence
 --   crystals <n>        add raw and refined crystal (up to silo capacity)
 --   ember <n>           add emberstone (up to silo capacity) and 5 ember lures
+--   insight <n>         add Insight
+--   shards <n>          add Empire Shards
+--   coremax             raise the Empire Core to tier 5 (to test Ascension)
 --   finishexpeditions   bring every active expedition home now (and end creature rest)
 --   levelup             +5 levels and +200 work cycles per job for every creature
 --   grant <speciesId>   add a creature
@@ -73,6 +76,28 @@ commands.ember = function(player, n)
 	local stone = EconomyService.Add(player, "Emberstone", amount, "Dev")
 	local lures = EconomyService.Add(player, "EmberLure", 5, "Dev")
 	return true, `Added {stone} emberstone and {lures} ember lures.`
+end
+
+commands.insight = function(player, n)
+	local amount = tonumber(n) or 100
+	return true, `Added {EconomyService.Add(player, "Insight", amount, "Dev")} Insight.`
+end
+
+commands.shards = function(player, n)
+	local amount = tonumber(n) or 20
+	return true, `Added {EconomyService.Add(player, "EmpireShards", amount, "Dev")} Empire Shards.`
+end
+
+commands.coremax = function(player)
+	local data = PlayerDataService.GetData(player)
+	if not data or not data.Buildings.core then
+		return false, "Not loaded."
+	end
+	data.Buildings.core.Level = 5
+	PlayerDataService.MarkDirty(player)
+	ProductionService.Invalidate(player)
+	StateService.Push(player, "Buildings", "Ascension")
+	return true, "Empire Core is tier 5 (rejoin to see the model change)."
 end
 
 commands.finishexpeditions = function(player)

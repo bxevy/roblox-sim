@@ -18,9 +18,9 @@ function Viewport.Creature(
 	parent: Instance,
 	speciesId: string,
 	props: { [string]: any }?,
-	options: { Spin: boolean?, Stage: number?, Silhouette: boolean? }?
+	options: { Spin: boolean?, Stage: number?, Silhouette: boolean?, Mutation: string? }?
 ): ViewportFrame
-	local opts: { Spin: boolean?, Stage: number?, Silhouette: boolean? } = options or {}
+	local opts: { Spin: boolean?, Stage: number?, Silhouette: boolean?, Mutation: string? } = options or {}
 	local frame = Theme.Make("ViewportFrame", {
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
@@ -31,7 +31,7 @@ function Viewport.Creature(
 	for key, value in props or {} :: { [string]: any } do
 		(frame :: any)[key] = value
 	end
-	local ok, model = pcall(CreatureModels.Build, speciesId, opts.Stage)
+	local ok, model = pcall(CreatureModels.Build, speciesId, opts.Stage, opts.Mutation)
 	if ok then
 		for _, d in model:GetDescendants() do
 			if d:IsA("ParticleEmitter") or d:IsA("PointLight") then

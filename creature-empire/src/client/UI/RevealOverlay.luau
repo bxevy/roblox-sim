@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local EggConfig = require(Shared.Config.EggConfig)
+local MutationConfig = require(Shared.Config.MutationConfig)
 local Theme = require(script.Parent.Theme)
 local Viewport = require(script.Parent.Viewport)
 
@@ -164,7 +165,7 @@ function RevealOverlay.new(ctx: any)
 
 		-- 4-5: the creature emerges with its details.
 		portrait.Visible = true
-		Viewport.Creature(portrait, entry.Species, nil, { Spin = true, Stage = entry.Stage })
+		Viewport.Creature(portrait, entry.Species, nil, { Spin = true, Stage = entry.Stage, Mutation = entry.Mutation })
 		Theme.PopIn(portrait)
 		info.Visible = true
 		if evolving then
@@ -191,6 +192,16 @@ function RevealOverlay.new(ctx: any)
 		Theme.List(chips, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 		Theme.Chip(chips, RarityConfig.Label(species.Rarity), rarity.Color)
 		Theme.Chip(chips, family.Glyph .. " " .. family.Name, family.Color)
+		local mutation = entry.Mutation and MutationConfig.Mutations[entry.Mutation]
+		if mutation then
+			Theme.Chip(chips, `{mutation.Glyph} {string.upper(mutation.Name)} MUTATION`, mutation.Color)
+			Theme.Text(
+				info,
+				mutation.Description,
+				16,
+				{ TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = mutation.Color, LayoutOrder = 2 }
+			)
+		end
 		if evolving then
 			for i, unlock in entry.Unlocks or {} do
 				Theme.Text(

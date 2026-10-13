@@ -10,6 +10,7 @@ require("./specs/Economy.spec")
 require("./specs/Data.spec")
 require("./specs/Phase2.spec")
 require("./specs/Phase3.spec")
+require("./specs/Phase4.spec")
 
 local results = H.Results
 print(`\n{results.Passed} passed, {results.Failed} failed`)

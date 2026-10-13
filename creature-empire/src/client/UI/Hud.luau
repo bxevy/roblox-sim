@@ -77,6 +77,11 @@ function Hud.new(ctx: any)
 	for _, p in crystalPills do
 		p.Frame.Visible = false
 	end
+	-- Later currencies, also shown once you have some.
+	local laterPills: { [string]: Pill } = { Insight = pill("Insight", 6), EmpireShards = pill("EmpireShards", 7) }
+	for _, p in laterPills do
+		p.Frame.Visible = false
+	end
 
 	local function flash(p: Pill, color: Color3)
 		local stroke = p.Frame:FindFirstChildOfClass("UIStroke")
@@ -110,6 +115,9 @@ function Hud.new(ctx: any)
 		essencePill.Frame.Visible = (w.Currencies.Essence or 0) > 0
 		crystalPills[1].Frame.Visible = (w.Resources.RawCrystal or 0) >= 1
 		crystalPills[2].Frame.Visible = (w.Resources.RefinedCrystal or 0) >= 1
+		for id, p in laterPills do
+			p.Frame.Visible = (w.Currencies[id] or 0) >= 1
+		end
 	end)
 
 	------------------------------------------------------------------ Empire (top left)

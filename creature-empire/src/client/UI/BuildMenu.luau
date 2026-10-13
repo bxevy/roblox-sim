@@ -8,6 +8,7 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local Format = require(Shared.Util.Format)
+local ResearchConfig = require(Shared.Config.ResearchConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 
@@ -28,12 +29,12 @@ local CATEGORIES = {
 	{
 		Id = "Automation",
 		Name = "Automation",
-		Later = { "Conveyor", "Courier Depot", "Sorting Machine", "Auto-Collector", "Power Relay" },
+		Later = { "Conveyor", "Sorting Machine", "Power Relay" },
 	},
 	{
 		Id = "Research",
 		Name = "Research & exploration",
-		Later = { "Expedition Portal", "Relic Archive", "Biome Scanner", "Mutation Lab" },
+		Later = { "Relic Archive", "Biome Scanner", "Mutation Lab" },
 	},
 	{ Id = "Empire", Name = "Empire", Later = { "Defensive Tower", "Decorations", "Teleport Gate" } },
 }
@@ -97,8 +98,11 @@ function BuildMenu.new(ctx: any)
 						reason = if limit == 0
 							then `Unlocks at Empire Core tier {limits and limits.UnlockTier or "?"}.`
 							else "Upgrade the Empire Core to build more."
+					elseif limits and limits.NeedsResearch then
+						local node = ResearchConfig.Nodes[limits.NeedsResearch]
+						reason = `Research {node and node.Name or limits.NeedsResearch} at the Research Station first.`
 					elseif not affordable then
-						reason = "Not enough gold yet."
+						reason = "Not enough resources yet."
 					end
 					if reason then
 						Theme.SetEnabled(button, false)

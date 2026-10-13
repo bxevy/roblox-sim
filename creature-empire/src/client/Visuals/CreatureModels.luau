@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local MutationConfig = require(Shared.Config.MutationConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local AssetConfig = require(Shared.Config.AssetConfig)
 local Types = require(Shared.Types)
@@ -663,7 +664,56 @@ end
 
 -- Builds a creature model. Returns the model (unparented); Root is anchored and the
 -- model's "Height" attribute is the distance from Root to the ground.
-function CreatureModels.Build(speciesId: string, stage: number?): Model
+-- Mutation looks: a recolour of the body (eyes and glowing parts keep their colour) plus a
+-- subtle particle, so mutated creatures read differently at a glance.
+local function applyMutation(model: Model, mutation: string, size: number)
+	local def = MutationConfig.Mutations[mutation]
+	if not def then
+		return
+	end
+	local index = 0
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 and part.Material ~= Enum.Material.Neon then
+			index += 1
+			if mutation == "Prismatic" then
+				local hue = (index * 0.13) % 1
+				part.Color = part.Color:Lerp(Color3.fromHSV(hue, 0.45, 1), 0.55)
+				part.Reflectance = 0.15
+			elseif mutation == "Ancient" then
+				part.Color = part.Color:Lerp(Color3.fromRGB(140, 130, 115), 0.6)
+				part.Material = Enum.Material.Slate
+			else
+				part.Color = part.Color:Lerp(def.Color, 0.65)
+			end
+		end
+	end
+	local root = model.PrimaryPart
+	if root then
+		local attachment = Instance.new("Attachment")
+		attachment.Name = "MutationAttachment"
+		attachment.Parent = root
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Name = "Mutation"
+		emitter.Texture = AssetConfig.Particles.Default
+		emitter.Color = if mutation == "Prismatic"
+			then ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 120, 120)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(120, 255, 160)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 140, 255)),
+			})
+			else ColorSequence.new(def.Color)
+		emitter.LightEmission = if mutation == "Shadow" then 0 else 0.8
+		emitter.Size = NumberSequence.new(size * 0.12, 0)
+		emitter.Lifetime = NumberRange.new(0.8, 1.4)
+		emitter.Speed = NumberRange.new(0.5, 1.5)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.Rate = 4
+		emitter.Parent = attachment
+	end
+	model:SetAttribute("Mutation", mutation)
+end
+
+function CreatureModels.Build(speciesId: string, stage: number?, mutation: string?): Model
 	local species = CreatureConfig.Species[speciesId]
 	assert(species, `Unknown species {speciesId}`)
 	local evolution = species.Evolution[stage or 1] or species.Evolution[1]
@@ -673,6 +723,9 @@ function CreatureModels.Build(speciesId: string, stage: number?): Model
 	if custom and custom:IsA("Model") and custom.PrimaryPart then
 		local clone = custom:Clone()
 		clone:ScaleTo(evolution.ScaleMultiplier)
+		if mutation then
+			applyMutation(clone, mutation, species.Appearance.Size)
+		end
 		clone:SetAttribute("Height", clone.PrimaryPart.Size.Y / 2)
 		return clone
 	end
@@ -718,6 +771,10 @@ function CreatureModels.Build(speciesId: string, stage: number?): Model
 		light.Parent = root
 	end
 	ambientParticles(ctx)
+
+	if mutation then
+		applyMutation(model, mutation, s)
+	end
 
 	local floating = table.find(look.Features, "Floating") ~= nil
 	model:SetAttribute("Height", s * 0.62 + (if floating then s * 0.5 else 0))

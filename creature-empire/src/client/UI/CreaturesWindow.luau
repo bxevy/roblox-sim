@@ -15,6 +15,7 @@ local GameConfig = require(Shared.Config.GameConfig)
 local Production = require(Shared.Util.Production)
 local Evolution = require(Shared.Util.Evolution)
 local Format = require(Shared.Util.Format)
+local MutationConfig = require(Shared.Config.MutationConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 local Viewport = require(script.Parent.Viewport)
@@ -94,7 +95,7 @@ function CreaturesWindow.new(ctx: any)
 		}, top)
 		Theme.Corner(portrait, 12)
 		Theme.Stroke(portrait, rarity.Color, 0.4, 2)
-		Viewport.Creature(portrait, info.Species, nil, { Spin = true, Stage = info.Stage })
+		Viewport.Creature(portrait, info.Species, nil, { Spin = true, Stage = info.Stage, Mutation = info.Mutation })
 		local identity = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromOffset(164, 0),
@@ -106,6 +107,11 @@ function CreaturesWindow.new(ctx: any)
 		Theme.Chip(chips, RarityConfig.Label(species.Rarity), rarity.Color)
 		Theme.Chip(chips, family.Glyph .. " " .. family.Name, family.Color)
 		Theme.Chip(chips, CreatureConfig.StageNames[info.Stage] or "Juvenile", Theme.Colors.Border)
+		local mutation = info.Mutation and MutationConfig.Mutations[info.Mutation]
+		if mutation then
+			Theme.Chip(chips, `{mutation.Glyph} {mutation.Name}`, mutation.Color)
+			Theme.Text(identity, mutation.Description, 13, { TextColor3 = mutation.Color })
+		end
 		Theme.Text(
 			identity,
 			`Level {info.Level}  ·  {Format.Number(info.Xp)} / {Format.Number(info.XpToNext)} XP`,
@@ -474,8 +480,9 @@ function CreaturesWindow.new(ctx: any)
 				{ BackgroundTransparency = 1, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(4, 4) },
 				card
 			)
-			Viewport.Creature(holder, info.Species)
-			Theme.Text(card, `<b>{info.Name}</b>  Lv {info.Level}`, 16, {
+			Viewport.Creature(holder, info.Species, nil, { Stage = info.Stage, Mutation = info.Mutation })
+			local glyph = info.Mutation and MutationConfig.Mutations[info.Mutation]
+			Theme.Text(card, `<b>{info.Name}</b>  Lv {info.Level}{if glyph then "  " .. glyph.Glyph else ""}`, 16, {
 				Position = UDim2.fromOffset(66, 8),
 				Size = UDim2.new(1, -72, 0, 20),
 				AutomaticSize = Enum.AutomaticSize.None,

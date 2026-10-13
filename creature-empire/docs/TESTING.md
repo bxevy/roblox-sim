@@ -69,6 +69,17 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Guardian: walk into the caldera with a companion. The combat bar appears. 1/2 attack, slam circles fill before impact, getting hit adds heat. With two players the guardian has more health and both get rewards. The first win grants a Magmaul. She returns after 3 minutes.
 - [ ] Load a Phase 2 save. It migrates to v3 without losing anything.
 
+### Phase 4: research, synergies, couriers, mutations, Ascension
+- [ ] Research Station: assign Wisplet. Moonpetals drain from the silo, Insight accumulates, and collecting adds Insight to the wallet (HUD pill appears).
+- [ ] Research Fertile Soil: Insight and gold are spent, and the farm rate rises by about 10%. Sharp Picks is locked until then. Rejoin: research persists.
+- [ ] Synergy: put Sproutling and Cindercub on one farm (level 2). The panel shows ✔ Sun and Soil and the rate rises. Remove one and it switches off.
+- [ ] Build menu: Courier Post says "Research Courier Routes first" until researched. Build it, assign Cogling: every ~5 s stored harvests move from the fullest building to the silo, and quest "Collect" steps count them. With the silo full the panel warns and nothing is lost.
+- [ ] Gearhound's Fetch carries up to 40 items at once from anywhere; with nothing stored it refuses and keeps its cooldown.
+- [ ] Hatch Arcane Eggs (*Developer → +100 Insight*, *+100 essence*). The odds add up to 100 and the mutation odds are listed. A mutated hatch shows a MUTATION chip in the reveal and a recoloured, sparkling model.
+- [ ] Ascension: *Developer → Core tier 5*. The Empire Core panel shows the payout. The window lists resets/stays, needs a second confirm, and is refused while an expedition is away. After ascending: plot back to the starting layout, fence back to the start, creatures in the habitat, shards and +10% yield applied, Titanicore granted the first time. Rejoin: all of it persists.
+- [ ] Buy a perk with shards; the rank shows, the price rises, and it stops at max.
+- [ ] Load a Phase 3 save: it migrates to v4 and its lifetime gold counts as this run's gold.
+
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.
 - [ ] When the silo is full, collecting leaves the remainder in the farm with a clear message.
