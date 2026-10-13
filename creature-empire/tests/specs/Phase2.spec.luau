@@ -133,6 +133,13 @@ describe("Recipes with inputs", function()
 		near(stored, 10)
 		near(made, 10)
 	end)
+	test("an instant burst at an empty smelter makes nothing (ability exploit guard)", function()
+		-- CreatureService routes InstantHarvest through Step with dt = 1.
+		local resources = {}
+		local stored, made = Production.Step(0, 12, 1, 15, { RawCrystal = 3 }, resources)
+		eq(made, 0)
+		eq(stored, 0)
+	end)
 	test("inputs are never consumed below zero", function()
 		local resources = { RawCrystal = 0.5 }
 		Production.Step(0, 10, 10, 100, { RawCrystal = 3 }, resources)

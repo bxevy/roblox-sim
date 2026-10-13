@@ -197,7 +197,7 @@ function RevealOverlay.new(ctx: any)
 					info,
 					"✦ " .. unlock,
 					16,
-					{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 2 + i / 10 }
+					{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 2 + i }
 				)
 			end
 		end
@@ -205,16 +205,16 @@ function RevealOverlay.new(ctx: any)
 			info,
 			`<b>⚡ {species.Active.Name}</b> · {species.Active.Description}`,
 			16,
-			{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 3 }
+			{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 10 }
 		)
 		Theme.Text(
 			info,
 			`<b>✦ {species.Passive.Name}</b> · {species.Passive.Description}`,
 			16,
-			{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 4 }
+			{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 11 }
 		)
 		continueButton =
-			Theme.Button(info, "Continue", "Primary", { Size = UDim2.fromOffset(200, 44), LayoutOrder = 5 })
+			Theme.Button(info, "Continue", "Primary", { Size = UDim2.fromOffset(200, 44), LayoutOrder = 12 })
 		continueButton.Activated:Connect(finish)
 		Theme.FocusFirst(info)
 	end

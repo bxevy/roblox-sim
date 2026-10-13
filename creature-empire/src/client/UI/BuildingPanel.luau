@@ -539,7 +539,7 @@ function BuildingPanel.new(ctx: any)
 	local function chamberSection()
 		local card = Window.Section(win.Body, "READY TO EVOLVE?", 2)
 		local creatures = State.Get("Creatures")
-		local wallet = State.Get("Wallet")
+		local wallet = State.Get("Wallet") or { Currencies = {}, Resources = {} }
 		local any = false
 		for id, c in creatures and creatures.List or {} do
 			local check = Evolution.Check(

@@ -16,6 +16,7 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local Production = require(Shared.Util.Production)
+local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -105,7 +106,7 @@ function CreatureService.Grant(
 	end
 	PlayerDataService.MarkDirty(player)
 	updateAnchor(player, record)
-	StateService.Push(player, "Creatures", "Collection")
+	StateService.Push(player, "Creatures", "Collection", "Empire")
 	local payload: { [string]: any } = {
 		Id = record.Id,
 		Species = speciesId,
@@ -245,9 +246,17 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		if stored >= rate.Capacity then
 			return false, "Storage is full. Collect first!"
 		end
+		-- Goes through the same step as normal work, so recipes with inputs (smelter,
+		-- condenser) still consume silo materials and nothing is made from nothing.
 		local amount = worker.PerCycle * ability.Power * strength
-		building.Stored[rate.Output] = math.min(stored + amount, rate.Capacity)
-		message = `{ability.Name}! The farm burst into bloom.`
+		local newStored, made = Production.Step(stored, amount, 1, rate.Capacity, rate.InputsPerUnit, data.Resources)
+		if made <= 0 then
+			return false, "Not enough materials in your silo for that."
+		end
+		building.Stored[rate.Output] = newStored
+		local output = ResourceConfig[rate.Output]
+		message = `{ability.Name}! +{math.floor(made)} {output and output.Name or rate.Output} at the building.`
+		StateService.Push(player, "Wallet")
 	elseif ability.Kind == "SpeedBurst" then
 		ProductionService.AddBuff(player, buildingId :: string, {
 			Stat = "WorkSpeed",

@@ -77,6 +77,8 @@ commands.levelup = function(player)
 			creature.JobCycles[job] = (creature.JobCycles[job] or 0) + 200
 		end
 	end
+	PlayerDataService.MarkDirty(player)
+	StateService.Push(player, "Creatures")
 	ProductionService.Invalidate(player)
 	return true, "Every creature gained 5 levels and 200 work cycles in each job."
 end

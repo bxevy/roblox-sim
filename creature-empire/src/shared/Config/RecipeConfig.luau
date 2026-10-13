@@ -29,8 +29,8 @@ local RecipeConfig: { [string]: Types.RecipeDef & { Enabled: boolean } } = {
 		RequiresJob = "Miner",
 		Enabled = true,
 	},
-	-- Inputs are taken from the Resource Silo as the building works. Yield bonuses add
-	-- output without extra input, so better workers are also more efficient.
+	-- Inputs are taken from the Resource Silo as the building works, at a fixed amount per
+	-- unit of output: better workers produce faster, and use inputs faster too.
 	SmeltCrystal = {
 		Id = "SmeltCrystal",
 		Name = "Smelt Crystal",

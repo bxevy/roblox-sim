@@ -312,7 +312,7 @@ function CreaturesWindow.new(ctx: any)
 
 		-- Evolution preview
 		local evo = Window.Section(column, "EVOLUTION", 6)
-		local wallet = State.Get("Wallet")
+		local wallet = State.Get("Wallet") or { Currencies = {}, Resources = {} }
 		local check = Evolution.Check(
 			wallet,
 			{

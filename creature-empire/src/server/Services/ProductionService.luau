@@ -28,6 +28,7 @@ type Runtime = {
 	Buffs: { [string]: { Production.Buff } },
 	CycleProgress: { [string]: number }, -- fractional work cycles per creature
 	Starved: { [string]: boolean }, -- buildings whose inputs ran out on the last step
+	LastWalletPush: number,
 	LastTick: number,
 	LastResync: number,
 	Stale: boolean,
@@ -58,6 +59,13 @@ local function recompute(player: Player, runtime: Runtime)
 		end
 	end
 	runtime.Rates = Production.Rates(data, runtime.Buffs)
+	-- Buildings with no workers can't be "starved".
+	for buildingId in runtime.Starved do
+		local rate = runtime.Rates[buildingId]
+		if not rate or rate.PerSecond <= 0 then
+			runtime.Starved[buildingId] = nil
+		end
+	end
 	runtime.Stale = false
 end
 
@@ -139,7 +147,10 @@ local function advance(
 	if next(produced) or consumedAny then
 		PlayerDataService.MarkDirty(player)
 	end
-	if consumedAny then
+	-- Inputs drain a little every tick; refresh the wallet at most every few seconds
+	-- (otherwise every open window would rebuild once a second).
+	if consumedAny and os.clock() - runtime.LastWalletPush >= RESYNC_INTERVAL then
+		runtime.LastWalletPush = os.clock()
 		StateService.Push(player, "Wallet")
 	end
 	return produced
@@ -284,6 +295,7 @@ function ProductionService.Start()
 			Buffs = {},
 			CycleProgress = {},
 			Starved = {},
+			LastWalletPush = 0,
 			LastTick = os.clock(),
 			LastResync = 0,
 			Stale = false,
