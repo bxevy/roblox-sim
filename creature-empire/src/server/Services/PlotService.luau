@@ -98,6 +98,49 @@ local function buildPlot(index: number): Plot
 	curbPiece(0, 0, 0, DEPTH)
 	curbPiece(WIDTH, 0, WIDTH, DEPTH)
 
+	-- Wooden fence on the curb, open at the entrance. Posts every few studs and two long
+	-- rails per side keep the part count low (about 70 parts per plot).
+	local FENCE_HEIGHT = 4
+	local POST_SPACING = 6
+	local post = Color3.fromRGB(110, 78, 50)
+	local rail = Color3.fromRGB(150, 110, 72)
+	local function fence(x1: number, z1: number, x2: number, z2: number)
+		local from = Vector3.new(x1, 0, z1)
+		local to = Vector3.new(x2, 0, z2)
+		local length = (to - from).Magnitude
+		if length < 1 then
+			return
+		end
+		local direction = (to - from).Unit
+		local posts = math.max(math.floor(length / POST_SPACING), 1)
+		for i = 0, posts do
+			local p = from + direction * (length * i / posts)
+			Parts.Part(ground, {
+				Name = "FencePost",
+				Size = Vector3.new(0.8, FENCE_HEIGHT + 0.6, 0.8),
+				CFrame = origin * CFrame.new(p.X, 1 + (FENCE_HEIGHT + 0.6) / 2, p.Z),
+				Color = post,
+				Material = Enum.Material.Wood,
+			})
+		end
+		local mid = (from + to) / 2
+		local facing = CFrame.lookAt(Vector3.zero, direction)
+		for _, height in { 1.6, 3.4 } do
+			Parts.Part(ground, {
+				Name = "FenceRail",
+				Size = Vector3.new(0.35, 0.5, length),
+				CFrame = origin * CFrame.new(mid.X, 1 + height, mid.Z) * facing.Rotation,
+				Color = rail,
+				Material = Enum.Material.WoodPlanks,
+			})
+		end
+	end
+	fence(0, 0, entranceLeft, 0)
+	fence(entranceRight, 0, WIDTH, 0)
+	fence(WIDTH, 0, WIDTH, DEPTH)
+	fence(WIDTH, DEPTH, 0, DEPTH)
+	fence(0, DEPTH, 0, 0)
+
 	-- Path from the entrance to the Empire Core (the reserved cells)
 	for _, area in PlotConfig.ReservedCells do
 		local x1, z1 = area.X1 * PlotConfig.CellSize, area.Z1 * PlotConfig.CellSize
