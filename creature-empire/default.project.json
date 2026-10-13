@@ -1,0 +1,40 @@
+{
+  "name": "creature-empire",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      },
+      "$properties": {
+        "CameraMaxZoomDistance": 160
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 15.2,
+        "Technology": "Future",
+        "Brightness": 2.4,
+        "EnvironmentDiffuseScale": 0.6,
+        "EnvironmentSpecularScale": 0.5,
+        "OutdoorAmbient": [
+          0.55,
+          0.55,
+          0.62
+        ]
+      }
+    }
+  }
+}

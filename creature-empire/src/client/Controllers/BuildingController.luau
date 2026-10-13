@@ -1,0 +1,297 @@
+--!strict
+-- Interaction with buildings in the world, plus their live feedback:
+--   * Proximity prompts (keyboard E/F, gamepad X/Y, touch tap): Collect / Manage / Trade on
+--     your own buildings, Inspect on other players' plots (read-only).
+--   * A storage bubble over each of your production buildings, extrapolated between server
+--     updates from the server-provided rate (display only; the server decides amounts).
+--   * Farm petals glow brighter as storage fills; the silo gauge shows how full it is.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BuildingConfig = require(Shared.Config.BuildingConfig)
+local ResourceConfig = require(Shared.Config.ResourceConfig)
+local Remotes = require(Shared.Remotes)
+local Format = require(Shared.Util.Format)
+local StateController = require(script.Parent.StateController)
+local EffectsController = require(script.Parent.EffectsController)
+local AudioController = require(script.Parent.AudioController)
+
+local localPlayer = Players.LocalPlayer
+
+local BuildingController = {}
+
+-- Set by Main: open the building panel / the visitor inspect window.
+BuildingController.OpenPanel = function(_buildingId: string) end
+BuildingController.OpenInspect = function(_ownerUserId: number) end
+BuildingController.Notify = function(_message: string, _kind: string) end
+
+type Tracked = {
+	Model: Model,
+	Id: string,
+	Type: string,
+	Owned: boolean,
+	Bubble: BillboardGui?,
+	BubbleText: TextLabel?,
+	BubbleFill: Frame?,
+	Petals: { BasePart },
+	Gauge: BasePart?,
+	GaugeBase: CFrame?,
+}
+
+local tracked: { [Model]: Tracked } = {}
+
+-- Predicted stored amount for one of my buildings right now.
+function BuildingController.PredictedStored(buildingId: string): (number, number, string?)
+	local buildings = StateController.Get("Buildings")
+	local info = buildings and buildings.List and buildings.List[buildingId]
+	if not info or not info.Output then
+		return 0, 0, nil
+	end
+	local stored = info.Stored[info.Output] or 0
+	local predicted = math.min(stored + (info.PerSecond or 0) * StateController.Age("Buildings"), info.Capacity or 0)
+	return predicted, info.Capacity or 0, info.Output
+end
+
+local function prompt(
+	parent: Instance,
+	action: string,
+	objectText: string,
+	key: Enum.KeyCode,
+	gamepad: Enum.KeyCode,
+	order: number
+): ProximityPrompt
+	local p = Instance.new("ProximityPrompt")
+	p.ActionText = action
+	p.ObjectText = objectText
+	p.KeyboardKeyCode = key
+	p.GamepadKeyCode = gamepad
+	p.HoldDuration = 0
+	p.MaxActivationDistance = 14
+	p.RequiresLineOfSight = false
+	p.UIOffset = Vector2.new(0, order * 72)
+	p.Style = Enum.ProximityPromptStyle.Default
+	p.Parent = parent
+	return p
+end
+
+local function makeBubble(t: Tracked)
+	local base = t.Model.PrimaryPart :: BasePart
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "StorageBubble"
+	gui.Size = UDim2.fromOffset(130, 44)
+	gui.StudsOffset = Vector3.new(0, 9, 0)
+	gui.MaxDistance = 80
+	gui.LightInfluence = 0
+	gui.AlwaysOnTop = true
+	gui.Adornee = base
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundColor3 = Color3.fromRGB(18, 24, 38)
+	frame.BackgroundTransparency = 0.15
+	frame.Parent = gui
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(150, 200, 255)
+	stroke.Transparency = 0.6
+	stroke.Parent = frame
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.new(1, -12, 0, 24)
+	text.Position = UDim2.fromOffset(6, 3)
+	text.BackgroundTransparency = 1
+	text.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	text.TextScaled = true
+	text.TextColor3 = Color3.new(1, 1, 1)
+	text.Parent = frame
+	local barBack = Instance.new("Frame")
+	barBack.Size = UDim2.new(1, -16, 0, 7)
+	barBack.Position = UDim2.new(0, 8, 1, -12)
+	barBack.BackgroundColor3 = Color3.fromRGB(10, 14, 24)
+	barBack.Parent = frame
+	Instance.new("UICorner", barBack).CornerRadius = UDim.new(1, 0)
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = ResourceConfig.Moonpetal.Color
+	fill.Parent = barBack
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+	gui.Parent = base
+	t.Bubble = gui
+	t.BubbleText = text
+	t.BubbleFill = fill
+end
+
+local function track(model: Instance, owned: boolean)
+	if not model:IsA("Model") then
+		return
+	end
+	local base = model.PrimaryPart or model:WaitForChild("Base", 5)
+	if not base or not base:IsA("BasePart") then
+		return
+	end
+	local id = model:GetAttribute("BuildingId") :: string? or model.Name
+	local typeId = model:GetAttribute("BuildingType") :: string? or model.Name
+	local def = BuildingConfig[typeId]
+	if not def then
+		return
+	end
+	local t: Tracked = { Model = model, Id = id, Type = typeId, Owned = owned, Petals = {} }
+
+	if owned then
+		if def.Recipe then
+			local collect = prompt(base, "Collect", def.Name, Enum.KeyCode.E, Enum.KeyCode.ButtonX, 0)
+			collect.Triggered:Connect(function()
+				local ok, result = StateController.Request("Collect", id)
+				if ok then
+					AudioController.Play("Collect", base.Position)
+					EffectsController.Popup(
+						base.Position + Vector3.new(0, 6, 0),
+						"+" .. Format.Number(result) .. " " .. ResourceConfig.Moonpetal.Icon,
+						ResourceConfig.Moonpetal.Color
+					)
+					EffectsController.Burst(
+						base.Position + Vector3.new(0, 2, 0),
+						ResourceConfig.Moonpetal.Color,
+						20,
+						{ Acceleration = Vector3.new(0, 8, 0) }
+					)
+				else
+					BuildingController.Notify(result, "Error")
+				end
+			end)
+			makeBubble(t)
+		end
+		local action = if typeId == "TradingPost" then "Trade" elseif def.Locked then "Inspect" else "Manage"
+		local manage = prompt(base, action, def.Name, Enum.KeyCode.F, Enum.KeyCode.ButtonY, if def.Recipe then 1 else 0)
+		manage.Triggered:Connect(function()
+			BuildingController.OpenPanel(id)
+		end)
+	else
+		local inspect = prompt(base, "Inspect empire", def.Name, Enum.KeyCode.F, Enum.KeyCode.ButtonY, 0)
+		inspect.MaxActivationDistance = 12
+		inspect.Triggered:Connect(function()
+			local ownerId = model:GetAttribute("OwnerUserId") :: number?
+			if ownerId then
+				BuildingController.OpenInspect(ownerId)
+			end
+		end)
+	end
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") and descendant.Name == "Petal" then
+			table.insert(t.Petals, descendant)
+		elseif descendant:IsA("BasePart") and descendant.Name == "FillGauge" then
+			t.Gauge = descendant
+			t.GaugeBase = descendant.CFrame
+		end
+	end
+	tracked[model] = t
+end
+
+local function watchPlot(plot: Instance)
+	if not plot:IsA("Folder") then
+		return
+	end
+	local buildings = plot:WaitForChild("Buildings", 10)
+	if not buildings then
+		return
+	end
+	local function owned(): boolean
+		return plot:GetAttribute("OwnerUserId") == localPlayer.UserId
+	end
+	local function refreshAll()
+		for model, t in tracked do
+			if model.Parent == buildings then
+				for _, child in (model.PrimaryPart :: BasePart):GetChildren() do
+					if child:IsA("ProximityPrompt") or child.Name == "StorageBubble" then
+						child:Destroy()
+					end
+				end
+				tracked[model] = nil
+				task.spawn(track, model, owned())
+			end
+			local _ = t
+		end
+	end
+	for _, model in buildings:GetChildren() do
+		task.spawn(track, model, owned())
+	end
+	buildings.ChildAdded:Connect(function(model)
+		task.wait() -- let the model's descendants replicate
+		track(model, owned())
+		if owned() and model:IsA("Model") then
+			EffectsController.Construct(model)
+		end
+	end)
+	buildings.ChildRemoved:Connect(function(model)
+		tracked[model :: Model] = nil
+	end)
+	plot:GetAttributeChangedSignal("OwnerUserId"):Connect(refreshAll)
+end
+
+-- Per-frame display updates (cheap: a handful of buildings).
+local function update()
+	local wallet = StateController.Get("Wallet")
+	for model, t in tracked do
+		if not model.Parent then
+			tracked[model] = nil
+			continue
+		end
+		if not t.Owned then
+			continue
+		end
+		if t.Bubble and t.BubbleText and t.BubbleFill then
+			local stored, capacity, output = BuildingController.PredictedStored(t.Id)
+			local resource = output and ResourceConfig[output]
+			local alpha = if capacity > 0 then stored / capacity else 0
+			local full = capacity > 0 and stored >= capacity - 0.01
+			t.BubbleText.Text = (if resource then resource.Icon .. " " else "")
+				.. Format.Number(math.floor(stored))
+				.. " / "
+				.. Format.Number(capacity)
+				.. (if full then "  FULL" else "")
+			t.BubbleText.TextColor3 = if full then Color3.fromRGB(255, 210, 90) else Color3.new(1, 1, 1)
+			t.BubbleFill.Size = UDim2.fromScale(math.clamp(alpha, 0, 1), 1)
+			for _, petal in t.Petals do
+				petal.Transparency = 0.75 - 0.7 * alpha
+			end
+		end
+		if t.Gauge and t.GaugeBase and wallet then
+			local capacity = wallet.Capacity and wallet.Capacity.Moonpetal or 0
+			local amount = wallet.Resources and wallet.Resources.Moonpetal or 0
+			local alpha = if capacity > 0 then math.clamp(amount / capacity, 0, 1) else 0
+			local maxHeight = (t.Gauge:GetAttribute("MaxHeight") :: number?) or 6
+			local height = math.max(maxHeight * alpha, 0.2)
+			t.Gauge.Size = Vector3.new(t.Gauge.Size.X, height, t.Gauge.Size.Z)
+			t.Gauge.CFrame = t.GaugeBase * CFrame.new(0, height / 2 - 0.1, 0)
+		end
+	end
+end
+
+function BuildingController.Start()
+	local plots = Workspace:WaitForChild("PlayerPlots")
+	for _, plot in plots:GetChildren() do
+		task.spawn(watchPlot, plot)
+	end
+	plots.ChildAdded:Connect(watchPlot)
+
+	local elapsed = 0
+	RunService.Heartbeat:Connect(function(dt)
+		elapsed += dt
+		if elapsed >= 0.2 then
+			elapsed = 0
+			update()
+		end
+	end)
+
+	Remotes.Events.GameEvent.OnClientEvent:Connect(function(name, payload)
+		if name == "BuildingUpgraded" or name == "BuildingPlaced" then
+			AudioController.Play(if name == "BuildingPlaced" then "Place" else "Upgrade")
+		end
+		local _ = payload
+	end)
+end
+
+return BuildingController
