@@ -4,6 +4,9 @@
 -- Owned perks are mirrored onto the player as attributes ("Perk_Luck", "Perk_Coins") so
 -- other services and the client can check them cheaply. Ownership comes from the game
 -- pass, or from data.Perks (admin gifts / testing).
+--
+-- For the store's 3D previews, a mannequin wearing each exclusive set is built once and
+-- put in ReplicatedStorage.StorePreviews; the client shows clones of them in the store.
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
@@ -15,9 +18,12 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local DataService = require(script.Parent.DataService)
 local PlayerService = require(script.Parent.PlayerService)
 local Receipts = require(script.Parent.Parent.Receipts)
+local ArmorVisuals = require(script.Parent.Parent.ArmorVisuals)
 local Sfx = require(script.Parent.Parent.Sfx)
 
 local Store = Config.RobuxStore
+local MANNEQUIN_SKIN = Color3.fromRGB(205, 160, 125)
+local MANNEQUIN_CLOTH = Color3.fromRGB(45, 42, 52)
 
 local StoreService = {}
 
@@ -121,7 +127,67 @@ function StoreService.TogglePerk(player: Player, perkId: string): boolean
 	return player:GetAttribute(`Perk_{perkId}`) == true
 end
 
+-- An anchored R15 mannequin wearing the full set (no scripts, no physics).
+local function buildPreview(setId: string): Model?
+	local description = Instance.new("HumanoidDescription")
+	description.HeadColor = MANNEQUIN_SKIN
+	description.LeftArmColor = MANNEQUIN_SKIN
+	description.RightArmColor = MANNEQUIN_SKIN
+	description.TorsoColor = MANNEQUIN_CLOTH
+	description.LeftLegColor = MANNEQUIN_CLOTH
+	description.RightLegColor = MANNEQUIN_CLOTH
+	local ok, model = pcall(function()
+		return Players:CreateHumanoidModelFromDescription(description, Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not model then
+		warn("[StoreService] Couldn't build an armor preview:", model)
+		return nil
+	end
+	model.Name = setId
+	for _, child in model:GetDescendants() do
+		if child:IsA("BaseScript") then
+			child:Destroy()
+		end
+	end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	end
+	model:PivotTo(CFrame.new())
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+		end
+	end
+
+	local set = Items.ArmorSets[setId]
+	local pieces = {}
+	for slot, pieceId in set.Pieces do
+		pieces[slot] = Items.Armors[pieceId]
+	end
+	ArmorVisuals.apply(model, pieces, setId)
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+		end
+	end
+	return model
+end
+
+local function buildPreviews()
+	local folder = Instance.new("Folder")
+	folder.Name = "StorePreviews"
+	for _, setId in Store.ArmorOrder do
+		local model = buildPreview(setId)
+		if model then
+			model.Parent = folder
+		end
+	end
+	folder.Parent = ReplicatedStorage
+end
+
 function StoreService.Start()
+	task.spawn(buildPreviews)
 	Remotes.RobuxStore.OnServerInvoke = onStoreAction
 
 	DataService.OnLoaded(function(player)

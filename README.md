@@ -127,7 +127,7 @@ jack-o'-lantern east of the fountain, and a 7th portal.
 |------|------|-------|--------------|
 | **2x Luck** | Game Pass | R$ 249 | Class rolls, Crate Shrine crates, Halloween crates and dungeon drops roll twice and keep the rarer result; Mythic drop chance x2 |
 | **2x Coins** | Game Pass | R$ 199 | Doubles every coin reward (dungeons, quests, ...) |
-| **Starforged Emperor** | Developer Product | R$ 499 | Exclusive 4-piece armor: crown, angel wings, starlight sparkles. +150 health, +18% damage, +12% speed set bonus |
+| **Starforged Emperor** | Developer Product | R$ 499 | Exclusive 4-piece armor (the store shows a turning 3D preview of each set): crown, angel wings, starlight sparkles. +150 health, +18% damage, +12% speed set bonus |
 | **Frostbound Titan** | Developer Product | R$ 399 | Exclusive 4-piece ice armor: horns, dragon wings, frost aura. +180 health, +15% damage, +3% defense set bonus |
 | **Class slot** | Developer Product | R$ 125 | Unlocks the next class slot (see above) |
 
