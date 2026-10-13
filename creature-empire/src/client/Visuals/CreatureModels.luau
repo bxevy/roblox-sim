@@ -744,16 +744,38 @@ function CreatureModels.FindCustom(speciesId: string, stage: number): Model?
 	return nil
 end
 
+-- World-aligned bounds of a model's parts (GetBoundingBox follows the model's pivot
+-- rotation, which imported models can have tilted).
+local function worldBounds(model: Model): (Vector3, Vector3)
+	local min = Vector3.new(math.huge, math.huge, math.huge)
+	local max = -min
+	for _, part in model:GetDescendants() do
+		if part:IsA("BasePart") then
+			local half = part.Size / 2
+			for _, sx in { -1, 1 } do
+				for _, sy in { -1, 1 } do
+					for _, sz in { -1, 1 } do
+						local corner = part.CFrame:PointToWorldSpace(Vector3.new(half.X * sx, half.Y * sy, half.Z * sz))
+						min = min:Min(corner)
+						max = max:Max(corner)
+					end
+				end
+			end
+		end
+	end
+	return (min + max) / 2, max - min
+end
+
 local function prepareCustom(source: Model, height: number, stageScale: number, floating: boolean): Model
 	local model = source:Clone()
 	-- Resize so it stands `height` studs tall (like the built-in creatures).
-	local _, size = model:GetBoundingBox()
-	if model:GetAttribute("KeepSize") ~= true and size.Y > 0 then
+	local _, size = worldBounds(model)
+	if model:GetAttribute("KeepSize") ~= true and size.Y > 0 and size.Y < math.huge then
 		model:ScaleTo(model:GetScale() * height / size.Y)
 	elseif model:GetAttribute("KeepSize") == true and stageScale ~= 1 then
 		model:ScaleTo(model:GetScale() * stageScale)
 	end
-	local boxCF, box = model:GetBoundingBox()
+	local center, box = worldBounds(model)
 	-- Replace any existing root with our own: anchored, invisible, at the model's centre.
 	for _, d in model:GetDescendants() do
 		if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then
@@ -769,7 +791,7 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 	root.CanTouch = false
 	root.Transparency = 1
 	root.Size = Vector3.new(box.X, box.Y, box.Z) * 0.8
-	root.CFrame = CFrame.new(boxCF.Position) * CFrame.Angles(0, facing, 0)
+	root.CFrame = CFrame.new(center) * CFrame.Angles(0, facing, 0)
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = false
@@ -788,7 +810,8 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 	model:PivotTo(CFrame.new())
 	model.Name = source.Name
 	local lift = (model:GetAttribute("HeightOffset") :: number?) or 0
-	model:SetAttribute("Height", box.Y / 2 + lift + (if floating then height * 0.3 else 0))
+	-- A small gap like the built-in creatures have, so feet rest on raised floors (habitat).
+	model:SetAttribute("Height", box.Y / 2 + height * 0.12 + lift + (if floating then height * 0.3 else 0))
 	model:SetAttribute("Floating", floating)
 	return model
 end
