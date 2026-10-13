@@ -131,7 +131,8 @@ jack-o'-lantern east of the fountain, and a 7th portal.
 | **Frostbound Titan** | Developer Product | R$ 399 | Exclusive 4-piece ice armor: horns, dragon wings, frost aura. +180 health, +15% damage, +3% defense set bonus |
 | **Class slot** | Developer Product | R$ 125 | Unlocks the next class slot (see above) |
 
-Set up: create the two passes (Creator Dashboard > your experience > Monetization > Passes) and
+Set up: create the two passes (Creator Dashboard > your experience > Monetization > Passes; icons are in
+`assets/store/pass_2x_luck_512.png` and `pass_2x_coins_512.png`, made by `tools/art/passes.py`) and
 put their ids in `Config.RobuxStore.Perks.Luck/Coins.GamePassId`. Create the armor products and
 put their ids in `Config.RobuxStore.Armor.<Set>.ProductId`. Prices on Roblox are whatever you set
 there; the `PriceLabel`s only change what the store shows. Until an id is set, the button says
