@@ -39,7 +39,9 @@ function QuestWindow.new(gui: ScreenGui, claim: (kind: string, index: number?) -
 			BackgroundColor3 = Util.ButtonColor,
 			BackgroundTransparency = 0,
 		})
-		Util.make("UIStroke", row, { Color = accent, Thickness = if done and not quest.Claimed then 2 else 0 })
+		if done and not quest.Claimed then
+			Util.stroke(row, accent, 0, 2)
+		end
 		Util.text(row, {
 			Position = UDim2.fromOffset(10, 6),
 			Size = UDim2.new(1, -130, 0, 24),

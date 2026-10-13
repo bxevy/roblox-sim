@@ -87,14 +87,15 @@ function StatsWindow.new(gui: ScreenGui, fetch: () -> any)
 		end
 		Util.clear(mineList)
 		Util.text(mineList, { LayoutOrder = 0, Size = UDim2.new(1, 0, 0, 30), Text = "Your stats", TextColor3 = Color3.fromRGB(255, 220, 140) })
-		Util.text(mineList, { LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, Text = `Level {state.Level}` })
+		-- One row per stat: name on the left, value on the right, same size throughout
+		local function statRow(order: number, name: string, value: string)
+			local row = Util.make("Frame", mineList, { LayoutOrder = order, Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1 })
+			Util.text(row, { Size = UDim2.new(1, -60, 1, 0), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 14, TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = Util.Theme.Muted, Text = name })
+			Util.text(row, { AnchorPoint = Vector2.new(1, 0), Position = UDim2.fromScale(1, 0), Size = UDim2.new(0, 60, 1, 0), TextXAlignment = Enum.TextXAlignment.Right, TextScaled = false, TextSize = 15, Text = value })
+		end
+		statRow(1, "Level", tostring(state.Level))
 		for i, entry in Config.StatNames do
-			Util.text(mineList, {
-				LayoutOrder = i + 1,
-				Size = UDim2.new(1, 0, 0, 24),
-				TextXAlignment = Enum.TextXAlignment.Left,
-				Text = `{entry[2]}: {math.floor(state.Lifetime[entry[1]] or 0)}`,
-			})
+			statRow(i + 1, entry[2], tostring(math.floor(state.Lifetime[entry[1]] or 0)))
 		end
 	end
 

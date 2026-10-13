@@ -51,6 +51,7 @@ end)
 local gui = Util.make("ScreenGui", player:WaitForChild("PlayerGui"), {
 	Name = "HUD",
 	ResetOnSpawn = false,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 })
 
 local state = nil

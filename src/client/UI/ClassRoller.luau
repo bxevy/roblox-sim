@@ -48,7 +48,7 @@ function ClassRoller.new(gui: ScreenGui, roll: (currency: string) -> ())
 		local class = Config.Classes[classId]
 		local card = Util.panel(grid, { LayoutOrder = order, BackgroundColor3 = Util.ButtonColor, BackgroundTransparency = 0 })
 		Util.padding(card, 8)
-		local stroke = Util.make("UIStroke", card, { Color = class.Color, Thickness = if class.Rarity == "Godly" then 3 else 2 })
+		local stroke = Util.stroke(card, class.Color, 0, if class.Rarity == "Godly" then 3 else 2)
 		if class.Rarity == "Godly" then
 			-- The Godly class card shimmers
 			local gradient = Util.make("UIGradient", stroke, {

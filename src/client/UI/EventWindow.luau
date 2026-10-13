@@ -92,7 +92,7 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 		BackgroundColor3 = Color3.fromRGB(20, 12, 25),
 		BackgroundTransparency = 0,
 	})
-	Util.make("UIStroke", reveal, { Color = ORANGE, Thickness = 2 })
+	Util.stroke(reveal, ORANGE, 0, 2)
 	local revealName = Util.text(reveal, { Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -16, 0, 44), Text = "Open a Halloween Crate!" })
 	local revealInfo = Util.text(reveal, { Position = UDim2.fromOffset(8, 54), Size = UDim2.new(1, -16, 0, 26), TextColor3 = Color3.fromRGB(200, 200, 210), Text = "" })
 
@@ -100,13 +100,17 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 		Position = UDim2.fromOffset(0, 98),
 		Size = UDim2.new(0.5, -4, 0, 46),
 		BackgroundColor3 = ORANGE,
-		Text = `Open ({crate.CandyCost} candies)`,
+		TextScaled = false,
+		TextSize = 16,
+		Text = `Open: {crate.CandyCost} Candies`,
 	})
 	local robuxButton = Util.button(left, {
 		Position = UDim2.new(0.5, 4, 0, 98),
 		Size = UDim2.new(0.5, -4, 0, 46),
 		BackgroundColor3 = Color3.fromRGB(40, 160, 90),
-		Text = `Open ({crate.RobuxPriceLabel})`,
+		TextScaled = false,
+		TextSize = 16,
+		Text = `Open: {crate.RobuxPriceLabel}`,
 	})
 	Util.text(left, {
 		Position = UDim2.fromOffset(0, 150),
@@ -122,6 +126,9 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 			Position = UDim2.fromOffset(8, 0),
 			Size = UDim2.new(1, -80, 1, 0),
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextScaled = false,
+			TextSize = 14,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			TextColor3 = Config.Rarities[rarity] or Color3.new(1, 1, 1),
 			Text = `{entryName(entry)} - {rarity}`,
 		})
@@ -130,6 +137,9 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 			Position = UDim2.new(1, -8, 0, 0),
 			Size = UDim2.fromOffset(70, 28),
 			TextXAlignment = Enum.TextXAlignment.Right,
+			Font = Util.TitleFont,
+			TextScaled = false,
+			TextSize = 17,
 			Text = formatOdds(entry.Chance),
 		})
 	end
@@ -137,7 +147,7 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 	-- Right: limited class and pets -----------------------------------------------------
 	local right = Util.make("Frame", body, { Position = UDim2.new(0.55, 6, 0, 54), Size = UDim2.new(0.45, -6, 1, -54), BackgroundTransparency = 1 })
 	local classPanel = Util.panel(right, { Size = UDim2.new(1, 0, 0, 120), BackgroundColor3 = Util.ButtonColor, BackgroundTransparency = 0 })
-	Util.make("UIStroke", classPanel, { Color = Config.Rarities.Limited, Thickness = 2 })
+	Util.stroke(classPanel, Config.Rarities.Limited, 0, 2)
 	local limitedId = Config.LimitedClassOrder[1]
 	local limited = Config.Classes[limitedId]
 	Util.text(classPanel, { Position = UDim2.fromOffset(8, 4), Size = UDim2.new(1, -16, 0, 24), TextColor3 = Config.Rarities.Limited, Text = `LIMITED CLASS: {limited.DisplayName}` })
@@ -241,13 +251,15 @@ function EventWindow.new(gui: ScreenGui, actions, toast: (string, boolean?) -> (
 					BackgroundColor3 = if equipped then Color3.fromRGB(50, 95, 55) else Util.ButtonColor,
 					BackgroundTransparency = 0,
 				})
-				Util.text(row, { Position = UDim2.fromOffset(8, 2), Size = UDim2.new(1, -96, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Config.Rarities[def.Rarity], Text = def.DisplayName })
-				Util.text(row, { Position = UDim2.fromOffset(8, 26), Size = UDim2.new(1, -96, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = Color3.fromRGB(200, 200, 210), Text = Pets.Describe(def) })
+				Util.text(row, { Position = UDim2.fromOffset(8, 2), Size = UDim2.new(1, -96, 0, 24), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 18, TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = Config.Rarities[def.Rarity], Text = def.DisplayName })
+				Util.text(row, { Position = UDim2.fromOffset(8, 26), Size = UDim2.new(1, -96, 0, 18), TextXAlignment = Enum.TextXAlignment.Left, TextScaled = false, TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd, TextColor3 = Util.Theme.Muted, Text = Pets.Describe(def) })
 				local button = Util.button(row, {
 					AnchorPoint = Vector2.new(1, 0.5),
 					Position = UDim2.new(1, -6, 0.5, 0),
 					Size = UDim2.fromOffset(80, 32),
 					BackgroundColor3 = if equipped then Color3.fromRGB(120, 60, 60) else Color3.fromRGB(60, 130, 70),
+					TextScaled = false,
+					TextSize = 16,
 					Text = if equipped then "Unequip" else "Equip",
 				})
 				button.Activated:Connect(function()

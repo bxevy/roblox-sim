@@ -1,5 +1,8 @@
--- Always-on screen elements: stats, health/XP bars, ability + potion hotbars,
--- active buffs, dungeon status and toast messages.
+-- Always-on screen elements:
+--   top-left     player plate (level, class, XP, gold, candies) and active buffs
+--   left side    menu sidebar (icons with key hints and hover labels)
+--   bottom       hotbar: weapon + potions | Q / E / R abilities, with health and stamina
+--   top-center   dungeon status, toasts and the boss health bar
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +15,10 @@ local Items = require(ReplicatedStorage.Shared.Items)
 local Util = require(script.Parent.Util)
 
 local ABILITY_KEYS = { "Q", "E" }
+local T = Util.Theme
+local SLOT = 50
+local ABILITY_SLOT = 60
+local BAR_WIDTH = 620
 
 local Hud = {}
 
@@ -34,128 +41,173 @@ export type Actions = {
 	Dodge: () -> (),
 }
 
+local function commas(n: number): string
+	local s = tostring(math.floor(n))
+	local formatted = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (formatted:gsub("^,", ""))
+end
+
+-- Small key hint in the corner of a slot ("Q", "1", ...)
+local function keycap(parent: Instance, key: string)
+	local cap = Util.make("Frame", parent, {
+		Position = UDim2.fromOffset(3, 3),
+		Size = UDim2.fromOffset(18, 18),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = 0.35,
+		BorderSizePixel = 0,
+		ZIndex = 4,
+	})
+	Util.corner(cap, 5)
+	Util.text(cap, { Size = UDim2.fromScale(1, 1), TextScaled = false, TextSize = 12, Text = key, ZIndex = 5 })
+end
+
 function Hud.new(gui: ScreenGui, actions: Actions)
 	local self = {}
+	local player = Players.LocalPlayer
 
-	-- Stats (top-left) -------------------------------------------------------
-	local stats = Util.panel(gui, { Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(220, 100) })
-	local classLabel = Util.text(stats, {
-		Position = UDim2.fromOffset(12, 6),
-		Size = UDim2.new(1, -24, 0, 30),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Text = "Level 1",
+	-- Player plate (top-left) ---------------------------------------------------------
+	local plate = Util.panel(gui, { Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(300, 100) })
+	local levelBadge = Util.make("Frame", plate, {
+		Position = UDim2.fromOffset(12, 18),
+		Size = UDim2.fromOffset(64, 64),
+		BackgroundColor3 = T.PanelLight,
+		BorderSizePixel = 0,
 	})
-	local goldLabel = Util.text(stats, {
-		Position = UDim2.fromOffset(12, 38),
-		Size = UDim2.new(1, -24, 0, 26),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(255, 210, 80),
-		Text = "Gold: 0",
-	})
-	local defenseLabel = Util.text(stats, {
-		Position = UDim2.fromOffset(12, 68),
-		Size = UDim2.new(1, -24, 0, 22),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextColor3 = Color3.fromRGB(180, 190, 210),
-		Text = "",
-	})
-
-	local inventoryButton = Util.button(gui, {
-		Position = UDim2.fromOffset(16, 124),
-		Size = UDim2.fromOffset(106, 40),
-		BackgroundColor3 = Color3.fromRGB(110, 75, 40),
-		Text = "Gear [G]",
-	})
-	inventoryButton.Activated:Connect(actions.ToggleInventory)
-
-	local classButton = Util.button(gui, {
-		Position = UDim2.fromOffset(130, 124),
-		Size = UDim2.fromOffset(106, 40),
-		BackgroundColor3 = Color3.fromRGB(70, 60, 120),
-		Text = "Class",
-	})
-	classButton.Activated:Connect(actions.OpenClassPicker)
-
-	local statsButton = Util.button(gui, {
-		Position = UDim2.fromOffset(244, 124),
-		Size = UDim2.fromOffset(90, 40),
-		BackgroundColor3 = Color3.fromRGB(50, 90, 110),
-		Text = "Stats [T]",
-	})
-	statsButton.Activated:Connect(actions.ToggleStats)
-
-	-- Second row: quests, skills, player card
-	for i, entry in {
-		{ "Quests [J]", Color3.fromRGB(150, 110, 40), actions.ToggleQuests },
-		{ "Skills", Color3.fromRGB(100, 70, 170), actions.ToggleSkills },
-		{ "Card [H]", Color3.fromRGB(170, 60, 110), actions.ToggleCard },
-	} do
-		local button = Util.button(gui, {
-			Position = UDim2.fromOffset(16 + (i - 1) * 108, 168),
-			Size = UDim2.fromOffset(100, 38),
-			BackgroundColor3 = entry[2],
-			TextScaled = false,
-			TextSize = 17,
-			Text = entry[1],
-		})
-		button.Activated:Connect(entry[3])
-	end
-	local emblemHolder = Util.make("Frame", stats, {
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 6, 0.5, 0),
-		Size = UDim2.fromOffset(50, 50),
+	Util.corner(levelBadge, 32)
+	local levelStroke = Util.stroke(levelBadge, T.Gold, 0.1, 3)
+	Util.text(levelBadge, { Position = UDim2.fromOffset(0, 8), Size = UDim2.new(1, 0, 0, 14), TextScaled = false, TextSize = 12, TextColor3 = T.Muted, Text = "LEVEL" })
+	local levelNumber = Util.text(levelBadge, { Position = UDim2.fromOffset(0, 22), Size = UDim2.new(1, 0, 0, 32), Font = Util.TitleFont, TextColor3 = T.Gold, MaxText = 30, Text = "1" })
+	local emblemHolder = Util.make("Frame", plate, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -8, 0, 8),
+		Size = UDim2.fromOffset(40, 40),
 		BackgroundTransparency = 1,
 	})
 	local shownPrestige = -1
-
-	-- Third row: party and the limited-time event
-	local partyButton = Util.button(gui, {
-		Position = UDim2.fromOffset(16, 210),
-		Size = UDim2.fromOffset(100, 36),
-		BackgroundColor3 = Color3.fromRGB(50, 140, 80),
-		TextScaled = false,
-		TextSize = 17,
-		Text = "Party [O]",
+	local classLabel = Util.text(plate, {
+		Position = UDim2.fromOffset(88, 10),
+		Size = UDim2.new(1, -130, 0, 26),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Font = Util.TitleFont,
+		MaxText = 24,
+		Text = "Adventurer",
 	})
-	partyButton.Activated:Connect(actions.ToggleParty)
-	local eventButton = Util.button(gui, {
-		Position = UDim2.fromOffset(124, 210),
-		Size = UDim2.fromOffset(208, 36),
-		BackgroundColor3 = Color3.fromRGB(230, 110, 20),
+	local xpBack, xpFill = Util.bar(plate, { Position = UDim2.fromOffset(88, 42), Size = UDim2.new(1, -100, 0, 10) }, Color3.fromRGB(110, 150, 255))
+	local _ = xpBack
+	local xpLabel = Util.text(plate, {
+		Position = UDim2.fromOffset(88, 54),
+		Size = UDim2.new(1, -100, 0, 14),
+		TextXAlignment = Enum.TextXAlignment.Left,
 		TextScaled = false,
-		TextSize = 17,
-		Text = "Halloween Event [K]",
+		TextSize = 12,
+		TextColor3 = T.Muted,
+		Text = "",
+	})
+	local goldLabel = Util.text(plate, {
+		Position = UDim2.fromOffset(88, 72),
+		Size = UDim2.fromOffset(110, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextScaled = false,
+		TextSize = 16,
+		TextColor3 = T.Gold,
+		Text = "",
+	})
+	local candyLabel = Util.text(plate, {
+		Position = UDim2.fromOffset(200, 72),
+		Size = UDim2.fromOffset(90, 20),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextScaled = false,
+		TextSize = 16,
+		TextColor3 = Color3.fromRGB(255, 150, 60),
+		Text = "",
 		Visible = false,
 	})
-	eventButton.Activated:Connect(actions.ToggleEvent)
+	local statsLine = Util.text(plate, {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 12, 1, 18),
+		Size = UDim2.new(1, -24, 0, 14),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextScaled = false,
+		TextSize = 12,
+		TextColor3 = T.Muted,
+		Text = "",
+	})
+
+	-- Active buffs: little pills to the right of the plate
+	local buffList = Util.make("Frame", gui, {
+		Position = UDim2.fromOffset(326, 16),
+		Size = UDim2.fromOffset(500, 28),
+		BackgroundTransparency = 1,
+	})
+	Util.make("UIListLayout", buffList, { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
+
+	-- Menu sidebar (left) ------------------------------------------------------------------
+	local sidebar = Util.make("Frame", gui, {
+		Position = UDim2.fromOffset(14, 142),
+		Size = UDim2.fromOffset(56, 560),
+		BackgroundTransparency = 1,
+	})
+	Util.make("UIListLayout", sidebar, { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
+	local tooltip = Util.panel(gui, { Size = UDim2.fromOffset(120, 30), Visible = false, ZIndex = 20, BackgroundTransparency = 0.05 })
+	local tooltipText = Util.text(tooltip, { Size = UDim2.fromScale(1, 1), TextScaled = false, TextSize = 15, ZIndex = 21, Text = "" })
+
+	local function menuButton(order: number, glyph: string, name: string, key: string, color: Color3, onClick: () -> ()): TextButton
+		local button = Util.button(sidebar, {
+			LayoutOrder = order,
+			Size = UDim2.fromOffset(52, 52),
+			BackgroundColor3 = color,
+			Text = "",
+		})
+		Util.text(button, { Size = UDim2.new(1, 0, 1, -8), TextScaled = false, TextSize = 24, Text = glyph, ZIndex = 3 })
+		if key ~= "" then
+			local cap = Util.make("Frame", button, {
+				AnchorPoint = Vector2.new(1, 1),
+				Position = UDim2.new(1, -3, 1, -3),
+				Size = UDim2.fromOffset(16, 16),
+				BackgroundColor3 = Color3.new(0, 0, 0),
+				BackgroundTransparency = 0.35,
+				BorderSizePixel = 0,
+				ZIndex = 4,
+			})
+			Util.corner(cap, 4)
+			Util.text(cap, { Size = UDim2.fromScale(1, 1), TextScaled = false, TextSize = 11, Text = key, ZIndex = 5 })
+		end
+		button.MouseEnter:Connect(function()
+			tooltipText.Text = if key ~= "" then `{name}  [{key}]` else name
+			tooltip.Size = UDim2.fromOffset(tooltipText.TextBounds.X + 24, 30)
+			tooltip.Position = UDim2.fromOffset(button.AbsolutePosition.X + 62, button.AbsolutePosition.Y + 11)
+			tooltip.Visible = true
+		end)
+		button.MouseLeave:Connect(function()
+			tooltip.Visible = false
+		end)
+		button.Activated:Connect(onClick)
+		return button
+	end
+	local menuColor = Color3.fromRGB(46, 42, 62)
+	menuButton(1, "🎒", "Gear", "G", menuColor, actions.ToggleInventory)
+	menuButton(2, "🎲", "Class", "", menuColor, actions.OpenClassPicker)
+	menuButton(3, "📜", "Quests", "J", menuColor, actions.ToggleQuests)
+	menuButton(4, "✨", "Skills", "", menuColor, actions.ToggleSkills)
+	menuButton(5, "📊", "Stats & Leaderboards", "T", menuColor, actions.ToggleStats)
+	menuButton(6, "🏅", "Player Card", "H", menuColor, actions.ToggleCard)
+	menuButton(7, "👥", "Party", "O", menuColor, actions.ToggleParty)
+	local eventButton = menuButton(8, "🎃", "Halloween Event", "K", Color3.fromRGB(200, 95, 20), actions.ToggleEvent)
+	eventButton.Visible = false
 	local eventIcon = Config.Events.Halloween.Icon
 	if eventIcon ~= "" then
 		Util.make("ImageLabel", eventButton, {
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 4, 0.5, 0),
-			Size = UDim2.fromOffset(30, 30),
+			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = eventIcon,
+			ZIndex = 3,
 		})
-		Util.make("UIPadding", eventButton, { PaddingLeft = UDim.new(0, 34) })
 	end
-	function self.SetEventButton(visible: boolean, text: string?)
+	function self.SetEventButton(visible: boolean, _text: string?)
 		eventButton.Visible = visible
-		if text then
-			eventButton.Text = text
-		end
 	end
-
-	-- Admin button, only for admins
-	local player = Players.LocalPlayer
-	local adminButton = Util.button(gui, {
-		Position = UDim2.fromOffset(16, 254),
-		Size = UDim2.fromOffset(220, 34),
-		BackgroundColor3 = Color3.fromRGB(170, 40, 40),
-		Text = "Admin Menu [P]",
-		Visible = player:GetAttribute("IsAdmin") == true,
-	})
-	adminButton.Activated:Connect(actions.OpenAdmin)
+	local adminButton = menuButton(9, "🛠", "Admin Menu", "P", Color3.fromRGB(150, 40, 45), actions.OpenAdmin)
+	adminButton.Visible = player:GetAttribute("IsAdmin") == true
 	player:GetAttributeChangedSignal("IsAdmin"):Connect(function()
 		adminButton.Visible = player:GetAttribute("IsAdmin") == true
 	end)
@@ -163,54 +215,136 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 	-- Music toggle (top-right)
 	local musicButton = Util.button(gui, {
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -16, 0, 16),
-		Size = UDim2.fromOffset(110, 34),
-		Text = "Music: On",
+		Position = UDim2.new(1, -14, 0, 14),
+		Size = UDim2.fromOffset(42, 42),
+		Text = "🎵",
+		MaxText = 20,
 	})
+	Util.corner(musicButton, 21)
 	musicButton.Activated:Connect(function()
-		musicButton.Text = if actions.ToggleMusic() then "Music: On" else "Music: Off"
+		musicButton.Text = if actions.ToggleMusic() then "🎵" else "🔇"
 	end)
 
-	-- Buff list (under the buttons)
-	local buffList = Util.make("Frame", gui, {
-		Position = UDim2.fromOffset(16, 296),
-		Size = UDim2.fromOffset(220, 200),
+	-- Bottom: stamina, health and the hotbar ------------------------------------------------
+	local bottom = Util.make("Frame", gui, {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -12),
+		Size = UDim2.fromOffset(BAR_WIDTH, 120),
 		BackgroundTransparency = 1,
 	})
-	Util.make("UIListLayout", buffList, { Padding = UDim.new(0, 4) })
-
-	-- Health + XP (bottom-center) --------------------------------------------
-	local function bar(y: number, height: number, color: Color3): (Frame, TextLabel)
-		local back = Util.panel(gui, {
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, y),
-			Size = UDim2.fromOffset(380, height),
-		})
-		local fill = Util.make("Frame", back, { Size = UDim2.fromScale(1, 1), BackgroundColor3 = color, BorderSizePixel = 0 })
-		Util.corner(fill)
-		local label = Util.text(back, { Size = UDim2.new(1, 0, 1, -4), Position = UDim2.fromOffset(0, 2), ZIndex = 2 })
-		return fill, label
-	end
-	local healthFill, healthLabel = bar(-40, 28, Color3.fromRGB(200, 50, 50))
-	local xpFill, xpLabel = bar(-14, 20, Color3.fromRGB(70, 140, 255))
-	local staminaFill, staminaLabel = bar(-74, 12, Color3.fromRGB(240, 200, 60))
-	staminaLabel.Visible = false
+	local _, staminaFill = Util.bar(bottom, { Position = UDim2.fromOffset(0, 0), Size = UDim2.new(1, 0, 0, 7) }, Color3.fromRGB(245, 205, 70))
+	local _, healthFill = Util.bar(bottom, { Position = UDim2.fromOffset(0, 13), Size = UDim2.new(1, 0, 0, 22) }, Color3.fromRGB(220, 60, 70))
+	local healthLabel = Util.text(bottom, {
+		Position = UDim2.fromOffset(0, 13),
+		Size = UDim2.new(1, 0, 0, 22),
+		TextScaled = false,
+		TextSize = 15,
+		TextStrokeTransparency = 0.5,
+		ZIndex = 3,
+		Text = "",
+	})
 
 	local function updateStamina()
 		local maxStamina = player:GetAttribute("MaxStamina") or Config.Movement.MaxStamina
 		local stamina = player:GetAttribute("Stamina") or maxStamina
-		staminaFill.Size = UDim2.fromScale(math.clamp(stamina / maxStamina, 0, 1), 1)
-		staminaFill.BackgroundColor3 = if stamina < Config.Movement.DodgeCost then Color3.fromRGB(200, 110, 50) else Color3.fromRGB(240, 200, 60)
+		TweenService:Create(staminaFill, TweenInfo.new(0.15), { Size = UDim2.fromScale(math.clamp(stamina / maxStamina, 0, 1), 1) }):Play()
+		staminaFill.BackgroundColor3 = if stamina < Config.Movement.DodgeCost then Color3.fromRGB(220, 110, 50) else Color3.fromRGB(245, 205, 70)
 	end
 	player:GetAttributeChangedSignal("Stamina"):Connect(updateStamina)
 	updateStamina()
 
-	-- Ability buttons (above the bars, right of center) -----------------------
-	local abilityFrame = Util.make("Frame", gui, {
+	-- Hotbar: weapon + potions on the left, abilities on the right
+	local hotbar = Util.panel(bottom, {
 		AnchorPoint = Vector2.new(0, 1),
-		Position = UDim2.new(0.5, 10, 1, -94),
-		Size = UDim2.fromOffset(270, 64),
+		Position = UDim2.fromScale(0, 1),
+		Size = UDim2.new(1, 0, 0, 76),
+	})
+	local slots = Util.make("Frame", hotbar, {
+		Position = UDim2.fromOffset(10, 12),
+		Size = UDim2.fromOffset((#Config.PotionOrder + 1) * (SLOT + 6), SLOT),
 		BackgroundTransparency = 1,
+	})
+	Util.make("UIListLayout", slots, { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder })
+
+	local weaponButton = Util.button(slots, {
+		LayoutOrder = 0,
+		Size = UDim2.fromOffset(SLOT, SLOT),
+		BackgroundColor3 = Color3.fromRGB(56, 50, 72),
+		Text = "",
+	})
+	keycap(weaponButton, "1")
+	Util.text(weaponButton, { Size = UDim2.new(1, 0, 1, -12), TextScaled = false, TextSize = 22, Text = "⚔", ZIndex = 3 })
+	local weaponLabel = Util.text(weaponButton, {
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 2, 1, -2),
+		Size = UDim2.new(1, -4, 0, 12),
+		TextScaled = false,
+		TextSize = 10,
+		TextColor3 = T.Muted,
+		ZIndex = 3,
+		Text = "",
+	})
+	weaponButton.Activated:Connect(actions.ToggleWeapon)
+	local weaponStroke = Util.stroke(weaponButton, T.Gold, 0, 2.5)
+	weaponStroke.Enabled = false
+
+	local potionButtons: { [string]: { Button: TextButton, Count: TextLabel } } = {}
+	for i, potionId in Config.PotionOrder do
+		local potion = Config.Potions[potionId]
+		local button = Util.button(slots, {
+			LayoutOrder = i,
+			Size = UDim2.fromOffset(SLOT, SLOT),
+			BackgroundColor3 = Color3.fromRGB(40, 36, 52),
+			Text = "",
+		})
+		keycap(button, tostring(i + 1))
+		-- Potion flask: a coloured bulb with a neck
+		local bulb = Util.make("Frame", button, {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.58),
+			Size = UDim2.fromOffset(24, 24),
+			BackgroundColor3 = potion.Color,
+			BorderSizePixel = 0,
+			ZIndex = 3,
+		})
+		Util.corner(bulb, 12)
+		Util.stroke(bulb, Color3.new(0, 0, 0), 0.3, 1.5)
+		Util.make("Frame", button, {
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 0.58, -10),
+			Size = UDim2.fromOffset(8, 9),
+			BackgroundColor3 = Color3.fromRGB(220, 220, 230),
+			BorderSizePixel = 0,
+			ZIndex = 3,
+		})
+		local count = Util.text(button, {
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -4, 1, -2),
+			Size = UDim2.fromOffset(28, 14),
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextScaled = false,
+			TextSize = 13,
+			TextStrokeTransparency = 0.4,
+			ZIndex = 5,
+			Text = "",
+		})
+		button.Activated:Connect(function()
+			actions.UsePotion(potionId)
+		end)
+		potionButtons[potionId] = { Button = button, Count = count }
+	end
+
+	local abilityFrame = Util.make("Frame", hotbar, {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -10, 0, 7),
+		Size = UDim2.fromOffset(3 * (ABILITY_SLOT + 6), ABILITY_SLOT),
+		BackgroundTransparency = 1,
+	})
+	Util.make("UIListLayout", abilityFrame, {
+		FillDirection = Enum.FillDirection.Horizontal,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDim.new(0, 6),
+		SortOrder = Enum.SortOrder.LayoutOrder,
 	})
 	local abilityButtons: { [string]: { Button: TextButton, Cover: Frame, Timer: TextLabel } } = {}
 	local shownClass: string? = nil
@@ -226,34 +360,56 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		if class then
 			for i, abilityId in class.Abilities do
 				local ability = Config.Abilities[abilityId]
-				table.insert(entries, { Id = abilityId, Color = ability.Color, Text = `{ability.DisplayName}\n[{ABILITY_KEYS[i]}]` })
+				table.insert(entries, { Id = abilityId, Color = ability.Color, Name = ability.DisplayName, Key = ABILITY_KEYS[i] })
 			end
 		end
 		local weapon = weaponId and Items.Weapons[weaponId]
 		if weapon then
-			table.insert(entries, { Id = "WeaponSkill", Color = weapon.Skill.Color, Text = `{weapon.Skill.Name}\n[R]` })
+			table.insert(entries, { Id = "WeaponSkill", Color = weapon.Skill.Color, Name = weapon.Skill.Name, Key = "R" })
 		end
 		for i, entry in entries do
 			local abilityId = entry.Id
 			local button = Util.button(abilityFrame, {
-				Position = UDim2.fromOffset((i - 1) * 90, 0),
-				Size = UDim2.fromOffset(84, 64),
-				BackgroundColor3 = entry.Color,
-				TextStrokeTransparency = 0.3,
-				TextScaled = true,
-				Text = entry.Text,
+				LayoutOrder = i,
+				Size = UDim2.fromOffset(ABILITY_SLOT, ABILITY_SLOT),
+				BackgroundColor3 = entry.Color:Lerp(Color3.new(0, 0, 0), 0.35),
+				Text = "",
 			})
-			Util.padding(button, 6)
+			Util.stroke(button, entry.Color, 0.2, 2)
+			keycap(button, entry.Key)
+			Util.text(button, {
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.new(0, 3, 1, -3),
+				Size = UDim2.new(1, -6, 0, 30),
+				TextWrapped = true,
+				TextYAlignment = Enum.TextYAlignment.Bottom,
+				TextStrokeTransparency = 0.5,
+				MaxText = 13,
+				ZIndex = 3,
+				Text = entry.Name,
+			})
+			-- Cooldown: a dark sheet that drains downward, with the seconds left
 			local cover = Util.make("Frame", button, {
-				Size = UDim2.new(1, 12, 1, 12),
-				Position = UDim2.fromOffset(-6, -6),
+				AnchorPoint = Vector2.new(0, 1),
+				Position = UDim2.fromScale(0, 1),
+				Size = UDim2.fromScale(1, 1),
 				BackgroundColor3 = Color3.new(0, 0, 0),
 				BackgroundTransparency = 0.35,
+				BorderSizePixel = 0,
 				Visible = false,
-				ZIndex = 2,
+				ZIndex = 6,
 			})
-			Util.corner(cover, 8)
-			local timer = Util.text(cover, { Size = UDim2.fromScale(1, 1), ZIndex = 3 })
+			Util.corner(cover, 10)
+			local timer = Util.text(button, {
+				Size = UDim2.fromScale(1, 1),
+				Font = Util.TitleFont,
+				TextScaled = false,
+				TextSize = 24,
+				TextStrokeTransparency = 0.3,
+				ZIndex = 7,
+				Visible = false,
+				Text = "",
+			})
 			button.Activated:Connect(function()
 				if abilityId == "WeaponSkill" then
 					actions.UseWeaponSkill()
@@ -265,110 +421,58 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		end
 	end
 
-	-- Potion hotbar (above the bars, left of center) --------------------------
-	local potionFrame = Util.make("Frame", gui, {
-		AnchorPoint = Vector2.new(1, 1),
-		Position = UDim2.new(0.5, -10, 1, -94),
-		Size = UDim2.fromOffset((#Config.PotionOrder + 1) * 48 - 4, 44),
-		BackgroundTransparency = 1,
-	})
-
-	-- Slot 1: draw / put away your weapon
-	local weaponButton = Util.button(potionFrame, {
-		Position = UDim2.fromOffset(0, 0),
-		Size = UDim2.fromOffset(44, 44),
-		BackgroundColor3 = Util.ButtonColor,
-		Text = "",
-	})
-	Util.padding(weaponButton, 4)
-	Util.text(weaponButton, {
-		Size = UDim2.fromScale(0.45, 0.45),
-		Text = "1",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-	})
-	local weaponLabel = Util.text(weaponButton, {
-		Position = UDim2.fromScale(0, 0.45),
-		Size = UDim2.fromScale(1, 0.55),
-		Text = "",
-	})
-	weaponButton.Activated:Connect(actions.ToggleWeapon)
-	local weaponStroke = Util.make("UIStroke", weaponButton, {
-		Color = Color3.fromRGB(255, 220, 120),
-		Thickness = 2,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		Enabled = false,
-	})
-
-	local potionButtons: { [string]: TextButton } = {}
-	for i, potionId in Config.PotionOrder do
-		local potion = Config.Potions[potionId]
-		local button = Util.button(potionFrame, {
-			Position = UDim2.fromOffset(i * 48, 0),
-			Size = UDim2.fromOffset(44, 44),
-			BackgroundColor3 = potion.Color,
-			TextStrokeTransparency = 0.2,
+	-- Top-center: dungeon status, toasts and the boss bar ------------------------------------
+	local function pill(y: number, textColor: Color3): (Frame, TextLabel)
+		local frame = Util.panel(gui, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, y),
+			Size = UDim2.fromOffset(0, 36),
+			AutomaticSize = Enum.AutomaticSize.X,
+			Visible = false,
+		})
+		Util.corner(frame, 18)
+		Util.make("UIPadding", frame, { PaddingLeft = UDim.new(0, 18), PaddingRight = UDim.new(0, 18) })
+		local label = Util.text(frame, {
+			Size = UDim2.fromOffset(0, 36),
+			AutomaticSize = Enum.AutomaticSize.X,
+			TextScaled = false,
+			TextSize = 18,
+			TextColor3 = textColor,
 			Text = "",
 		})
-		Util.padding(button, 4)
-		Util.text(button, {
-			Size = UDim2.fromScale(0.45, 0.45),
-			Text = tostring(i + 1),
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-		})
-		button.Activated:Connect(function()
-			actions.UsePotion(potionId)
-		end)
-		potionButtons[potionId] = button
+		return frame, label
 	end
+	local statusFrame, statusLabel = pill(12, Color3.fromRGB(255, 220, 150))
+	local toastFrame, toast = pill(56, T.Text)
+	toastFrame.ZIndex = 10
+	local toastStroke = toastFrame:FindFirstChildOfClass("UIStroke") :: UIStroke
 
-	-- Dungeon status + toasts (top-center) ------------------------------------
-	local statusLabel = Util.text(gui, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 12),
-		Size = UDim2.fromOffset(520, 34),
-		TextColor3 = Color3.fromRGB(255, 220, 150),
-		Visible = false,
-	})
-	local toast = Util.text(gui, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 56),
-		Size = UDim2.fromOffset(560, 36),
-		TextTransparency = 1,
-		TextStrokeTransparency = 1,
-		ZIndex = 10,
-	})
-
-	-- Boss health bar (top-center, under the dungeon status) -------------------
 	local bossFrame = Util.make("Frame", gui, {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 96),
-		Size = UDim2.fromOffset(520, 46),
+		Position = UDim2.new(0.5, 0, 0, 100),
+		Size = UDim2.fromOffset(520, 50),
 		BackgroundTransparency = 1,
 		Visible = false,
 	})
 	local bossName = Util.text(bossFrame, {
 		Size = UDim2.new(1, 0, 0, 22),
+		Font = Util.TitleFont,
+		TextScaled = false,
+		TextSize = 20,
+		TextStrokeTransparency = 0.4,
 		TextColor3 = Color3.fromRGB(255, 120, 120),
 	})
-	local bossBack = Util.make("Frame", bossFrame, {
+	local _, bossFill = Util.bar(bossFrame, { Position = UDim2.fromOffset(0, 26), Size = UDim2.new(1, 0, 0, 18) }, Color3.fromRGB(210, 40, 50))
+	local bossHp = Util.text(bossFrame, {
 		Position = UDim2.fromOffset(0, 26),
-		Size = UDim2.new(1, 0, 0, 16),
-		BackgroundColor3 = Color3.fromRGB(25, 20, 25),
-		BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 18),
+		TextScaled = false,
+		TextSize = 13,
+		TextStrokeTransparency = 0.5,
+		ZIndex = 3,
 	})
-	Util.corner(bossBack, 6)
-	Util.make("UIStroke", bossBack, { Color = Color3.fromRGB(0, 0, 0), Thickness = 2 })
-	local bossFill = Util.make("Frame", bossBack, {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(210, 40, 50),
-		BorderSizePixel = 0,
-	})
-	Util.corner(bossFill, 6)
-	local bossHp = Util.text(bossBack, { Size = UDim2.fromScale(1, 1), ZIndex = 3, TextColor3 = Color3.new(1, 1, 1) })
 
-	-- Public -------------------------------------------------------------------
+	-- Public -------------------------------------------------------------------------------
 
 	function self.SetBossBar(info)
 		bossFrame.Visible = info ~= nil
@@ -376,11 +480,11 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 			return
 		end
 		local ratio = math.clamp(info.Health / math.max(info.MaxHealth, 1), 0, 1)
-		bossName.Text = `{if info.Mini then "Mini-boss: " else ""}{info.Name}{if info.Enraged then "  - ENRAGED" else ""}{if info.Shielded then "  - SHIELDED" else ""}`
-		bossName.TextColor3 = if info.Shielded then Color3.fromRGB(130, 210, 255) elseif info.Enraged then Color3.fromRGB(255, 70, 50) else Color3.fromRGB(255, 120, 120)
+		bossName.Text = `{if info.Mini then "Mini-boss: " else ""}{info.Name}{if info.Enraged then "  •  ENRAGED" else ""}{if info.Shielded then "  •  SHIELDED" else ""}`
+		bossName.TextColor3 = if info.Shielded then Color3.fromRGB(130, 210, 255) elseif info.Enraged then Color3.fromRGB(255, 90, 60) else Color3.fromRGB(255, 130, 130)
 		TweenService:Create(bossFill, TweenInfo.new(0.2), { Size = UDim2.fromScale(ratio, 1) }):Play()
-		bossFill.BackgroundColor3 = if info.Shielded then Color3.fromRGB(90, 170, 255) elseif info.Enraged then Color3.fromRGB(255, 60, 20) else Color3.fromRGB(210, 40, 50)
-		bossHp.Text = `{math.ceil(info.Health)} / {math.floor(info.MaxHealth)}`
+		bossFill.BackgroundColor3 = if info.Shielded then Color3.fromRGB(90, 170, 255) elseif info.Enraged then Color3.fromRGB(255, 80, 30) else Color3.fromRGB(210, 40, 50)
+		bossHp.Text = `{commas(math.ceil(info.Health))} / {commas(info.MaxHealth)}`
 	end
 
 	local toastToken = 0
@@ -388,18 +492,28 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		toastToken += 1
 		local myToken = toastToken
 		toast.Text = message
-		toast.TextColor3 = color or Color3.new(1, 1, 1)
+		toast.TextColor3 = color or T.Text
 		toast.TextTransparency = 0
-		toast.TextStrokeTransparency = 0.4
+		toastFrame.BackgroundTransparency = 0.12
+		toastStroke.Transparency = 0.86
+		toastFrame.Visible = true
 		task.delay(2.5, function()
 			if toastToken == myToken then
-				TweenService:Create(toast, TweenInfo.new(0.5), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+				local fade = TweenInfo.new(0.4)
+				TweenService:Create(toast, fade, { TextTransparency = 1 }):Play()
+				TweenService:Create(toastFrame, fade, { BackgroundTransparency = 1 }):Play()
+				TweenService:Create(toastStroke, fade, { Transparency = 1 }):Play()
+				task.delay(0.45, function()
+					if toastToken == myToken then
+						toastFrame.Visible = false
+					end
+				end)
 			end
 		end)
 	end
 
 	function self.SetStatus(status: string?)
-		statusLabel.Visible = status ~= nil
+		statusFrame.Visible = status ~= nil
 		statusLabel.Text = status or ""
 	end
 
@@ -415,31 +529,39 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		end
 		local endsAt = os.clock() + seconds
 		entry.Cover.Visible = true
+		entry.Timer.Visible = true
+		entry.Cover.Size = UDim2.fromScale(1, 1)
+		TweenService:Create(entry.Cover, TweenInfo.new(seconds, Enum.EasingStyle.Linear), { Size = UDim2.fromScale(1, 0) }):Play()
 		task.spawn(function()
 			while os.clock() < endsAt and entry.Cover.Parent do
-				entry.Timer.Text = tostring(math.ceil(endsAt - os.clock()))
+				local left = endsAt - os.clock()
+				entry.Timer.Text = if left < 1 then string.format("%.1f", left) else tostring(math.ceil(left))
 				task.wait(0.1)
 			end
 			entry.Cover.Visible = false
+			entry.Timer.Visible = false
 		end)
 	end
 
 	function self.Render(state)
 		local class = state.Class and Config.Classes[state.Class]
-		classLabel.Text = if class then `Lv {state.Level} {class.DisplayName}` else `Level {state.Level}`
-		classLabel.TextColor3 = if class then class.Color else Color3.new(1, 1, 1)
-		goldLabel.Text = if (state.Candies or 0) > 0 or workspace:GetAttribute("HalloweenActive")
-			then `Gold: {state.Gold}  Candy: {state.Candies}`
-			else `Gold: {state.Gold}`
-		defenseLabel.Text = `Defense {math.floor(state.Stats.Defense * 100)}%  |  Dmg x{string.format("%.2f", state.Stats.Damage)}`
-		xpFill.Size = UDim2.fromScale(math.clamp(state.XP / state.XPNeeded, 0, 1), 1)
+		levelNumber.Text = tostring(state.Level)
+		classLabel.Text = if class then class.DisplayName else "Roll a class!"
+		classLabel.TextColor3 = if class then class.Color else T.Text
+		levelStroke.Color = if class then class.Color else T.Gold
+		goldLabel.Text = `● {commas(state.Gold)}`
+		local showCandy = (state.Candies or 0) > 0 or workspace:GetAttribute("HalloweenActive") == true
+		candyLabel.Visible = showCandy
+		candyLabel.Text = `🍬 {commas(state.Candies or 0)}`
+		statsLine.Text = `DEF {math.floor(state.Stats.Defense * 100)}%   •   DMG x{string.format("%.2f", state.Stats.Damage)}`
+		TweenService:Create(xpFill, TweenInfo.new(0.3), { Size = UDim2.fromScale(math.clamp(state.XP / state.XPNeeded, 0, 1), 1) }):Play()
 		xpLabel.Text = if state.Level >= Config.MaxLevel
 			then "MAX LEVEL - Prestige in your Card [H]"
-			else `XP {state.XP} / {state.XPNeeded}`
+			else `{commas(state.XP)} / {commas(state.XPNeeded)} XP`
 		if state.Prestige ~= shownPrestige then
 			shownPrestige = state.Prestige
 			Util.clear(emblemHolder)
-			CardUI.Emblem(emblemHolder, state.Prestige, 50)
+			CardUI.Emblem(emblemHolder, state.Prestige, 40)
 		end
 
 		weaponLabel.Text = if class then class.WeaponType else ""
@@ -450,26 +572,35 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 			buildAbilities(state.Class, state.Equipped.Weapon)
 		end
 
-		for potionId, button in potionButtons do
+		for potionId, slot in potionButtons do
 			local count = state.Potions[potionId] or 0
-			button.Text = if count > 0 then `\n{count}` else ""
-			button.BackgroundTransparency = if count > 0 then 0 else 0.6
+			slot.Count.Text = if count > 0 then `x{count}` else ""
+			slot.Button.BackgroundTransparency = if count > 0 then 0 else 0.55
 		end
 
 		Util.clear(buffList)
 		for buffId, remaining in state.Buffs do
 			local buff = Config.Buffs[buffId]
-			local label = Util.text(buffList, {
-				Size = UDim2.new(1, 0, 0, 22),
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextColor3 = Color3.fromRGB(150, 255, 170),
-				Text = `{buff.DisplayName} ({math.ceil(remaining)}s)`,
+			local pillFrame = Util.panel(buffList, {
+				Size = UDim2.fromOffset(0, 26),
+				AutomaticSize = Enum.AutomaticSize.X,
+				BackgroundColor3 = Color3.fromRGB(30, 60, 40),
+			})
+			Util.corner(pillFrame, 13)
+			Util.make("UIPadding", pillFrame, { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) })
+			local label = Util.text(pillFrame, {
+				Size = UDim2.fromOffset(0, 26),
+				AutomaticSize = Enum.AutomaticSize.X,
+				TextScaled = false,
+				TextSize = 14,
+				TextColor3 = Color3.fromRGB(160, 255, 180),
+				Text = `{buff.DisplayName} {math.ceil(remaining)}s`,
 			})
 			-- Count down locally until the next state update replaces it.
 			local endsAt = os.clock() + remaining
 			task.spawn(function()
 				while label.Parent and os.clock() < endsAt do
-					label.Text = `{buff.DisplayName} ({math.ceil(endsAt - os.clock())}s)`
+					label.Text = `{buff.DisplayName} {math.ceil(endsAt - os.clock())}s`
 					task.wait(0.5)
 				end
 			end)
@@ -481,8 +612,9 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		local function update()
 			local ratio = if humanoid.MaxHealth > 0 then humanoid.Health / humanoid.MaxHealth else 0
-			healthFill.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
-			healthLabel.Text = `{math.ceil(humanoid.Health)} / {math.floor(humanoid.MaxHealth)}`
+			TweenService:Create(healthFill, TweenInfo.new(0.15), { Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1) }):Play()
+			healthFill.BackgroundColor3 = if ratio < 0.3 then Color3.fromRGB(255, 70, 50) else Color3.fromRGB(220, 60, 70)
+			healthLabel.Text = `{commas(math.ceil(humanoid.Health))} / {commas(humanoid.MaxHealth)}`
 		end
 		humanoid.HealthChanged:Connect(update)
 		humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(update)
@@ -506,28 +638,28 @@ function Hud.new(gui: ScreenGui, actions: Actions)
 		task.spawn(trackCharacter, player.Character)
 	end
 
-	-- Touch screens get Sprint and Dodge buttons (keyboard uses Shift and C)
+	-- Touch screens get round Sprint and Dodge buttons (keyboard uses Shift and C)
 	if UserInputService.TouchEnabled then
 		local sprinting = false
-		local sprintButton = Util.button(gui, {
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -110, 1, -170),
-			Size = UDim2.fromOffset(80, 50),
-			BackgroundColor3 = Color3.fromRGB(200, 160, 40),
-			Text = "Sprint",
-		})
+		local function roundButton(offsetX: number, text: string, color: Color3): TextButton
+			local button = Util.button(gui, {
+				AnchorPoint = Vector2.new(1, 1),
+				Position = UDim2.new(1, offsetX, 1, -190),
+				Size = UDim2.fromOffset(70, 70),
+				BackgroundColor3 = color,
+				Text = text,
+				MaxText = 16,
+			})
+			Util.corner(button, 35)
+			return button
+		end
+		local sprintButton = roundButton(-104, "Sprint", Color3.fromRGB(190, 150, 40))
 		sprintButton.Activated:Connect(function()
 			sprinting = not sprinting
-			sprintButton.BackgroundColor3 = if sprinting then Color3.fromRGB(240, 210, 80) else Color3.fromRGB(200, 160, 40)
+			sprintButton.BackgroundColor3 = if sprinting then Color3.fromRGB(240, 205, 80) else Color3.fromRGB(190, 150, 40)
 			actions.SetSprint(sprinting)
 		end)
-		local dodgeButton = Util.button(gui, {
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, -20, 1, -170),
-			Size = UDim2.fromOffset(80, 50),
-			BackgroundColor3 = Color3.fromRGB(80, 160, 200),
-			Text = "Dodge",
-		})
+		local dodgeButton = roundButton(-20, "Dodge", Color3.fromRGB(70, 150, 200))
 		dodgeButton.Activated:Connect(actions.Dodge)
 	end
 

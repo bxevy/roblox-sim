@@ -47,7 +47,7 @@ function CrateWindow.new(gui: ScreenGui, open: (crateId: string) -> (boolean, an
 			BackgroundColor3 = Util.ButtonColor,
 			BackgroundTransparency = 0,
 		})
-		Util.make("UIStroke", card, { Color = crate.Color, Thickness = 2 })
+		Util.stroke(card, crate.Color, 0, 2)
 		Util.text(card, {
 			Position = UDim2.fromOffset(10, 8),
 			Size = UDim2.new(1, -20, 0, 30),
