@@ -212,7 +212,7 @@ describe("Assets", function()
 			truthy(type(id) == "number" and id > 0 and id % 1 == 0, key)
 		end
 		-- UI kit pieces: 0 (drawn look) or a real id; 9-slice centres inside the picture.
-		for key, piece in shared("Config", "UiKit") do
+		for key, piece in shared("UiKit") do
 			truthy(piece.Id == 0 or (piece.Id > 0 and piece.Id % 1 == 0), key)
 			if piece.SliceCenter then
 				truthy(piece.SliceCenter.Max.X <= piece.Size.X and piece.SliceCenter.Max.Y <= piece.Size.Y, key)
