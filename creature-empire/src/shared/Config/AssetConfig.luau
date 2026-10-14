@@ -141,17 +141,10 @@ AssetConfig.ModelAssets = {
 -- without re-uploading): Facing (degrees), HeightOffset (studs), KeepSize (boolean),
 -- Scale (size multiplier after fitting, e.g. 1.25 = 25% bigger).
 AssetConfig.ModelSettings = {
-	Creatures = {
-		Sproutling = { Facing = 180 },
-		-- Same export as the Sproutling, which faced backwards without this.
-		Cindercub = { Facing = 180 },
-		Pebblit = { Facing = 180 },
-		Gloomkit = { Facing = 180 },
-		Magmaul = { Facing = 180 },
-		Bloomhart = { Facing = 180 },
-		Starweaver = { Facing = 180 },
-		Wisplet = { Facing = 180 },
-	},
+	-- Creatures: the portraits used to show creatures from behind, so these were turned
+	-- 180 to look right there, which made them walk backwards in the world. Portraits are
+	-- fixed now, and these models need no turning.
+	Creatures = {},
 	Buildings = {
 		Habitat = { Scale = 1.25 }, -- a little bigger than its plot space
 	},

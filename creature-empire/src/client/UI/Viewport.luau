@@ -11,6 +11,8 @@ local Viewport = {}
 
 type Spinner = { Frame: ViewportFrame, Model: Model, Speed: number }
 local spinners: { Spinner } = {}
+
+local PORTRAIT_TURN = 20 -- degrees
 local eggs: { { Frame: ViewportFrame, Model: Model } } = {}
 
 -- Creates a portrait. `silhouette` draws an undiscovered creature as a dark shape.
@@ -49,7 +51,9 @@ function Viewport.Creature(
 		local camera = Instance.new("Camera")
 		camera.FieldOfView = 30
 		-- PivotTo moves every part (welds don't update positions inside a ViewportFrame).
-		model:PivotTo(CFrame.Angles(0, math.rad(200), 0))
+		-- Creatures face -Z (the way they walk) and the camera is on the -Z side, so a small
+		-- turn shows the face at a three-quarter angle.
+		model:PivotTo(CFrame.Angles(0, math.rad(PORTRAIT_TURN), 0))
 		camera.CFrame = CFrame.lookAt(Vector3.new(0, radius * 0.35, -radius * 2.6), Vector3.new(0, 0, 0))
 		camera.Parent = frame
 		frame.CurrentCamera = camera
@@ -125,7 +129,7 @@ RunService.RenderStepped:Connect(function()
 			table.remove(spinners, i)
 		elseif s.Frame.Visible and s.Model.PrimaryPart and not Theme.ReducedMotion then
 			s.Model:PivotTo(
-				CFrame.Angles(0, math.rad(200) + math.sin(t * s.Speed) * 0.7, 0)
+				CFrame.Angles(0, math.rad(PORTRAIT_TURN) + math.sin(t * s.Speed) * 0.7, 0)
 					* CFrame.new(0, math.abs(math.sin(t * 2.2)) * 0.15, 0)
 			)
 		end
