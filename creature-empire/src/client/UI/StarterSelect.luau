@@ -79,23 +79,29 @@ function StarterSelect.new(ctx: any)
 		local rarity = RarityConfig.Get(species.Rarity)
 		local look: Look = FAMILY_LOOK[species.Family]
 			or { Card = Theme.Colors.PanelRaised, Tile = "TileCommon", Button = "Primary" }
-		-- An ImageLabel, so the kit tile is the card's own picture (not a stacked item).
-		local card = Theme.Make("ImageLabel", {
-			Image = "",
+		-- A coloured card with a glowing rim and the kit tile's flower corners.
+		local shell = Theme.Make("Frame", {
 			BackgroundColor3 = look.Card,
 			Size = UDim2.fromOffset(236, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = index,
 		}, cards)
-		Theme.Corner(card, 14)
-		Theme.Stroke(card, family.Color, 0.1, 3)
-		Theme.Gradient(card, 1, 0.55)
-		local tiled = Theme.Skin(card, look.Tile) ~= nil
-		Theme.Padding(card, if tiled then 16 else 10)
+		Theme.Corner(shell, 12)
+		Theme.Stroke(shell, family.Color, 0, 3)
+		Theme.Gradient(shell, 1, 0.45)
+		-- The corners sit on the shell; the stacked content goes in its own frame, so the
+		-- list layout never moves the corners.
+		local tiled = Theme.KitCorners(shell, look.Tile, 30)
+		local card = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+		}, shell)
+		Theme.Padding(card, 10)
 		Theme.List(card, 5, nil, Enum.HorizontalAlignment.Center)
 		local art = Theme.Make("Frame", {
 			BackgroundColor3 = look.Card,
-			BackgroundTransparency = if tiled then 0 else 0.4,
+			BackgroundTransparency = if tiled then 0.15 else 0.4,
 			Size = UDim2.new(1, 0, 0, 120),
 		}, card)
 		Theme.Gradient(art, 1, 0.6)

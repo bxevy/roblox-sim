@@ -204,6 +204,16 @@ function Theme.KitApply(label: ImageLabel | ImageButton, name: string, part: Rec
 	return f
 end
 
+-- How big to draw a kit piece's corners on a gui of `size`. Wide strips (buttons, tabs,
+-- badges, banner) are drawn at exactly their height, so the icon painted in the end cap
+-- keeps its shape; frames keep their corners in proportion, but never chunky.
+local function kitFit(kit: UiKit.Piece, size: Vector2): number
+	if kit.Size.X >= kit.Size.Y * 2 then
+		return math.max(size.Y / kit.Size.Y, 0.05)
+	end
+	return math.clamp(math.min(size.Y / kit.Size.Y, size.X / kit.Size.X * 2.5), 0.08, 0.4)
+end
+
 -- SliceScale for a kit piece drawn `wanted` times its original size.
 local function sliceScale(label: GuiObject, wanted: number): number
 	local f = label:GetAttribute("KitFactor")
@@ -301,8 +311,7 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			local function rescale()
 				local kit = UiKit[own:GetAttribute("Piece") :: string]
 				if kit and kit.SliceCenter then
-					local fit = math.min(own.AbsoluteSize.Y / kit.Size.Y, own.AbsoluteSize.X / kit.Size.X * 2.5)
-					own.SliceScale = sliceScale(own, math.clamp(fit, 0.08, 0.4))
+					own.SliceScale = sliceScale(own, kitFit(kit, own.AbsoluteSize))
 				end
 			end
 			own:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -325,9 +334,7 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			local current = gui:FindFirstChild("Skin") :: ImageLabel?
 			local kit = current and UiKit[current:GetAttribute("Piece") :: string]
 			if current and kit and kit.SliceCenter then
-				-- Corners in proportion to the frame, but never chunky: at most 40% of the art.
-				local fit = math.min(gui.AbsoluteSize.Y / kit.Size.Y, gui.AbsoluteSize.X / kit.Size.X * 2.5)
-				current.SliceScale = sliceScale(current, math.clamp(fit, 0.08, 0.4))
+				current.SliceScale = sliceScale(current, kitFit(kit, gui.AbsoluteSize))
 			end
 		end
 		gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -611,6 +618,44 @@ function Theme.KitBar(parent: Instance?, color: Color3, height: number): (GuiObj
 		fill.Size = UDim2.fromScale(math.clamp(alpha, 0, 1), 1)
 	end
 	return track, setValue
+end
+
+-- Only the four corners of a square kit tile (vines and flowers), pinned to the corners of
+-- `parent`, so a tall card keeps them crisp instead of stretching the whole tile. Returns
+-- false if the tile isn't available.
+function Theme.KitCorners(parent: GuiObject, name: string, size: number): boolean
+	local piece = UiKit[name]
+	if not Theme.KitImage(name) or not piece.SliceCenter then
+		return false
+	end
+	local slice = piece.SliceCenter :: Rect
+	local w, h = piece.Size.X, piece.Size.Y
+	type Corner = { Rect | Vector2 }
+	local corners: { Corner } = {
+		{ Rect.new(0, 0, slice.Min.X, slice.Min.Y), Vector2.new(0, 0) },
+		{ Rect.new(slice.Max.X, 0, w, slice.Min.Y), Vector2.new(1, 0) },
+		{ Rect.new(0, slice.Max.Y, slice.Min.X, h), Vector2.new(0, 1) },
+		{ Rect.new(slice.Max.X, slice.Max.Y, w, h), Vector2.new(1, 1) },
+	}
+	for i, corner in corners do
+		local area, anchor = corner[1] :: Rect, corner[2] :: Vector2
+		local label = Theme.Make("ImageLabel", {
+			Name = "Corner" .. i,
+			BackgroundTransparency = 1,
+			AnchorPoint = anchor,
+			-- Sit a little outside the card so the corner covers the rim's end.
+			Position = UDim2.new(
+				anchor.X,
+				(anchor.X * 2 - 1) * size * 0.25,
+				anchor.Y,
+				(anchor.Y * 2 - 1) * size * 0.25
+			),
+			Size = UDim2.fromOffset(size, size),
+			ZIndex = 4,
+		}, parent)
+		Theme.KitApply(label, name, area)
+	end
+	return true
 end
 
 -- Just the symbol of a kit menu icon (round, without its vine ring), or nil.
