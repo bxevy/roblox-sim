@@ -1,7 +1,7 @@
 --!strict
 -- Hand-made models that replace the code-built ones. Put a Model in
 --   ReplicatedStorage/Assets/Buildings/<BuildingType>      (or <BuildingType>_<level>)
---   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, Tree, Rock, Lamp, SpinWheel)
+--   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, PathSegment, Tree, Rock, Lamp, SpinWheel)
 -- and it is used automatically (see docs/ASSETS.md). Models can be built or imported in
 -- Studio in any position, size or rotation: they are measured, resized to fit and placed
 -- with their bottom centre on the ground.
@@ -60,6 +60,7 @@ CustomModels.Aliases = {
 	EvolutionChamber = { "Evolution" },
 	Hatchery = { "Nest", "Incubator", "HatchStand", "EggStand" },
 	FenceSegment = { "Fence" },
+	PathSegment = { "Path", "GravelPath", "Gravel", "PathTile" },
 } :: { [string]: { string } }
 
 -- The template for `name` in Assets/<category>, preferring a per-level variant
@@ -207,6 +208,31 @@ function CustomModels.Place(template: Model, parent: Instance, cf: CFrame, optio
 	model:SetAttribute("CustomModel", template.Name)
 	model.Parent = parent
 	return model
+end
+
+-- Lays copies of a path piece (built along its X axis, its width along Z) end to end on
+-- the floor from `from` to `to` (both relative to `origin`), each sized to `width` studs
+-- wide and stretched slightly so the copies fill the whole length.
+function CustomModels.Tile(template: Model, parent: Instance, origin: CFrame, from: Vector3, to: Vector3, width: number)
+	local length = (to - from).Magnitude
+	if length < 0.5 then
+		return
+	end
+	local direction = (to - from).Unit
+	local _, size = CustomModels.Bounds(template)
+	local turned = math.abs(math.cos(math.rad((template:GetAttribute("Facing") :: number?) or 0))) < 0.5
+	local pieceLength = if turned then size.Z else size.X
+	local pieceWidth = if turned then size.X else size.Z
+	local baseScale = if template:GetAttribute("KeepSize") == true or pieceWidth <= 0 then 1 else width / pieceWidth
+	local segLength = math.max(pieceLength * baseScale, 0.5)
+	local count = math.max(math.floor(length / segLength + 0.5), 1)
+	local along = CFrame.fromMatrix(Vector3.zero, direction, Vector3.yAxis)
+	for i = 0, count - 1 do
+		local p = from + direction * (length * (i + 0.5) / count)
+		CustomModels.Place(template, parent, origin * CFrame.new(p.X, p.Y, p.Z) * along, {
+			Scale = baseScale * (length / count) / segLength,
+		})
+	end
 end
 
 return CustomModels

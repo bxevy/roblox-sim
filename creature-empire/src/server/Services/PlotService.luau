@@ -84,9 +84,15 @@ local function buildPlot(index: number): Plot
 		Material = Enum.Material.Grass,
 	})
 	-- Path from the entrance to the Empire Core (the reserved cells)
+	local pathPiece = CustomModels.Find("World", "PathSegment")
 	for _, area in PlotConfig.ReservedCells do
 		local x1, z1 = area.X1 * PlotConfig.CellSize, area.Z1 * PlotConfig.CellSize
 		local x2, z2 = (area.X2 + 1) * PlotConfig.CellSize, (area.Z2 + 1) * PlotConfig.CellSize
+		if pathPiece then
+			local x = (x1 + x2) / 2
+			CustomModels.Tile(pathPiece, ground, origin, Vector3.new(x, 0, z1), Vector3.new(x, 0, z2), x2 - x1)
+			continue
+		end
 		Parts.Part(ground, {
 			Name = "Path",
 			Size = Vector3.new(x2 - x1, 0.2, z2 - z1),

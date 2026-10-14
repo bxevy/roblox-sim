@@ -401,16 +401,21 @@ local function buildPaths(folder: Folder)
 		local from, to = 34, PlotConfig.RingRadius
 		local length = to - from
 		local mid = direction * (from + length / 2)
+		local side = Vector3.new(-direction.Z, 0, direction.X)
+		-- Centred on the path edge (it is 8 studs wide): the front, with the glowing
+		-- mushrooms, leans out over the path.
+		lamp(paths, direction * (from + length * 0.6) + side * 4, -side)
+		local piece = CustomModels.Find("World", "PathSegment")
+		if piece then
+			CustomModels.Tile(piece, paths, CFrame.identity, direction * from, direction * to, 8)
+			continue
+		end
 		Parts.Part(paths, {
 			Size = Vector3.new(8, 0.3, length),
 			CFrame = CFrame.lookAt(mid + Vector3.new(0, 0.15, 0), mid + direction + Vector3.new(0, 0.15, 0)),
 			Color = PATH,
 			Material = Enum.Material.Pavement,
 		})
-		local side = Vector3.new(-direction.Z, 0, direction.X)
-		-- Centred on the path edge (it is 8 studs wide): the front, with the glowing
-		-- mushrooms, leans out over the path.
-		lamp(paths, direction * (from + length * 0.6) + side * 4, -side)
 	end
 end
 

@@ -103,7 +103,7 @@ function AssetLoader.Load()
 	CustomModels.ReportUnknown({
 		Creatures = species,
 		Buildings = buildings,
-		World = { "FenceSegment", "Tree", "Rock", "Lamp", "SpinWheel" },
+		World = { "FenceSegment", "PathSegment", "Tree", "Rock", "Lamp", "SpinWheel" },
 	})
 end
 
