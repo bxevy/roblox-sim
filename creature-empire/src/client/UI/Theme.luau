@@ -193,7 +193,10 @@ function Theme.KitApply(label: ImageLabel | ImageButton, name: string, part: Rec
 	end
 	if piece.SliceCenter and not part then
 		target.ScaleType = Enum.ScaleType.Slice
-		target.SliceCenter = scaleRect(piece.SliceCenter, f)
+		-- SliceCenter counts in the whole picture's pixels, not the cropped part's, so the
+		-- art's position inside the thumbnail is added.
+		local scaled = scaleRect(piece.SliceCenter, f)
+		target.SliceCenter = Rect.new(scaled.Min + origin, scaled.Max + origin)
 	else
 		target.ScaleType = Enum.ScaleType.Fit
 	end
