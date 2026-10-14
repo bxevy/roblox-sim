@@ -210,58 +210,69 @@ local function sliceScale(label: GuiObject, wanted: number): number
 	return wanted / (if type(f) == "number" and f > 0 then f else 1)
 end
 
--- Loads every uploaded kit picture once, before the interface is built (behind the loading
--- screen). Only a picture Roblox says it can't fetch, twice, is dropped (a Decal id instead
--- of an Image id, or one still in moderation); that piece keeps the drawn look. A slow
--- fetch (timed out, still loading) keeps the picture: it shows as soon as it arrives.
+-- Checks every uploaded kit picture once, before the interface is built (behind the loading
+-- screen), by showing it on a tiny, nearly invisible label and waiting for Roblox to say it
+-- is on screen (ImageLabel.IsLoaded). ContentProvider:PreloadAsync can't be trusted for
+-- this: in some Studio setups it reports Failure for pictures that display fine.
+-- A piece whose direct link doesn't show uses its thumbnail; if neither shows, the drawn
+-- look.
 function Theme.PreloadKit(timeout: number?): { string }
-	local ContentProvider = game:GetService("ContentProvider")
-	local function fetch(content: string): Enum.AssetFetchStatus?
-		local final: Enum.AssetFetchStatus? = nil
-		pcall(function()
-			ContentProvider:PreloadAsync({ content }, function(_, status: Enum.AssetFetchStatus)
-				final = status
-			end)
-		end)
-		return final
+	local Players = game:GetService("Players")
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local probeGui = Instance.new("ScreenGui")
+	probeGui.Name = "KitProbe"
+	probeGui.ResetOnSpawn = false
+	probeGui.Parent = playerGui
+	local function shows(content: string, seconds: number): boolean
+		local label = Instance.new("ImageLabel")
+		label.BackgroundTransparency = 1
+		label.ImageTransparency = 0.98
+		label.Size = UDim2.fromOffset(4, 4)
+		label.Image = content
+		label.Parent = probeGui
+		local deadline = os.clock() + seconds
+		while not label.IsLoaded and os.clock() < deadline do
+			task.wait(0.1)
+		end
+		local ok = label.IsLoaded
+		label:Destroy()
+		return ok
 	end
+	local limit = timeout or 8
 	local pending, total = 0, 0
 	for name, piece in UiKit do
 		if piece.Id ~= 0 then
 			pending += 1
 			total += 1
 			task.spawn(function()
-				local status = fetch(`rbxassetid://{piece.Id}`)
-				if status == Enum.AssetFetchStatus.Failure then
-					-- The direct link is refused: try the picture's thumbnail instead.
-					local thumb = fetch(`rbxthumb://type=Asset&id={piece.Id}&w={THUMB}&h={THUMB}`)
-					if thumb == Enum.AssetFetchStatus.Failure then
-						kitFailed[name] = true
-					else
-						kitThumb[name] = true
-					end
-					status = thumb
+				if shows(`rbxassetid://{piece.Id}`, limit * 0.6) then
+					kitStatus[name] = "direct"
+				elseif shows(`rbxthumb://type=Asset&id={piece.Id}&w={THUMB}&h={THUMB}`, limit * 0.4) then
+					kitThumb[name] = true
+					kitStatus[name] = "thumbnail"
+				else
+					kitFailed[name] = true
+					kitStatus[name] = "neither the picture nor its thumbnail showed"
 				end
-				kitStatus[name] = if status then status.Name else "no answer"
 				pending -= 1
 			end)
 		end
 	end
-	local deadline = os.clock() + (timeout or 8)
+	local deadline = os.clock() + limit + 0.5
 	while pending > 0 and os.clock() < deadline do
 		task.wait(0.1)
 	end
+	probeGui:Destroy()
 	local failed = {}
 	for name in kitFailed do
 		table.insert(failed, name)
-		warn(
-			`[UI kit] {name} (id {UiKit[name].Id}) didn't load (Roblox said: {kitStatus[name] or "?"}); using the drawn look.`
-		)
+		warn(`[UI kit] {name} (id {UiKit[name].Id}) didn't load ({kitStatus[name]}); using the drawn look.`)
 	end
 	table.sort(failed)
 	local thumbs = 0
-	for _ in kitThumb do
+	for name in kitThumb do
 		thumbs += 1
+		print(`[UI kit] {name} uses its thumbnail.`)
 	end
 	print(`[UI kit] {total - #failed} of {total} pictures loaded ({thumbs} through their thumbnail).`)
 	return failed

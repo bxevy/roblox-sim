@@ -49,7 +49,7 @@ function StarterSelect.new(ctx: any)
 		Size = UDim2.new(1, 0, 0, 44),
 		LayoutOrder = 1,
 	}, root)
-	Theme.Skin(banner, "HeaderBanner")
+	-- No banner picture: like the mockup, the title sits under the frame's top ornament.
 	Theme.Text(banner, "Welcome to your empire!", 28, {
 		FontFace = Theme.Title,
 		Size = UDim2.fromScale(1, 1),
