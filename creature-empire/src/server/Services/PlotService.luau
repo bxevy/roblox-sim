@@ -98,15 +98,41 @@ local function buildPlot(index: number): Plot
 
 	-- Entrance arch with the owner's name
 	local archCF = origin * CFrame.new(WIDTH / 2, 0, -1)
-	for _, x in { -5.5, 5.5 } do
-		Parts.Part(ground, {
-			Size = Vector3.new(1.4, 10, 1.4),
-			CFrame = archCF * CFrame.new(x, 5, 0),
-			Color = Color3.fromRGB(120, 86, 56),
-			Material = Enum.Material.Wood,
-		})
+	local customArch = CustomModels.Find("World", "EntranceArch")
+	local sign: BasePart
+	if customArch then
+		-- Hand-made arch, fitted to the entrance. A part named "Sign" (or "Board") in it
+		-- gets the owner's name; otherwise a plain name board hangs above it.
+		local arch = CustomModels.Place(customArch, ground, archCF, { Fit = Vector3.new(14, 0, 4) })
+		local board: BasePart? = nil
+		for _, d in arch:GetDescendants() do
+			if d:IsA("BasePart") and (d.Name == "Sign" or d.Name == "Board" or d.Name == "NameBoard") then
+				board = d
+			end
+		end
+		if not board then
+			local _, size = CustomModels.Bounds(arch)
+			board = Parts.Part(ground, {
+				Name = "NameBoard",
+				Size = Vector3.new(10, 2.2, 0.4),
+				CFrame = archCF * CFrame.new(0, size.Y + 1.4, 0),
+				Color = Color3.fromRGB(150, 110, 70),
+				Material = Enum.Material.WoodPlanks,
+			})
+		end
+		Parts.SignText(board :: BasePart, "Unclaimed plot")
+		sign = board :: BasePart
+	else
+		for _, x in { -5.5, 5.5 } do
+			Parts.Part(ground, {
+				Size = Vector3.new(1.4, 10, 1.4),
+				CFrame = archCF * CFrame.new(x, 5, 0),
+				Color = Color3.fromRGB(120, 86, 56),
+				Material = Enum.Material.Wood,
+			})
+		end
+		sign = Parts.Sign(ground, archCF * CFrame.new(0, 5.6, 0), "Unclaimed plot", 12)
 	end
-	local sign = Parts.Sign(ground, archCF * CFrame.new(0, 5.6, 0), "Unclaimed plot", 12)
 
 	-- Where the owner appears (just inside the entrance, facing the Empire Core).
 	local spawn = Instance.new("Part")

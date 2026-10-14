@@ -106,10 +106,24 @@ function Parts.Sign(parent: Instance, cf: CFrame, text: string, width: number?):
 		Color = Color3.fromRGB(150, 110, 70),
 		Material = Enum.Material.WoodPlanks,
 	})
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+	Parts.SignText(board, text)
+	return board
+end
+
+-- Writes `text` on both big faces of a part (used for signs, including hand-made ones).
+function Parts.SignText(board: BasePart, text: string)
+	local size = board.Size
+	-- The two largest faces carry the text.
+	local faces = if size.Z <= size.X and size.Z <= size.Y
+		then { Enum.NormalId.Front, Enum.NormalId.Back }
+		elseif size.X <= size.Y then { Enum.NormalId.Left, Enum.NormalId.Right }
+		else { Enum.NormalId.Top, Enum.NormalId.Bottom }
+	local w = if size.Z <= size.X and size.Z <= size.Y then size.X else math.max(size.X, size.Z)
+	local h = if faces[1] == Enum.NormalId.Top then math.min(size.X, size.Z) else size.Y
+	for _, face in faces do
 		local surface = Instance.new("SurfaceGui")
 		surface.Face = face
-		surface.CanvasSize = Vector2.new(w * 40, 2.2 * 40)
+		surface.CanvasSize = Vector2.new(w * 40, h * 40)
 		surface.LightInfluence = 0.4
 		local label = Instance.new("TextLabel")
 		label.Size = UDim2.fromScale(0.94, 0.86)
@@ -122,7 +136,6 @@ function Parts.Sign(parent: Instance, cf: CFrame, text: string, width: number?):
 		label.Parent = surface
 		surface.Parent = board
 	end
-	return board
 end
 
 return Parts
