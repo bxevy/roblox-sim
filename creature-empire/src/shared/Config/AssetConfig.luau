@@ -96,6 +96,8 @@ AssetConfig.ModelAssets = {
 		Sproutling = 120629196068989,
 		-- Supplied by the game's creator: their Cindercub.
 		Cindercub = 126738303103925,
+		-- Supplied by the game's creator: their Pebblit.
+		Pebblit = 116144321420636,
 	},
 	Buildings = {
 		-- Supplied by the game's creator: their shop model.
@@ -126,6 +128,7 @@ AssetConfig.ModelSettings = {
 		Sproutling = { Facing = 180 },
 		-- Same export as the Sproutling, which faced backwards without this.
 		Cindercub = { Facing = 180 },
+		Pebblit = { Facing = 180 },
 	},
 	Buildings = {},
 	World = {
