@@ -24,7 +24,7 @@ local IDS: { [string]: number } = {
 	ButtonOrange = 82100018667006,
 	TabActive = 90193938463422,
 	TabInactive = 101075524508759,
-	CloseButton = 103510426027879,
+	CloseButton = 128625618241564, -- from the starter sheet (was 103510426027879)
 	BadgeGold = 114436514393660,
 	BadgeEssence = 114048679966500,
 	TileCommon = 81007021942512,
@@ -36,6 +36,22 @@ local IDS: { [string]: number } = {
 	IconMap = 77060885619894,
 	IconShop = 78339137500390,
 	IconMore = 71580186205315,
+	-- Starter screen sheet (art/ui-starter): whole pieces shown at their real shape.
+	WindowFrame = 112864856413373,
+	HeaderPlaque = 115207371374649,
+	CardFrameGreen = 121857964643675,
+	CardFrameOrange = 115797231894650,
+	CardFrameBlue = 93158039524170,
+	ButtonSproutling = 70569526491371,
+	ButtonCindercub = 91835279381396,
+	ButtonPebblit = 111784220916581,
+	BadgeVerdants = 105403983646900,
+	BadgeEmberkin = 130584159331939,
+	BadgeCrystalkin = 138718121493642,
+	BadgeCommon = 85663110618123,
+	PortraitSproutling = 81048497216059,
+	PortraitCindercub = 72919480696239,
+	PortraitPebblit = 81826648297332,
 }
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
@@ -64,7 +80,7 @@ local UiKit = {
 	ButtonOrange = piece(Vector2.new(286, 110), { 120, 30, 232, 80 }),
 	TabActive = piece(Vector2.new(248, 102), { 108, 28, 200, 74 }),
 	TabInactive = piece(Vector2.new(240, 96), { 102, 26, 194, 70 }),
-	CloseButton = piece(Vector2.new(128, 116)),
+	CloseButton = piece(Vector2.new(152, 143)),
 	-- Wallet badges (coin / flower on the left, the number is drawn by the game)
 	BadgeGold = piece(Vector2.new(280, 108), { 116, 28, 208, 80 }),
 	BadgeEssence = piece(Vector2.new(270, 116), { 120, 30, 212, 86 }),
@@ -74,6 +90,22 @@ local UiKit = {
 	IconMap = piece(Vector2.new(158, 146), nil, { 37, 33, 121, 117 }),
 	IconShop = piece(Vector2.new(166, 146), nil, { 41, 33, 125, 117 }),
 	IconMore = piece(Vector2.new(166, 146), nil, { 41, 33, 125, 117 }),
+	-- Starter screen sheet. The card frames stretch only along their vine sides.
+	WindowFrame = piece(Vector2.new(662, 451)),
+	HeaderPlaque = piece(Vector2.new(573, 108)),
+	CardFrameGreen = piece(Vector2.new(259, 283), { 60, 60, 199, 223 }),
+	CardFrameOrange = piece(Vector2.new(254, 278), { 60, 60, 194, 218 }),
+	CardFrameBlue = piece(Vector2.new(258, 278), { 60, 60, 198, 218 }),
+	ButtonSproutling = piece(Vector2.new(236, 101)),
+	ButtonCindercub = piece(Vector2.new(247, 102)),
+	ButtonPebblit = piece(Vector2.new(249, 101)),
+	BadgeVerdants = piece(Vector2.new(170, 58)),
+	BadgeEmberkin = piece(Vector2.new(175, 60)),
+	BadgeCrystalkin = piece(Vector2.new(182, 59)),
+	BadgeCommon = piece(Vector2.new(165, 58)),
+	PortraitSproutling = piece(Vector2.new(228, 208)),
+	PortraitCindercub = piece(Vector2.new(250, 210)),
+	PortraitPebblit = piece(Vector2.new(250, 210)),
 } :: { [string]: Piece }
 
 for name, entry in UiKit do

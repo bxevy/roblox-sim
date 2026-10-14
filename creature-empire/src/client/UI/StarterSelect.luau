@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
+local UiKit = require(Shared.Config.UiKit)
 local Format = require(Shared.Util.Format)
 local Theme = require(script.Parent.Theme)
 local Viewport = require(script.Parent.Viewport)
@@ -27,7 +28,8 @@ local FAMILY_LOOK: { [string]: Look } = {
 	},
 }
 
-function StarterSelect.new(ctx: any)
+-- Fallback: drawn from the small kit pieces (if the starter sheet pictures can't load).
+local function buildDrawn(ctx: any)
 	local root = Theme.Panel(ctx.Gui, {
 		Name = "StarterSelect",
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -192,6 +194,310 @@ function StarterSelect.new(ctx: any)
 		Modal = true,
 		Open = function() end,
 	}
+end
+
+-- The creator's starter sheet (art/ui-starter): every piece is shown at its real shape and
+-- the text is laid on top at fixed spots, measured against the mockup. Sizes are in design
+-- pixels; the whole stage is scaled to fit the screen.
+local STAGE = Vector2.new(1100, 749) -- the window frame picture (662x451) at this size
+local K = STAGE.X / 662
+-- The frame's open middle, in the picture's pixels: x 75..586, y 78..377.
+local INNER_X, INNER_Y = 75 * K, 78 * K
+local INNER_W, INNER_H = (586 - 75) * K, (377 - 78) * K
+local CARD = Vector2.new(270, 416)
+local CARD_GAP = 14
+
+type Art = { Frame: string, Button: string, Badge: string, Portrait: string, Tint: Color3 }
+local ART: { [string]: Art } = {
+	Sproutling = {
+		Frame = "CardFrameGreen",
+		Button = "ButtonSproutling",
+		Badge = "BadgeVerdants",
+		Portrait = "PortraitSproutling",
+		Tint = Color3.fromRGB(30, 80, 32),
+	},
+	Cindercub = {
+		Frame = "CardFrameOrange",
+		Button = "ButtonCindercub",
+		Badge = "BadgeEmberkin",
+		Portrait = "PortraitCindercub",
+		Tint = Color3.fromRGB(100, 40, 16),
+	},
+	Pebblit = {
+		Frame = "CardFrameBlue",
+		Button = "ButtonPebblit",
+		Badge = "BadgeCrystalkin",
+		Portrait = "PortraitPebblit",
+		Tint = Color3.fromRGB(20, 48, 92),
+	},
+}
+
+local CREAM = Color3.fromRGB(255, 236, 180)
+local OUTLINE = Color3.fromRGB(40, 20, 8)
+
+local function label(parent: Instance, text: string, props: { [string]: any }): TextLabel
+	local l = Theme.Make("TextLabel", {
+		BackgroundTransparency = 1,
+		Text = text,
+		FontFace = Theme.Bold,
+		TextColor3 = Color3.fromRGB(245, 235, 220),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		TextWrapped = true,
+		RichText = true,
+		ZIndex = 14,
+	}, parent)
+	for key, value in props do
+		(l :: any)[key] = value
+	end
+	return l
+end
+
+local function outline(l: TextLabel, thickness: number)
+	Theme.Make("UIStroke", { Color = OUTLINE, Thickness = thickness }, l)
+end
+
+-- Text that shrinks to fit its box (descriptions differ in length).
+local function fitText(l: TextLabel, maxSize: number)
+	l.TextScaled = true
+	Theme.Make("UITextSizeConstraint", { MaxTextSize = maxSize, MinTextSize = 7 }, l)
+end
+
+local function kitImage(parent: Instance, name: string, props: { [string]: any }): ImageLabel
+	local image = Theme.Make("ImageLabel", { BackgroundTransparency = 1, ZIndex = 13 }, parent)
+	for key, value in props do
+		(image :: any)[key] = value
+	end
+	local f = Theme.KitApply(image, name)
+	if f and image.ScaleType == Enum.ScaleType.Slice then
+		image.SliceScale = 1 / f -- the frame's vines at their drawn size
+	end
+	return image
+end
+
+local function canUseArt(): boolean
+	if not Theme.KitImage("WindowFrame") then
+		return false
+	end
+	for _, speciesId in CreatureConfig.Starters do
+		local art = ART[speciesId]
+		if not art or not Theme.KitImage(art.Frame) or not Theme.KitImage(art.Button) then
+			return false
+		end
+	end
+	return true
+end
+
+local function buildArt(ctx: any)
+	-- Full-screen holder (the window manager pops it in); the stage inside is scaled to fit.
+	local root = Theme.Make("Frame", {
+		Name = "StarterSelect",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+	}, ctx.Gui)
+	local stage = Theme.Make("Frame", {
+		Name = "Stage",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(STAGE.X, STAGE.Y),
+		BackgroundTransparency = 1,
+		ZIndex = 10,
+	}, root)
+	local fit = Theme.Make("UIScale", { Name = "Fit" }, stage)
+	local function refit()
+		local screen = ctx.Gui.AbsoluteSize
+		local guiScale = ctx.Gui:FindFirstChildOfClass("UIScale")
+		local g = if guiScale then guiScale.Scale else 1
+		if screen.X <= 0 or screen.Y <= 0 then
+			return
+		end
+		fit.Scale = math.min(1, screen.X * 0.96 / (STAGE.X * g), screen.Y * 0.94 / (STAGE.Y * g))
+	end
+	ctx.Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	task.defer(refit)
+
+	-- Dark wood behind the frame's open middle, then the frame on top.
+	local wood = Theme.Make("Frame", {
+		BackgroundColor3 = Color3.fromRGB(56, 35, 21),
+		Position = UDim2.fromOffset(INNER_X - 14, INNER_Y - 14),
+		Size = UDim2.fromOffset(INNER_W + 28, INNER_H + 28),
+		ZIndex = 10,
+	}, stage)
+	Theme.Corner(wood, 12)
+	Theme.Gradient(wood, 1, 0.7)
+	kitImage(stage, "WindowFrame", { Size = UDim2.fromScale(1, 1), ZIndex = 11 })
+
+	local title = label(stage, "Welcome to your empire!", {
+		FontFace = Theme.Title,
+		TextColor3 = CREAM,
+		TextSize = 34,
+		TextWrapped = false,
+		Position = UDim2.fromOffset(0, 130),
+		Size = UDim2.new(1, 0, 0, 42),
+	})
+	outline(title, 2.5)
+	local subtitle = label(stage, "Choose a partner creature. You'll meet the other two soon.", {
+		TextSize = 16,
+		TextWrapped = false,
+		Position = UDim2.fromOffset(0, 172),
+		Size = UDim2.new(1, 0, 0, 22),
+	})
+	outline(subtitle, 1.5)
+
+	local count = #CreatureConfig.Starters
+	local rowWidth = count * CARD.X + (count - 1) * CARD_GAP
+	local x0 = INNER_X + (INNER_W - rowWidth) / 2
+	local y0 = 202
+	local busy = false
+	for index, speciesId in CreatureConfig.Starters do
+		local species = CreatureConfig.Species[speciesId]
+		local art = ART[speciesId]
+		local holder = Theme.Make("Frame", {
+			Name = speciesId,
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(x0 + (index - 1) * (CARD.X + CARD_GAP), y0),
+			Size = UDim2.fromOffset(CARD.X, CARD.Y),
+			ZIndex = 12,
+		}, stage)
+		local tint = Theme.Make("Frame", {
+			BackgroundColor3 = art.Tint,
+			Position = UDim2.fromOffset(28, 28),
+			Size = UDim2.new(1, -56, 1, -56),
+			ZIndex = 12,
+		}, holder)
+		Theme.Corner(tint, 10)
+		Theme.Gradient(tint, 1, 0.55)
+		kitImage(holder, art.Frame, { Size = UDim2.fromScale(1, 1), ZIndex = 13 })
+
+		-- The creature: the painted portrait, or the 3D model if it isn't available.
+		local artBox = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(38, 36),
+			Size = UDim2.fromOffset(CARD.X - 76, 112),
+			ZIndex = 14,
+		}, holder)
+		if Theme.KitImage(art.Portrait) then
+			kitImage(artBox, art.Portrait, { Size = UDim2.fromScale(1, 1), ZIndex = 14 })
+		else
+			Viewport.Creature(artBox, speciesId, nil, { Spin = true })
+		end
+
+		local name = label(holder, species.Name, {
+			FontFace = Theme.Heavy,
+			TextColor3 = Color3.new(1, 1, 1),
+			TextSize = 26,
+			TextWrapped = false,
+			Position = UDim2.fromOffset(0, 150),
+			Size = UDim2.new(1, 0, 0, 30),
+		})
+		outline(name, 2)
+
+		-- Family and rarity badges, side by side and centred.
+		local badges = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(0, 184),
+			Size = UDim2.new(1, 0, 0, 26),
+			ZIndex = 14,
+		}, holder)
+		Theme.List(badges, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		local function badge(piece: string, order: number)
+			local size = UiKit[piece].Size
+			kitImage(badges, piece, {
+				Size = UDim2.fromOffset(math.floor(size.X * 26 / size.Y), 26),
+				LayoutOrder = order,
+				ZIndex = 14,
+			})
+		end
+		badge(art.Badge, 1)
+		if species.Rarity == "Common" and Theme.KitImage("BadgeCommon") then
+			badge("BadgeCommon", 2)
+		else
+			local rarity = RarityConfig.Get(species.Rarity)
+			Theme.Chip(badges, RarityConfig.Label(species.Rarity), rarity.Color, { TextSize = 12, LayoutOrder = 2 })
+		end
+
+		local inset = 38
+		local desc = label(holder, species.Description, {
+			Position = UDim2.fromOffset(inset, 214),
+			Size = UDim2.new(1, -inset * 2, 0, 44),
+		})
+		fitText(desc, 13)
+		local best, bestValue = nil, 0
+		for jobId, value in species.JobAffinity do
+			if value > bestValue then
+				best, bestValue = jobId, value
+			end
+		end
+		label(
+			holder,
+			`<b>Best at:</b> {best and JobConfig[best].Name or "?"} · Farming {Format.Percent(
+				species.JobAffinity.Farmer or 0
+			)}`,
+			{
+				TextColor3 = Color3.fromRGB(255, 215, 120),
+				TextSize = 12,
+				TextWrapped = false,
+				Position = UDim2.fromOffset(inset, 260),
+				Size = UDim2.new(1, -inset * 2, 0, 14),
+			}
+		)
+		local ability = label(holder, `<b>{species.Active.Name}:</b> {species.Active.Description}`, {
+			TextColor3 = Color3.fromRGB(225, 210, 190),
+			Position = UDim2.fromOffset(inset, 276),
+			Size = UDim2.new(1, -inset * 2, 0, 24),
+		})
+		fitText(ability, 11)
+
+		-- The painted "Choose ..." button.
+		local buttonSize = UiKit[art.Button].Size
+		local bw = 196
+		local bh = math.floor(buttonSize.Y * bw / buttonSize.X)
+		local choose = Theme.Make("ImageButton", {
+			Name = "Choose",
+			BackgroundTransparency = 1,
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, -34),
+			Size = UDim2.fromOffset(bw, bh),
+			ZIndex = 15,
+		}, holder)
+		Theme.KitApply(choose, art.Button)
+		local pop = Theme.Make("UIScale", {}, choose)
+		choose.MouseEnter:Connect(function()
+			pop.Scale = 1.05
+		end)
+		choose.MouseLeave:Connect(function()
+			pop.Scale = 1
+		end)
+		choose.Activated:Connect(function()
+			Theme.OnClick()
+			if busy then
+				return
+			end
+			busy = true
+			local ok, result = ctx.Request("ChooseStarter", speciesId)
+			busy = false
+			if not ok then
+				ctx.Notify(result, "Error")
+			end
+		end)
+	end
+
+	return {
+		Root = root,
+		Modal = true,
+		Open = function() end,
+	}
+end
+
+function StarterSelect.new(ctx: any)
+	if canUseArt() then
+		return buildArt(ctx)
+	end
+	return buildDrawn(ctx)
 end
 
 return StarterSelect
