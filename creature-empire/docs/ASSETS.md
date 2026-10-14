@@ -140,7 +140,7 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Tree` | The trees around the world | Sized to 13 studs tall (unless `KeepSize`), then given a random turn and the size variation of the originals (about 1.2–1.9×). |
 | `Rock` | The rocks around the plaza | Same as trees. |
 | `Lamp` | Lamp posts on the plaza and paths | Scaled to 11 studs tall (unless `KeepSize`); a warm light is added near the top. |
-| `SpinWheel` | The Spin Wheel in the plaza | Stands on a 14 × 6 stone plinth, scaled to 16 studs tall. Its front faces the Founders' Crystal. |
+| `SpinWheel` | The Spin Wheel in the plaza | Stands on the plaza floor, scaled to 16 studs tall, its front facing the Founders' Crystal. The game adds the Spin prompt, the name label and the free-spin timer above it. |
 
 **To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.
 

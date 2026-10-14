@@ -357,6 +357,39 @@ local function trackStation(model: Instance)
 			BuildingController.OpenPanel("plaza:" .. (id :: string))
 		end
 	end)
+	if id == "SpinWheel" then
+		-- Over the wheel: whether your free spin is ready, or how long until it is.
+		local gui = Instance.new("BillboardGui")
+		gui.Name = "SpinStatus"
+		gui.Size = UDim2.fromScale(16, 2.4)
+		gui.StudsOffset = Vector3.new(0, 21, 0)
+		gui.MaxDistance = 160
+		gui.LightInfluence = 0
+		gui.Adornee = base
+		local text = Instance.new("TextLabel")
+		text.Size = UDim2.fromScale(1, 1)
+		text.BackgroundTransparency = 1
+		text.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+		text.TextScaled = true
+		text.TextStrokeTransparency = 0.2
+		text.TextStrokeColor3 = Color3.fromRGB(40, 25, 10)
+		text.Parent = gui
+		gui.Parent = base
+		task.spawn(function()
+			while gui.Parent do
+				local spin = StateController.Get("Spin")
+				local wait = if spin then math.max((spin.NextFreeAt or 0) - Workspace:GetServerTimeNow(), 0) else 0
+				if wait <= 0 then
+					text.Text = "FREE SPIN READY!"
+					text.TextColor3 = Color3.fromRGB(255, 215, 80)
+				else
+					text.Text = "Next free spin " .. Format.Duration(wait)
+					text.TextColor3 = Color3.fromRGB(235, 240, 255)
+				end
+				task.wait(1)
+			end
+		end)
+	end
 end
 
 function BuildingController.Start()

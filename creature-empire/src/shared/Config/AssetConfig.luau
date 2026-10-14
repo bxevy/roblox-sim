@@ -110,6 +110,8 @@ AssetConfig.ModelAssets = {
 		Lamp = 122745821192170,
 		-- Supplied by the game's creator: their gravel path piece.
 		PathSegment = 114265486516183,
+		-- Supplied by the game's creator: their spin wheel for the plaza.
+		SpinWheel = 130534185782423,
 		-- Supplied by the game's creator: their tree.
 		Tree = 136607943988536,
 	},

@@ -189,8 +189,16 @@ local function spinWheel(parent: Instance, cf: CFrame): Model
 	model.PrimaryPart = base
 	local custom = CustomModels.Find("World", "SpinWheel")
 	if custom then
-		-- Hand-made wheel: about 16 studs tall, standing on the plinth.
-		CustomModels.Place(custom, model, cf * CFrame.new(0, 1, 0), { Fit = Vector3.new(math.huge, 16, math.huge) })
+		-- Hand-made wheel: about 16 studs tall, standing on the plaza floor. The plinth
+		-- becomes an invisible marker that carries the Spin prompt and the labels.
+		base.Transparency = 1
+		base.CanCollide = false
+		base.CanQuery = false
+		base.CanTouch = false
+		base.CastShadow = false
+		base.CFrame = cf * CFrame.new(0, 0.1, 0)
+		base.Size = Vector3.new(14, 0.2, 6)
+		CustomModels.Place(custom, model, cf, { Fit = Vector3.new(math.huge, 16, math.huge) })
 		model.Parent = parent
 		return model
 	end
