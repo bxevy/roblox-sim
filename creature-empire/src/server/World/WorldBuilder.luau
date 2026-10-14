@@ -392,9 +392,31 @@ local function buildPlaza(folder: Folder)
 		local placed = CustomModels.Place(floorModel, plaza, CFrame.new(0, 0, 0), {
 			Fit = Vector3.new(4 * PLAZA_APOTHEM / math.sqrt(3), 0, 2 * PLAZA_APOTHEM),
 		})
+		-- Find the surface people walk on: drop rays onto the model around the middle (a
+		-- raised rim or a tall decoration would make the very top the wrong height), then
+		-- lift the model so that surface is at the plaza floor height.
 		local center, size = CustomModels.Bounds(placed)
-		local top = center.Y + size.Y / 2
-		placed:PivotTo(placed:GetPivot() + Vector3.new(0, PlazaConfig.FloorY - top, 0))
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Include
+		params.FilterDescendantsInstances = { placed }
+		local heights = {}
+		for _, radius in { 6, 12, 18, 24 } do
+			for i = 0, 5 do
+				local angle = (i + 0.5) / 6 * math.pi * 2
+				local from = Vector3.new(math.sin(angle) * radius, center.Y + size.Y, math.cos(angle) * radius)
+				local hit = Workspace:Raycast(from, Vector3.new(0, -size.Y * 2 - 10, 0), params)
+				if hit then
+					table.insert(heights, hit.Position.Y)
+				end
+			end
+		end
+		local surface = center.Y - size.Y / 2 -- no hits: stand the model on the ground
+		if #heights > 0 then
+			table.sort(heights)
+			surface = heights[math.ceil(#heights / 2)] -- the median ignores odd bumps
+		end
+		local lift = (floorModel:GetAttribute("HeightOffset") :: number?) or 0
+		placed:PivotTo(placed:GetPivot() + Vector3.new(0, PlazaConfig.FloorY - surface + lift, 0))
 	else
 		hexagon(plaza, "PlazaBorder", PLAZA_APOTHEM, 0.25, STONE, Enum.Material.Cobblestone)
 		hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
