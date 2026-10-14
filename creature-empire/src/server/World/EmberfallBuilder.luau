@@ -13,6 +13,7 @@ local Workspace = game:GetService("Workspace")
 
 local RegionConfig = require(ReplicatedStorage.Shared.Config.RegionConfig)
 local Parts = require(script.Parent.Parts)
+local CustomModels = require(script.Parent.CustomModels)
 
 local EmberfallBuilder = {}
 
@@ -48,27 +49,34 @@ local function gate(
 	destination: string
 )
 	local cf = CFrame.lookAt(position, position + facing)
-	for _, x in { -6, 6 } do
+	-- A hand-made TravelGate (about 16 studs tall) replaces the stone arch; the glowing
+	-- portal stays as an invisible part that carries the travel prompt and the label.
+	local custom = CustomModels.Find("World", "TravelGate")
+	if custom then
+		CustomModels.Place(custom, parent, cf, { Fit = Vector3.new(math.huge, 16, math.huge) })
+	else
+		for _, x in { -6, 6 } do
+			Parts.Part(parent, {
+				Size = Vector3.new(2, 14, 2),
+				CFrame = cf * CFrame.new(x, 7, 0),
+				Color = Color3.fromRGB(60, 50, 50),
+				Material = Enum.Material.Slate,
+			})
+		end
 		Parts.Part(parent, {
-			Size = Vector3.new(2, 14, 2),
-			CFrame = cf * CFrame.new(x, 7, 0),
+			Size = Vector3.new(15, 2, 2.4),
+			CFrame = cf * CFrame.new(0, 14.5, 0),
 			Color = Color3.fromRGB(60, 50, 50),
 			Material = Enum.Material.Slate,
 		})
 	end
-	Parts.Part(parent, {
-		Size = Vector3.new(15, 2, 2.4),
-		CFrame = cf * CFrame.new(0, 14.5, 0),
-		Color = Color3.fromRGB(60, 50, 50),
-		Material = Enum.Material.Slate,
-	})
 	local portal = Parts.Decor(parent, {
 		Name = "Portal",
 		Size = Vector3.new(10, 12, 0.3),
 		CFrame = cf * CFrame.new(0, 7, 0),
 		Color = LAVA,
 		Material = Enum.Material.Neon,
-		Transparency = 0.35,
+		Transparency = if custom then 1 else 0.35,
 	})
 	portal.CanQuery = true -- clients attach their travel prompt here
 	portal:SetAttribute("Region", region)

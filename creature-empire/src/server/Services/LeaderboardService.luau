@@ -21,6 +21,7 @@ local Core = script.Parent.Parent.Core
 local Log = require(Core.Log)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 local Parts = require(script.Parent.Parent.World.Parts)
+local CustomModels = require(script.Parent.Parent.World.CustomModels)
 
 local LeaderboardService = {}
 
@@ -150,23 +151,48 @@ local function buildBoard()
 	folder.Name = "Leaderboards"
 	folder.Parent = Workspace
 	local origin = CFrame.new(-28, 0.5, 0) * CFrame.Angles(0, math.rad(-90), 0)
-	for _, x in { -9, 9 } do
-		Parts.Part(folder, {
-			Size = Vector3.new(0.8, 12, 0.8),
-			CFrame = origin * CFrame.new(x, 6, 0),
-			Color = Color3.fromRGB(110, 80, 55),
-			Material = Enum.Material.Wood,
+	-- A hand-made LeaderboardBoard (about 14 studs tall, front towards the plaza) replaces
+	-- the posts and panel. The rankings go on a part named "Screen" in it (its Front
+	-- face), or, without one, on a panel fixed to the front of the model.
+	local custom = CustomModels.Find("World", "LeaderboardBoard")
+	local panel: BasePart
+	local face = Enum.NormalId.Front -- faces +X, toward the plaza centre
+	local screen: BasePart? = nil
+	if custom then
+		local placed = CustomModels.Place(custom, folder, origin, { Fit = Vector3.new(math.huge, 14, math.huge) })
+		local found = placed:FindFirstChild("Screen", true)
+		if found and found:IsA("BasePart") then
+			screen = found
+		end
+		local _, size = CustomModels.Bounds(placed)
+		panel = screen
+			or Parts.Part(folder, {
+				Name = "Board",
+				Size = Vector3.new(18, 9, 0.5),
+				-- Turned -90 degrees, so the model's depth runs along world X.
+				CFrame = origin * CFrame.new(0, 7, -(size.X / 2 + 0.3)),
+				Color = Color3.fromRGB(35, 40, 60),
+				Material = Enum.Material.SmoothPlastic,
+			})
+	else
+		for _, x in { -9, 9 } do
+			Parts.Part(folder, {
+				Size = Vector3.new(0.8, 12, 0.8),
+				CFrame = origin * CFrame.new(x, 6, 0),
+				Color = Color3.fromRGB(110, 80, 55),
+				Material = Enum.Material.Wood,
+			})
+		end
+		panel = Parts.Part(folder, {
+			Name = "Board",
+			Size = Vector3.new(18, 9, 0.5),
+			CFrame = origin * CFrame.new(0, 7, 0),
+			Color = Color3.fromRGB(35, 40, 60),
+			Material = Enum.Material.SmoothPlastic,
 		})
 	end
-	local panel = Parts.Part(folder, {
-		Name = "Board",
-		Size = Vector3.new(18, 9, 0.5),
-		CFrame = origin * CFrame.new(0, 7, 0),
-		Color = Color3.fromRGB(35, 40, 60),
-		Material = Enum.Material.SmoothPlastic,
-	})
 	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Front -- faces +X, toward the plaza centre
+	gui.Face = face
 	gui.CanvasSize = Vector2.new(1200, 600)
 	gui.LightInfluence = 0
 	gui.Parent = panel

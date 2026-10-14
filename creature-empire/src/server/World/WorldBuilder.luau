@@ -336,31 +336,60 @@ local function buildPlaza(folder: Folder)
 
 	-- A hexagon with one flat side facing each of the six paths, so every path starts
 	-- square-on at the middle of a side: a cobblestone border around slate paving.
-	hexagon(plaza, "PlazaBorder", PLAZA_APOTHEM, 0.25, STONE, Enum.Material.Cobblestone)
-	hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
-	-- Founders' Crystal monument
-	Parts.Cylinder(plaza, CFrame.new(0, 1.5, 0), 2, 16, { Color = STONE, Material = Enum.Material.Marble })
-	Parts.Cylinder(
-		plaza,
-		CFrame.new(0, 3, 0),
-		1,
-		11,
-		{ Color = Color3.fromRGB(200, 196, 188), Material = Enum.Material.Marble }
-	)
-	local crystal = Parts.Decor(plaza, {
-		Name = "FoundersCrystal",
-		Size = Vector3.new(4, 12, 4),
-		CFrame = CFrame.new(0, 11, 0) * CFrame.Angles(0, math.rad(45), 0),
-		Color = Color3.fromRGB(140, 230, 255),
-		Material = Enum.Material.Neon,
-		Transparency = 0.05,
-	})
-	crystal:SetAttribute("BobHeight", 1)
-	CollectionService:AddTag(crystal, "CE_Bob")
-	Parts.Light(crystal, Color3.fromRGB(140, 230, 255), 30, 1.5)
-	Parts.Label(crystal, "CREATURE EMPIRE", {
+	local floorModel = CustomModels.Find("World", "PlazaFloor")
+	if floorModel then
+		-- Hand-made floor: fitted to the hexagon (80.8 studs corner to corner, 70 side to
+		-- side, a side facing each path) with its top surface at the plaza floor height.
+		local placed = CustomModels.Place(floorModel, plaza, CFrame.new(0, 0, 0), {
+			Fit = Vector3.new(4 * PLAZA_APOTHEM / math.sqrt(3), 0, 2 * PLAZA_APOTHEM),
+		})
+		local center, size = CustomModels.Bounds(placed)
+		local top = center.Y + size.Y / 2
+		placed:PivotTo(placed:GetPivot() + Vector3.new(0, PlazaConfig.FloorY - top, 0))
+	else
+		hexagon(plaza, "PlazaBorder", PLAZA_APOTHEM, 0.25, STONE, Enum.Material.Cobblestone)
+		hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
+	end
+
+	-- Founders' Crystal monument (or a hand-made one, about 22 studs tall)
+	local crystalModel = CustomModels.Find("World", "FoundersCrystal")
+	local labelAnchor: BasePart
+	if crystalModel then
+		local placed = CustomModels.Place(crystalModel, plaza, CFrame.new(0, PlazaConfig.FloorY, 0), {
+			Fit = Vector3.new(math.huge, 22, math.huge),
+		})
+		local center, size = CustomModels.Bounds(placed)
+		labelAnchor = Parts.Decor(plaza, {
+			Name = "FoundersCrystal",
+			Size = Vector3.new(1, 1, 1),
+			CFrame = CFrame.new(0, center.Y + size.Y / 2, 0),
+			Transparency = 1,
+		})
+	else
+		Parts.Cylinder(plaza, CFrame.new(0, 1.5, 0), 2, 16, { Color = STONE, Material = Enum.Material.Marble })
+		Parts.Cylinder(
+			plaza,
+			CFrame.new(0, 3, 0),
+			1,
+			11,
+			{ Color = Color3.fromRGB(200, 196, 188), Material = Enum.Material.Marble }
+		)
+		local crystal = Parts.Decor(plaza, {
+			Name = "FoundersCrystal",
+			Size = Vector3.new(4, 12, 4),
+			CFrame = CFrame.new(0, 11, 0) * CFrame.Angles(0, math.rad(45), 0),
+			Color = Color3.fromRGB(140, 230, 255),
+			Material = Enum.Material.Neon,
+			Transparency = 0.05,
+		})
+		crystal:SetAttribute("BobHeight", 1)
+		CollectionService:AddTag(crystal, "CE_Bob")
+		Parts.Light(crystal, Color3.fromRGB(140, 230, 255), 30, 1.5)
+		labelAnchor = crystal
+	end
+	Parts.Label(labelAnchor, "CREATURE EMPIRE", {
 		Size = UDim2.fromScale(22, 4),
-		Offset = Vector3.new(0, 10, 0),
+		Offset = Vector3.new(0, if crystalModel then 4 else 10, 0),
 		MaxDistance = 200,
 		Color = Color3.fromRGB(220, 250, 255),
 	})

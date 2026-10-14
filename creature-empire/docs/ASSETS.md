@@ -141,6 +141,10 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Rock` | The rocks around the plaza | Same as trees. |
 | `Lamp` | Lamp posts on the plaza and paths | Scaled to 11 studs tall (unless `KeepSize`); a warm light is added near the top. |
 | `SpinWheel` | The Spin Wheel in the plaza | Stands on the plaza floor, scaled to 16 studs tall, its front facing the Founders' Crystal. The game adds the Spin prompt, the name label and the free-spin timer above it. |
+| `PlazaFloor` | The hexagon floor of the plaza | Fitted to the hexagon (80.8 studs corner to corner, 70 side to side), its top surface at the plaza floor height. Build it with a flat side facing each path: one side straight along the model's front (-Z). Also found as `Plaza`, `Hexagon` or `HexFloor`. |
+| `FoundersCrystal` | The glowing crystal and its stone base in the middle of the plaza | Scaled to 22 studs tall, standing in the centre. The "CREATURE EMPIRE" title floats above it. Also found as `Crystal` or `Monument`. |
+| `LeaderboardBoard` | The leaderboard board in the plaza | Scaled to 14 studs tall, its front facing the crystal. The rankings are drawn on a part named **`Screen`** in your model (on that part's Front face); without one, they go on a panel fixed to the front of your board. Also found as `Leaderboard` or `Board`. |
+| `TravelGate` | The Emberfall travel gate in the plaza, and the gate back home in Emberfall | Scaled to 16 studs tall. The travel prompt and name label are added for you. Also found as `Gate`. |
 
 **Moving the plaza stations:** the Trading Post, Hatchery and Spin Wheel are built when the game starts, so in edit mode you move their glowing markers instead: **Workspace › PlazaLayout › TradingPost / Hatchery / SpinWheel**. Drag or rotate a marker; the station is built standing on the marker, its front facing the marker's **FRONT** side. The markers are hidden while playing, and selling, hatching and spinning work around the new spot. A new place file from Rojo resets the markers, so send the new positions (each marker's Position and Orientation) to have them kept in `default.project.json`.
 

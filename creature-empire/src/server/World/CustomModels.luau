@@ -1,7 +1,9 @@
 --!strict
 -- Hand-made models that replace the code-built ones. Put a Model in
 --   ReplicatedStorage/Assets/Buildings/<BuildingType>      (or <BuildingType>_<level>)
---   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, PathSegment, Tree, Rock, Lamp, SpinWheel)
+--   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, PathSegment, Tree, Rock, Lamp, SpinWheel,
+--                                                           PlazaFloor, FoundersCrystal,
+--                                                           LeaderboardBoard, TravelGate)
 -- and it is used automatically (see docs/ASSETS.md). Models can be built or imported in
 -- Studio in any position, size or rotation: they are measured, resized to fit and placed
 -- with their bottom centre on the ground.
@@ -61,6 +63,10 @@ CustomModels.Aliases = {
 	Hatchery = { "Nest", "Incubator", "HatchStand", "EggStand" },
 	FenceSegment = { "Fence" },
 	PathSegment = { "Path", "GravelPath", "Gravel", "PathTile" },
+	PlazaFloor = { "Plaza", "HexFloor", "Hexagon", "HexagonFloor", "PlazaPlatform" },
+	FoundersCrystal = { "Crystal", "PlazaCrystal", "Monument", "CenterCrystal", "CentreCrystal" },
+	LeaderboardBoard = { "Leaderboard", "Leaderboards", "Board", "LeaderBoardSign" },
+	TravelGate = { "Gate", "EmberfallGate", "TeleportGate" },
 } :: { [string]: { string } }
 
 -- The template for `name` in Assets/<category>, preferring a per-level variant
