@@ -86,7 +86,10 @@ AssetConfig.ModelAssets = {
 		-- Supplied by the game's creator: their imported Sproutling model.
 		Sproutling = 120629196068989,
 	},
-	Buildings = {},
+	Buildings = {
+		-- Supplied by the game's creator: their shop model.
+		TradingPost = 129682746612211,
+	},
 	World = {},
 } :: { [string]: { [string]: number } }
 
