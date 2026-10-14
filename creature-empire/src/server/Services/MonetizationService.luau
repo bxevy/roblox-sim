@@ -19,6 +19,9 @@ local PlayerDataService = require(script.Parent.PlayerDataService)
 local StateService = require(script.Parent.StateService)
 local ProductionService = require(script.Parent.ProductionService)
 local PlotService = require(script.Parent.PlotService)
+local EconomyService = require(script.Parent.EconomyService)
+local CreatureService = require(script.Parent.CreatureService)
+local SpinConfig = require(Shared.Config.SpinConfig)
 
 local MonetizationService = {}
 
@@ -40,8 +43,40 @@ function MonetizationService.HasPass(player: Player, passKey: string): boolean
 	return owned ~= nil and owned[passKey] == true
 end
 
+local applyBoost: (Player, Types.PlayerData) -> ()
+
+-- One-time rewards of owned passes (the Starter Bundle), granted once per profile.
+local function grantPassRewards(player: Player)
+	local data = PlayerDataService.GetData(player)
+	if not data then
+		return
+	end
+	for key, pass in MonetizationConfig.Passes do
+		local flag = "PassGranted_" .. key
+		if pass.Grants and MonetizationService.HasPass(player, key) and (data.Stats[flag] or 0) == 0 then
+			data.Stats[flag] = 1
+			local grants = pass.Grants
+			if grants.Gold then
+				EconomyService.Add(player, "Gold", grants.Gold, "Pass " .. key)
+			end
+			if grants.FarmBoostSeconds then
+				local now = os.time()
+				data.BoostUntil = math.max(data.BoostUntil, now) + grants.FarmBoostSeconds
+				applyBoost(player, data)
+			end
+			if grants.Species then
+				CreatureService.Grant(player, grants.Species, "Shop", false)
+			end
+			PlayerDataService.MarkDirty(player)
+			PlayerDataService.SaveNow(player)
+			Log.Info("Shop", "Pass rewards granted", { user = player.UserId, pass = key })
+		end
+	end
+end
+
 local function applyPasses(player: Player)
 	player:SetAttribute("Supporter", MonetizationService.HasPass(player, "Supporter"))
+	task.spawn(grantPassRewards, player)
 	PlotService.RefreshSign(player)
 	StateService.Push(player, "Shop")
 end
@@ -68,7 +103,7 @@ local function checkPasses(player: Player)
 	applyPasses(player)
 end
 
-local function applyBoost(player: Player, data: Types.PlayerData)
+function applyBoost(player: Player, data: Types.PlayerData)
 	local remaining = data.BoostUntil - os.time()
 	ProductionService.SetPlayerBoost(
 		player,
@@ -79,11 +114,18 @@ local function applyBoost(player: Player, data: Types.PlayerData)
 end
 
 local function grant(player: Player, data: Types.PlayerData, product: MonetizationConfig.Product)
-	if product.Kind == "Boost" then
-		local now = os.time()
+	local now = os.time()
+	if product.Kind == "FarmBoost" and product.Seconds then
 		-- Always the full time paid for (the shop stops selling near the limit).
 		data.BoostUntil = math.max(data.BoostUntil, now) + product.Seconds
 		applyBoost(player, data)
+	elseif product.Kind == "LuckBoost" and product.Seconds then
+		-- The same 2x Luck as the Spin Wheel's (eggs: rare-or-better twice as likely).
+		local current = data.Boosts.Luck or 0
+		data.Boosts.Luck = math.min(math.max(current, now) + product.Seconds, now + SpinConfig.MaxBoostSeconds)
+		StateService.Push(player, "Spin")
+	elseif product.Kind == "Currency" and product.Currency and product.Amount then
+		EconomyService.Add(player, product.Currency, product.Amount, "Shop")
 	end
 end
 

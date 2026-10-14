@@ -75,9 +75,20 @@ describe("Monetization rules", function()
 		for key, pass in MonetizationConfig.Passes do
 			truthy(pass.Id == 0 or (pass.Id > 0 and pass.Id % 1 == 0), key)
 		end
+		local allowed = { Currency = true, FarmBoost = true, LuckBoost = true }
 		for key, product in MonetizationConfig.Products do
 			truthy(product.Id == 0 or (product.Id > 0 and product.Id % 1 == 0), key)
-			eq(product.Kind, "Boost", key .. " only convenience boosts are sold")
+			truthy(allowed[product.Kind], key .. " sells a known, non-random thing")
+			if product.Kind == "Currency" then
+				truthy(product.Amount and product.Amount > 0, key .. " amount")
+			else
+				truthy(product.Seconds and product.Seconds > 0, key .. " duration")
+			end
+		end
+		for key, pass in MonetizationConfig.Passes do
+			if pass.Grants and pass.Grants.Species then
+				truthy(CreatureConfig.Species[pass.Grants.Species], key .. " grants a real species")
+			end
 		end
 	end)
 	test("purchased boosts use the capped Boost category", function()
@@ -88,13 +99,13 @@ describe("Monetization rules", function()
 end)
 
 describe("Full roster", function()
-	test("all 33 species are obtainable in the release build", function()
+	test("all 34 species are obtainable in the release build", function()
 		local count = 0
 		for _, species in CreatureConfig.Species do
 			truthy(species.Phase <= GameConfig.Phase, species.Id)
 			count += 1
 		end
-		eq(count, 33) -- 32 at release + the Black Dragon (Spin Wheel)
+		eq(count, 34) -- 32 at release + the Black Dragon (Spin Wheel) + Meadow Sprout (shop)
 	end)
 end)
 

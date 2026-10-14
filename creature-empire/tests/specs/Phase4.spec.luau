@@ -351,6 +351,11 @@ describe("Update 4 content", function()
 		for _, id in CreatureConfig.Starters do
 			sources[id] = true
 		end
+		for _, pass in shared("Config", "MonetizationConfig").Passes do
+			if pass.Grants and pass.Grants.Species then
+				sources[pass.Grants.Species] = true
+			end
+		end
 		for _, prize in shared("Config", "SpinConfig").Prizes do
 			if prize.Species then
 				sources[prize.Species] = true
