@@ -56,8 +56,9 @@ local function loadOne(category: string, name: string, assetId: number)
 		end
 	end
 	model.Name = name
-	local settings = AssetConfig.ModelSettings[category] and AssetConfig.ModelSettings[category][name]
-	for attribute, value in settings or {} do
+	local group = AssetConfig.ModelSettings[category]
+	local settings: { [string]: any } = if group and group[name] then group[name] else {}
+	for attribute, value in settings do
 		model:SetAttribute(attribute, value)
 	end
 	model.Parent = folder
