@@ -68,7 +68,29 @@ local function loadOne(category: string, name: string, assetId: number)
 	if model ~= container then
 		(container :: Instance):Destroy()
 	end
-	Log.Info("Assets", "Loaded model", { category = category, name = name, id = assetId })
+	-- Colour check: imported meshes get their colour from a texture (MeshPart.TextureID or
+	-- a SurfaceAppearance). Without one they show up plain grey or white.
+	local meshes, textured = 0, 0
+	for _, d in model:GetDescendants() do
+		if d:IsA("MeshPart") then
+			meshes += 1
+			if d.TextureID ~= "" or d:FindFirstChildWhichIsA("SurfaceAppearance") then
+				textured += 1
+			end
+		end
+	end
+	Log.Info(
+		"Assets",
+		"Loaded model",
+		{ category = category, name = name, id = assetId, meshParts = meshes, textured = textured }
+	)
+	if meshes > 0 and textured == 0 then
+		Log.Warn(
+			"Assets",
+			`{name} has no texture, so it shows without its colours. Re-import the FBX with its texture (3D Importer, with the texture file next to the FBX) and upload the model again.`,
+			{ id = assetId }
+		)
+	end
 end
 
 function AssetLoader.Load()
