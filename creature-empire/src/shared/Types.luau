@@ -244,7 +244,8 @@ export type PlayerData = {
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids
-	Companion: string?, -- creature id following the player
+	Companion: string?, -- the team leader (Team[1]): its skills count in the wild
+	Team: { string }, -- the Active Team (Util/Team): up to 3 creatures following you
 	Expeditions: { [string]: ExpeditionRecord },
 	Discoveries: { [string]: number }, -- landmark id -> os.time discovered
 	Guardians: { [string]: { Defeats: number, LastRewardAt: number } },

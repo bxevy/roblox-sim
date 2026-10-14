@@ -86,8 +86,8 @@ function Trade.CanGive(data: Types.PlayerData, offer: Offer): (boolean, string?)
 		if creature.Expedition then
 			return false, `{name} is away on an expedition.`
 		end
-		if data.Companion == id then
-			return false, `{name} is your companion. Stop it following you first.`
+		if data.Companion == id or (type(data.Team) == "table" and table.find(data.Team, id) ~= nil) then
+			return false, `{name} is on your Active Team. Unequip it first.`
 		end
 	end
 	for id, amount in offer.Resources do

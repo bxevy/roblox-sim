@@ -24,10 +24,11 @@ local PlazaConfig = require(Shared.Config.PlazaConfig)
 local SpinConfig = require(Shared.Config.SpinConfig)
 local Formulas = require(Shared.Util.Formulas)
 local Housing = require(Shared.Util.Housing)
+local Team = require(Shared.Util.Team)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 8
+Schema.CURRENT_VERSION = 9
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -108,6 +109,7 @@ function Schema.Default(now: number): Types.PlayerData
 		Pity = {},
 		Expansions = {},
 		Companion = nil,
+		Team = {},
 		Expeditions = {},
 		Discoveries = {},
 		Guardians = {},
@@ -212,6 +214,12 @@ Schema.Migrations = {
 				end
 				record.Level = 1
 			end
+		end
+	end,
+	-- v8 -> v9 (team update): up to 3 creatures follow you; the companion leads the team.
+	[8] = function(data: { [string]: any })
+		if type(data.Team) ~= "table" then
+			data.Team = if type(data.Companion) == "string" then { data.Companion } else {}
 		end
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
@@ -477,12 +485,8 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 			record.Assignment = nil
 		end
 	end
-	if data.Companion ~= nil then
-		local companion = type(data.Companion) == "string" and data.Creatures[data.Companion]
-		if not companion or companion.Expedition or companion.Assignment or companion.Stored then
-			data.Companion = nil
-		end
-	end
+	-- The Active Team: valid members only, the leader is the companion.
+	Team.Normalize(data :: any)
 	-- More creatures on the plot than the habitats hold: the extras go to the backpack.
 	for _, id in Housing.Fit(data :: any) do
 		fix(`Creature {id} moved to the backpack`)

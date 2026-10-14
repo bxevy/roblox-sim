@@ -233,6 +233,7 @@ function RegionService.Start()
 			Discoveries = table.clone(data.Discoveries),
 			Guardians = table.clone(data.Guardians),
 			Companion = data.Companion,
+			Team = table.clone(data.Team),
 		}
 	end)
 

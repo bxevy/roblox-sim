@@ -59,7 +59,15 @@ function Housing.Store(data: Types.PlayerData, creatureId: string)
 	end
 	creature.Stored = true
 	creature.Assignment = nil
-	if data.Companion == creatureId then
+	-- Off the Active Team (Util/Team keeps the leader in PlayerData.Companion).
+	local team = data.Team
+	if type(team) == "table" then
+		local index = table.find(team, creatureId)
+		if index then
+			table.remove(team, index)
+		end
+		data.Companion = team[1]
+	elseif data.Companion == creatureId then
 		data.Companion = nil
 	end
 end
@@ -81,7 +89,9 @@ function Housing.Fit(data: Types.PlayerData): { string }
 		end
 	end
 	local function busy(creature: Types.CreatureRecord): number
-		return if creature.Assignment ~= nil or data.Companion == creature.Id then 1 else 0
+		local onTeam = data.Companion == creature.Id
+			or (type(data.Team) == "table" and table.find(data.Team, creature.Id) ~= nil)
+		return if creature.Assignment ~= nil or onTeam then 1 else 0
 	end
 	table.sort(candidates, function(a, b)
 		if busy(a) ~= busy(b) then

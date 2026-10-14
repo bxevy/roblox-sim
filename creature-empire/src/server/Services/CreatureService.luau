@@ -24,6 +24,7 @@ local Mutation = require(Shared.Util.Mutation)
 local Research = require(Shared.Util.Research)
 local Spin = require(Shared.Util.Spin)
 local Housing = require(Shared.Util.Housing)
+local Team = require(Shared.Util.Team)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -69,7 +70,10 @@ local function updateAnchor(player: Player, creature: Types.CreatureRecord)
 	a:SetAttribute("Mutation", creature.Mutation or "")
 	a:SetAttribute("Assignment", creature.Assignment or "")
 	local data = PlayerDataService.GetData(player)
-	a:SetAttribute("Companion", data ~= nil and data.Companion == creature.Id)
+	-- On the Active Team: follows its owner, in formation by slot (1 = leader).
+	local slot = if data then table.find(data.Team, creature.Id) else nil
+	a:SetAttribute("Companion", slot ~= nil)
+	a:SetAttribute("TeamSlot", slot or 0)
 	-- On an expedition or in the backpack: not shown on the plot.
 	a:SetAttribute("Away", creature.Expedition ~= nil or creature.Stored == true)
 	a:SetAttribute("OwnerUserId", player.UserId)
@@ -209,9 +213,10 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 	if creature.Stored and buildingId ~= nil then
 		return false, `Take {displayName(creature)} out of your backpack first.`
 	end
-	if buildingId ~= nil and data.Companion == creatureId then
-		-- Going to work: it stops following you.
-		data.Companion = nil
+	if buildingId ~= nil and Team.Has(data, creatureId) then
+		-- Going to work: it leaves the team.
+		Team.Remove(data, creatureId)
+		CreatureService.RefreshAll(player) -- the others close up the formation
 		StateService.Push(player, "Exploration")
 	end
 	if buildingId == nil then
@@ -253,11 +258,21 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 	return true, nil
 end
 
+-- After the team changes: every member's anchor (they follow in formation), the
+-- exploration state (the leader's skills) and production (members left their jobs).
+local function teamChanged(player: Player)
+	PlayerDataService.MarkDirty(player)
+	ProductionService.Invalidate(player)
+	Events.AssignmentsChanged:Fire(player)
+	CreatureService.RefreshAll(player)
+	StateService.Push(player, "Exploration", "Creatures")
+end
+
+-- "Take with me": makes the creature the team leader (nil: the whole team goes home).
 local function setCompanion(player: Player, creatureId: string?): (boolean, any)
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
-	local previous = data.Companion and data.Creatures[data.Companion]
 	if creatureId == nil then
-		data.Companion = nil
+		Team.Clear(data)
 	else
 		local creature = data.Creatures[creatureId]
 		if not creature then
@@ -269,19 +284,50 @@ local function setCompanion(player: Player, creatureId: string?): (boolean, any)
 		if creature.Stored then
 			return false, `Take {displayName(creature)} out of your backpack first.`
 		end
-		if creature.Assignment then
-			creature.Assignment = nil -- leaves its job to come with you
-			ProductionService.Invalidate(player)
+		local ok, reason = Team.Add(data, creatureId, true)
+		if not ok then
+			return false, reason
 		end
-		data.Companion = creatureId
-		updateAnchor(player, creature)
 	end
-	if previous then
-		updateAnchor(player, previous)
-	end
-	PlayerDataService.MarkDirty(player)
-	StateService.Push(player, "Exploration", "Creatures")
+	teamChanged(player)
 	return true, nil
+end
+
+-- Equip / unequip a creature on the Active Team (up to Team.Size follow you).
+local function equip(player: Player, creatureId: string, on: boolean): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local creature = data.Creatures[creatureId]
+	if not creature then
+		return false, "That creature isn't yours."
+	end
+	if on then
+		if creature.Expedition then
+			return false, "It's away on an expedition."
+		end
+		if creature.Stored then
+			return false, `Take {displayName(creature)} out of your backpack first.`
+		end
+		local ok, reason = Team.Add(data, creatureId)
+		if not ok then
+			return false, reason
+		end
+	else
+		Team.Remove(data, creatureId)
+	end
+	teamChanged(player)
+	return true, nil
+end
+
+-- Fills the team with your strongest creatures (rarest, then highest level).
+local function equipBest(player: Player): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local best = Team.Best(data)
+	if #best == 0 then
+		return false, "No creatures on your plot to equip."
+	end
+	Team.Set(data, best)
+	teamChanged(player)
+	return true, #best
 end
 
 -- All anchors (after expeditions start or end).
@@ -453,7 +499,7 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 			local building = creature.Assignment and data.Buildings[creature.Assignment]
 			local def = building and BuildingConfig[building.Type]
 			local job = def and def.Job and JobConfig[def.Job]
-			local task = if data.Companion == id
+			local task = if Team.Has(data, id)
 				then "Following you"
 				elseif creature.Expedition then "Away on an expedition"
 				elseif creature.Stored then "In your backpack"
@@ -491,13 +537,15 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 				-- Absolute, on the shared server clock, so the client can count down without
 				-- a fresh push.
 				RestUntilServer = Workspace:GetServerTimeNow() + math.max(creature.RestUntil - now, 0),
-				Companion = data.Companion == id,
+				Companion = Team.Has(data, id), -- on the Active Team
+				Leader = data.Companion == id,
+				TeamSlot = table.find(data.Team, id),
 				Stored = creature.Stored == true,
 				ObtainedAt = creature.ObtainedAt,
 			}
 		end
 	end
-	return { List = list, StarterChosen = data.StarterChosen }
+	return { List = list, StarterChosen = data.StarterChosen, Team = table.clone(data.Team), TeamSize = Team.Size }
 end
 
 -- Backpack: put a creature away (it stops working and following) or take it out to live
@@ -519,9 +567,10 @@ local function store(player: Player, creatureId: string, put: boolean): (boolean
 		if backpack >= Housing.BackpackSize then
 			return false, `Your backpack is full ({Housing.BackpackSize} creatures).`
 		end
-		local wasCompanion = data.Companion == creatureId
+		local wasOnTeam = Team.Has(data, creatureId)
 		Housing.Store(data, creatureId)
-		if wasCompanion then
+		if wasOnTeam then
+			CreatureService.RefreshAll(player)
 			StateService.Push(player, "Exploration")
 		end
 	else
@@ -627,6 +676,8 @@ function CreatureService.Start()
 	Net.Handle("AssignCreature", { Rate = { 6, 2 }, Args = { Check.Id, Check.OptionalId } }, assign)
 	Net.Handle("UseAbility", { Rate = { 4, 1 }, Args = { Check.Id } }, useAbility)
 	Net.Handle("SetCompanion", { Rate = { 4, 1 }, Args = { Check.OptionalId } }, setCompanion)
+	Net.Handle("EquipCreature", { Rate = { 8, 3 }, Args = { Check.Id, Check.Boolean } }, equip)
+	Net.Handle("EquipBest", { Rate = { 2, 0.5 } }, equipBest)
 	Net.Handle("RenameCreature", { Rate = { 3, 0.2 }, Args = { Check.Id, Check.String } }, rename)
 	Net.Handle("StoreCreature", { Rate = { 8, 3 }, Args = { Check.Id, Check.Boolean } }, store)
 end

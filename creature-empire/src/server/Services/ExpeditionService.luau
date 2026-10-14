@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
+local Team = require(Shared.Util.Team)
 local Types = require(Shared.Types)
 local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
 local BuildingConfig = require(Shared.Config.BuildingConfig)
@@ -187,9 +188,7 @@ local function launch(
 		local creature = data.Creatures[creatureId]
 		creature.Expedition = id
 		creature.Assignment = nil
-		if data.Companion == creatureId then
-			data.Companion = nil
-		end
+		Team.Remove(data, creatureId) -- leaves the Active Team
 	end
 	PlayerDataService.MarkDirty(player)
 	if rift then

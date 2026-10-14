@@ -490,6 +490,9 @@ local function ownerRoot(entity: Entity): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
+-- Where each Active Team member walks, relative to you (X = right, Y = behind).
+local FOLLOW_OFFSETS = { Vector2.new(3.5, 5), Vector2.new(-3.5, 5), Vector2.new(0, 8.5) }
+
 local WADDLE_ROLL = 0.1 -- radians of side-to-side lean per step
 local WALK_LEAN = 0.06 -- radians of forward tip while walking
 local HOP_SCALE = 1.8 -- walking hops are this many times the species' hop height
@@ -509,7 +512,10 @@ local function decide(entity: Entity)
 	if entity.Anchor:GetAttribute("Companion") == true then
 		local root = ownerRoot(entity)
 		if root then
-			local behind = root.Position - root.CFrame.LookVector * 5 + root.CFrame.RightVector * 3
+			-- Team formation behind you: leader right, second left, third in the middle.
+			local slot = (entity.Anchor:GetAttribute("TeamSlot") :: number?) or 1
+			local offset = FOLLOW_OFFSETS[slot] or FOLLOW_OFFSETS[1]
+			local behind = root.Position - root.CFrame.LookVector * offset.Y + root.CFrame.RightVector * offset.X
 			if
 				(Vector3.new(behind.X, 0, behind.Z) - Vector3.new(entity.Position.X, 0, entity.Position.Z)).Magnitude
 				> 60
