@@ -98,6 +98,12 @@ AssetConfig.ModelAssets = {
 		Cindercub = 126738303103925,
 		-- Supplied by the game's creator: their Pebblit.
 		Pebblit = 116144321420636,
+		-- Supplied by the game's creator.
+		Gloomkit = 121730595868309,
+		Magmaul = 124924603086929,
+		Bloomhart = 123847377678850,
+		Starweaver = 93322054665105,
+		Wisplet = 118502381615117,
 	},
 	Buildings = {
 		-- Supplied by the game's creator: their shop model.
@@ -108,6 +114,10 @@ AssetConfig.ModelAssets = {
 		MoonpetalFarm = 134956325741614,
 		-- Supplied by the game's creator: their creature house.
 		Habitat = 73260987585057,
+		-- Supplied by the game's creator.
+		ResourceSilo = 71428378697058,
+		EmpireCore = 95338089212391,
+		ResearchStation = 82999179532896,
 	},
 	World = {
 		-- Supplied by the game's creator: their fence section.
@@ -136,6 +146,11 @@ AssetConfig.ModelSettings = {
 		-- Same export as the Sproutling, which faced backwards without this.
 		Cindercub = { Facing = 180 },
 		Pebblit = { Facing = 180 },
+		Gloomkit = { Facing = 180 },
+		Magmaul = { Facing = 180 },
+		Bloomhart = { Facing = 180 },
+		Starweaver = { Facing = 180 },
+		Wisplet = { Facing = 180 },
 	},
 	Buildings = {
 		Habitat = { Scale = 1.25 }, -- a little bigger than its plot space
