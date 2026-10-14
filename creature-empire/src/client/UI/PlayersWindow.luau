@@ -58,7 +58,7 @@ function PlayersWindow.new(ctx: any)
 			local isCollaborator = table.find(social.Collaborators, p.UserId) ~= nil
 			Theme.Text(
 				card,
-				`<b>{p.DisplayName}</b> <font color="#9aa6c4">@{p.Name}</font>`
+				`<b>{p.DisplayName}</b> <font color="#dec496">@{p.Name}</font>`
 					.. (if isCollaborator then "  · collaborator on your plot" else ""),
 				16
 			)

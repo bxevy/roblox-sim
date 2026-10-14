@@ -1,9 +1,10 @@
 --!strict
 -- The interface's visual language and the small kit every screen is built from.
 --
--- Look: deep night-blue glass panels, rounded corners, one soft border, a restrained
--- top-lit gradient, Builder Sans. Accent colours: moon teal (primary actions), warm gold
--- (currency), and rarity colours (always paired with a glyph + text label).
+-- Look (the creator's mockup): warm wooden panels with a golden trim, cream text, chunky
+-- rounded Fredoka One for headings and buttons, Merriweather for window titles. Buttons:
+-- leaf green (primary actions), sunset orange (buy / claim), wood (everything else).
+-- Rarity colours are always paired with a glyph + text label.
 -- Feel: buttons lift on hover, press in on click, and windows pop in. Reduced motion
 -- turns the pops into simple fades.
 
@@ -13,23 +14,25 @@ local TweenService = game:GetService("TweenService")
 local Theme = {}
 
 Theme.Font = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Medium)
-Theme.Bold = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
-Theme.Heavy = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.ExtraBold)
+Theme.Bold = Font.new("rbxasset://fonts/families/FredokaOne.json")
+Theme.Heavy = Font.new("rbxasset://fonts/families/FredokaOne.json")
+Theme.Title = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
 
 Theme.Colors = {
-	Panel = Color3.fromRGB(18, 24, 38),
-	PanelRaised = Color3.fromRGB(28, 36, 56),
-	PanelSunken = Color3.fromRGB(12, 16, 27),
-	Border = Color3.fromRGB(150, 190, 255),
-	Text = Color3.fromRGB(236, 242, 255),
-	Muted = Color3.fromRGB(150, 164, 196),
-	Primary = Color3.fromRGB(70, 200, 190),
-	PrimaryDark = Color3.fromRGB(36, 130, 130),
+	Panel = Color3.fromRGB(78, 48, 26), -- dark wood
+	PanelRaised = Color3.fromRGB(104, 66, 36), -- lighter plank
+	PanelSunken = Color3.fromRGB(50, 30, 16), -- inset / bar track
+	Border = Color3.fromRGB(226, 176, 92), -- golden trim
+	Text = Color3.fromRGB(255, 246, 225), -- cream
+	Muted = Color3.fromRGB(222, 196, 150), -- parchment
+	Primary = Color3.fromRGB(96, 186, 58), -- leaf green
+	PrimaryDark = Color3.fromRGB(54, 122, 34),
 	Gold = Color3.fromRGB(255, 205, 80),
 	Success = Color3.fromRGB(110, 210, 120),
 	Danger = Color3.fromRGB(235, 95, 95),
 	Warning = Color3.fromRGB(255, 170, 70),
-	Button = Color3.fromRGB(44, 56, 84),
+	Button = Color3.fromRGB(122, 80, 44), -- wood button
+	TextShadow = Color3.fromRGB(46, 26, 10), -- outline behind button and title text
 }
 
 Theme.ReducedMotion = false
@@ -138,8 +141,9 @@ function Theme.Panel(parent: Instance?, props: { [string]: any }?): Frame
 		(frame :: any)[key] = value
 	end
 	Theme.Corner(frame)
-	Theme.Stroke(frame)
-	Theme.Gradient(frame, 1, 0.86)
+	-- A golden trim around every wooden panel.
+	Theme.Stroke(frame, Theme.Colors.Border, 0.15, 2)
+	Theme.Gradient(frame, 1, 0.8)
 	frame.Parent = parent
 	return frame
 end
@@ -149,7 +153,7 @@ export type ButtonStyle = "Primary" | "Secondary" | "Gold" | "Danger" | "Ghost"
 local STYLE_COLORS: { [string]: Color3 } = {
 	Primary = Theme.Colors.Primary,
 	Secondary = Theme.Colors.Button,
-	Gold = Color3.fromRGB(230, 170, 50),
+	Gold = Color3.fromRGB(240, 146, 34), -- sunset orange
 	Danger = Theme.Colors.Danger,
 	Ghost = Theme.Colors.PanelRaised,
 }
@@ -165,7 +169,10 @@ function Theme.Button(parent: Instance?, text: string, style: ButtonStyle?, prop
 		FontFace = Theme.Bold,
 		Text = text,
 		TextSize = 17,
-		TextColor3 = if style == "Gold" then Color3.fromRGB(45, 30, 5) else Theme.Colors.Text,
+		TextColor3 = Theme.Colors.Text,
+		-- Cream letters with a dark outline read on every button colour.
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.25,
 		Size = UDim2.new(0, 120, 0, 40),
 		Selectable = true,
 	})
@@ -173,8 +180,8 @@ function Theme.Button(parent: Instance?, text: string, style: ButtonStyle?, prop
 		(button :: any)[key] = value
 	end
 	Theme.Corner(button, 10)
-	Theme.Gradient(button, 1, 0.78)
-	Theme.Stroke(button, Color3.new(0, 0, 0), 0.6, 1.5)
+	Theme.Gradient(button, 1, 0.72)
+	Theme.Stroke(button, Theme.Colors.TextShadow, 0.2, 2)
 	local scale = Theme.Make("UIScale", { Scale = 1 }, button)
 
 	button:SetAttribute("BaseColor", color)
@@ -230,7 +237,7 @@ function Theme.SetStyle(button: TextButton, style: ButtonStyle)
 	local color = STYLE_COLORS[style]
 	button:SetAttribute("BaseColor", color)
 	button.BackgroundColor3 = color
-	button.TextColor3 = if style == "Gold" then Color3.fromRGB(45, 30, 5) else Theme.Colors.Text
+	button.TextColor3 = Theme.Colors.Text
 end
 
 -- Horizontal progress bar. Returns the frame and a setter (0..1).

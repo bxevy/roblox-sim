@@ -113,12 +113,12 @@ local function makeBubble(t: Tracked, color: Color3)
 	gui.Adornee = base
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.fromScale(1, 1)
-	frame.BackgroundColor3 = Color3.fromRGB(18, 24, 38)
+	frame.BackgroundColor3 = Color3.fromRGB(78, 48, 26)
 	frame.BackgroundTransparency = 0.15
 	frame.Parent = gui
 	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(150, 200, 255)
+	stroke.Color = Color3.fromRGB(226, 176, 92)
 	stroke.Transparency = 0.6
 	stroke.Parent = frame
 	local text = Instance.new("TextLabel")
@@ -132,7 +132,7 @@ local function makeBubble(t: Tracked, color: Color3)
 	local barBack = Instance.new("Frame")
 	barBack.Size = UDim2.new(1, -16, 0, 7)
 	barBack.Position = UDim2.new(0, 8, 1, -12)
-	barBack.BackgroundColor3 = Color3.fromRGB(10, 14, 24)
+	barBack.BackgroundColor3 = Color3.fromRGB(50, 30, 16)
 	barBack.Parent = frame
 	Instance.new("UICorner", barBack).CornerRadius = UDim.new(1, 0)
 	local fill = Instance.new("Frame")

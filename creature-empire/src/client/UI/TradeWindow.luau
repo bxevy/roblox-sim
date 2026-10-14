@@ -74,7 +74,7 @@ function TradeWindow.new(ctx: any)
 		Theme.Text(
 			row,
 			`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> <b>{Theme.Escape(c.Name)}</b>`
-				.. (if species and c.Name ~= species.Name then ` <font color="#9aa6c4">({species.Name})</font>` else "")
+				.. (if species and c.Name ~= species.Name then ` <font color="#dec496">({species.Name})</font>` else "")
 				.. ` Lv {c.Level}`
 				.. (if mutation then ` {mutation.Glyph}` else ""),
 			14,
@@ -186,7 +186,7 @@ function TradeWindow.new(ctx: any)
 				local row = Window.Row(mine, 34)
 				Theme.Text(
 					row,
-					`{def.Icon} {def.Name} <font color="#9aa6c4">(have {Format.Number(math.floor(have))})</font>`,
+					`{def.Icon} {def.Name} <font color="#dec496">(have {Format.Number(math.floor(have))})</font>`,
 					13,
 					{
 						Size = UDim2.new(1, -110, 1, 0),

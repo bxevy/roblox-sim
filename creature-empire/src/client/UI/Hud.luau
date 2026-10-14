@@ -327,7 +327,7 @@ function Hud.new(ctx: any)
 	Theme.List(drawer, 6)
 
 	local function keyHint(key: string): string
-		return if keyboard then `  <font size="13" color="#9aa6c4">[{key}]</font>` else ""
+		return if keyboard then `  <font size="13" color="#dec496">[{key}]</font>` else ""
 	end
 
 	-- A big square button: glyph on top, name underneath, shortcut key in the corner.
@@ -866,7 +866,7 @@ function Hud.new(ctx: any)
 	------------------------------------------------------------------ Loading veil
 	local veil = Theme.Make("Frame", {
 		Name = "Loading",
-		BackgroundColor3 = Color3.fromRGB(10, 14, 24),
+		BackgroundColor3 = Color3.fromRGB(40, 26, 14),
 		Size = UDim2.fromScale(1, 1),
 		ZIndex = 100,
 	}, ctx.Overlay)

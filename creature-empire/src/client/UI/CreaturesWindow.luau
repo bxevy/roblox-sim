@@ -317,7 +317,7 @@ function CreaturesWindow.new(ctx: any)
 		local active = species.Active
 		Theme.Text(
 			abilities,
-			`<b>⚡ {active.Name}</b>  <font color="#9aa6c4">(active · {Format.Duration(active.Cooldown)} cooldown)</font>`,
+			`<b>⚡ {active.Name}</b>  <font color="#dec496">(active · {Format.Duration(active.Cooldown)} cooldown)</font>`,
 			16
 		)
 		Theme.Text(abilities, active.Description, 14, { TextColor3 = Theme.Colors.Muted })
@@ -352,7 +352,7 @@ function CreaturesWindow.new(ctx: any)
 				ctx.Notify(result, "Error")
 			end
 		end)
-		Theme.Text(abilities, `<b>✦ {species.Passive.Name}</b>  <font color="#9aa6c4">(passive)</font>`, 16)
+		Theme.Text(abilities, `<b>✦ {species.Passive.Name}</b>  <font color="#dec496">(passive)</font>`, 16)
 		Theme.Text(abilities, species.Passive.Description, 14, { TextColor3 = Theme.Colors.Muted })
 
 		-- Jobs and stats

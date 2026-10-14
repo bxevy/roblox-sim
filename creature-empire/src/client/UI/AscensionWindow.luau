@@ -109,7 +109,7 @@ function AscensionWindow.new(ctx: any)
 			local row = Window.Row(perks, 52)
 			Theme.Text(
 				row,
-				`<b>{perk.Name}</b> {rank}/{perk.MaxRank}\n<font color="#9aa6c4">{perk.Description} (per rank)</font>`,
+				`<b>{perk.Name}</b> {rank}/{perk.MaxRank}\n<font color="#dec496">{perk.Description} (per rank)</font>`,
 				14,
 				{
 					Size = UDim2.new(1, -170, 1, 0),

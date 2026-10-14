@@ -64,7 +64,7 @@ function BuildMenu.new(ctx: any)
 					Theme.List(row, 4)
 					Theme.Text(
 						row,
-						`<b>{def.Name}</b>  <font color="#9aa6c4">{def.Footprint.X}×{def.Footprint.Z} cells</font>`,
+						`<b>{def.Name}</b>  <font color="#dec496">{def.Footprint.X}×{def.Footprint.Z} cells</font>`,
 						17
 					)
 					Theme.Text(row, def.Description, 14, { TextColor3 = Theme.Colors.Muted })

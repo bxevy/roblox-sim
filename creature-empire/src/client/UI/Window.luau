@@ -37,7 +37,9 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 	}, root)
 	Theme.Corner(header)
 	local titleLabel = Theme.Text(header, glyph .. "  " .. title, 22, {
-		FontFace = Theme.Heavy,
+		FontFace = Theme.Title,
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.3,
 		Size = UDim2.new(1, -70, 1, 0),
 		Position = UDim2.fromOffset(18, 0),
 		AutomaticSize = Enum.AutomaticSize.None,

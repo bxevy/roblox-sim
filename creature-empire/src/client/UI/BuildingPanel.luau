@@ -339,7 +339,7 @@ function BuildingPanel.new(ctx: any)
 							.. (
 								if finished
 									then ""
-									else `\n<font color="#9aa6c4">{Format.Cost(node.Cost, ResourceConfig)}{if missing
+									else `\n<font color="#dec496">{Format.Cost(node.Cost, ResourceConfig)}{if missing
 										then " · needs " .. missing
 										else ""}</font>`
 							),
