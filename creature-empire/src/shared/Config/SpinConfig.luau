@@ -68,7 +68,7 @@ SpinConfig.Prizes = {
 	{
 		Id = "Essence25",
 		Name = "25 Essence",
-		Short = "25 ✧",
+		Short = "25 Ess",
 		Kind = "Currency",
 		Currency = "Essence",
 		Amount = 25,

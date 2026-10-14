@@ -274,8 +274,8 @@ function Hud.new(ctx: any)
 		local now = Workspace:GetServerTimeNow()
 		local wait = Spin.FreeIn(spin.NextFreeAt or 0, now)
 		spinLine.Text = if wait <= 0
-			then `<font color="#{Theme.Colors.Gold:ToHex()}">✪ Free spin ready!</font> Spin the wheel in the plaza.`
-			else `<font color="#{Theme.Colors.Muted:ToHex()}">✪ Next free spin in {Format.Duration(wait)}</font>`
+			then `<font color="#{Theme.Colors.Gold:ToHex()}">● Free spin ready!</font> Spin the wheel in the plaza.`
+			else `<font color="#{Theme.Colors.Muted:ToHex()}">● Next free spin in {Format.Duration(wait)}</font>`
 		local lines = {}
 		for id, untilTime in spin.Boosts or {} do
 			local boost = SpinConfig.Boosts[id]
@@ -563,7 +563,7 @@ function Hud.new(ctx: any)
 	Theme.List(placeButtons, 10, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 	local rotate = Theme.Button(placeButtons, "⟳ Rotate", "Secondary", { Size = UDim2.fromOffset(130, 42) })
 	local confirm = Theme.Button(placeButtons, "✔ Place", "Primary", { Size = UDim2.fromOffset(130, 42) })
-	local cancel = Theme.Button(placeButtons, "✕ Cancel", "Danger", { Size = UDim2.fromOffset(130, 42) })
+	local cancel = Theme.Button(placeButtons, "X  Cancel", "Danger", { Size = UDim2.fromOffset(130, 42) })
 	rotate.Activated:Connect(Placement.Rotate)
 	confirm.Activated:Connect(Placement.Confirm)
 	cancel.Activated:Connect(Placement.Cancel)

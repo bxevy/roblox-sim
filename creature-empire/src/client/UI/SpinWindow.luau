@@ -26,7 +26,7 @@ end
 
 function SpinWindow.new(ctx: any)
 	local State = ctx.Controllers.State
-	local win = Window.new(ctx.Gui, "Spin Wheel", "✪", Vector2.new(520, 640), ctx.Close)
+	local win = Window.new(ctx.Gui, "Spin Wheel", "●", Vector2.new(520, 640), ctx.Close)
 	Theme.List(win.Body, 10, nil, Enum.HorizontalAlignment.Center)
 
 	------------------------------------------------------------------ The wheel
@@ -172,7 +172,7 @@ function SpinWindow.new(ctx: any)
 				button.Text = `Next free spin in {Format.Duration(wait)}`
 				Theme.SetEnabled(button, false)
 			else
-				button.Text = "✪ Spin for free!"
+				button.Text = "Spin for free!"
 				Theme.SetEnabled(button, true)
 			end
 		end
