@@ -122,12 +122,24 @@ function Hud.new(ctx: any)
 		end
 	end)
 
-	------------------------------------------------------------------ Empire (top left)
-	local empire = Theme.Panel(gui, {
-		Name = "Empire",
+	------------------------------------------------------------------ Left column
+	-- Empire tier on top, the next goal right under it: the two things that say what to
+	-- do next, kept together in one place.
+	local leftColumn = Theme.Make("Frame", {
+		Name = "LeftColumn",
 		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.fromOffset(250, 0),
+		Size = UDim2.fromOffset(270, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+	}, gui)
+	Theme.List(leftColumn, 8)
+
+	------------------------------------------------------------------ Empire (top left)
+	local empire = Theme.Panel(leftColumn, {
+		Name = "Empire",
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 1,
 	})
 	Theme.Padding(empire, 10, 14)
 	Theme.List(empire, 6)
@@ -162,13 +174,12 @@ function Hud.new(ctx: any)
 	end)
 
 	------------------------------------------------------------------ Quest tracker (left)
-	local tracker = Theme.Panel(gui, {
+	local tracker = Theme.Panel(leftColumn, {
 		Name = "QuestTracker",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.42, 0),
-		Size = UDim2.fromOffset(270, 0),
+		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Visible = false,
+		LayoutOrder = 2,
 	})
 	Theme.Padding(tracker, 12, 14)
 	Theme.List(tracker, 6)
@@ -191,7 +202,7 @@ function Hud.new(ctx: any)
 	})
 	local claim = Theme.Button(
 		tracker,
-		"Claim reward",
+		"★ Claim reward",
 		"Gold",
 		{ Size = UDim2.new(1, 0, 0, 38), LayoutOrder = 5, Visible = false }
 	)
@@ -209,7 +220,7 @@ function Hud.new(ctx: any)
 		if not step then
 			return
 		end
-		questHeader.Text = `QUEST {q.Index} OF {q.Total}`
+		questHeader.Text = `NEXT GOAL  <font color="#{Theme.Colors.Muted:ToHex()}">{q.Index} of {q.Total}</font>`
 		questTitle.Text = step.Title
 		questText.Text = step.Description
 		setQuestBar(q.Progress / step.Amount)
@@ -231,43 +242,119 @@ function Hud.new(ctx: any)
 	end)
 
 	------------------------------------------------------------------ Menu (right)
-	local menu = Theme.Make("Frame", {
+	-- Four big buttons for what players use most, and a "More" drawer for the rest, so the
+	-- side of the screen isn't a wall of nine text buttons.
+	local keyboard = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
+	local touch = Theme.IsTouch()
+	-- Phones: a slightly smaller dock, centred a little high so it stays clear of the
+	-- jump button in the bottom-right corner.
+	local DOCK_SIZE = if touch then 62 else 72
+
+	local dock = Theme.Make("Frame", {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.45, 0),
-		Size = UDim2.fromOffset(150, 0),
+		Position = UDim2.new(1, -12, 0.42, 0),
+		Size = UDim2.fromOffset(DOCK_SIZE, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
-	Theme.List(menu, 6, nil, Enum.HorizontalAlignment.Right)
-	local keyboard = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
-	local function menuButton(glyph: string, label: string, key: string, windowName: string, order: number)
-		local button = Theme.Button(
-			menu,
-			`{glyph}  {label}` .. (if keyboard then `  <font size="13" color="#9aa6c4">[{key}]</font>` else ""),
-			"Secondary",
-			{
-				Size = UDim2.fromOffset(150, 40),
-				LayoutOrder = order,
-				RichText = true,
-				TextXAlignment = Enum.TextXAlignment.Left,
-			}
-		)
-		Theme.Padding(button, 0, 14)
-		button.Activated:Connect(function()
-			ctx.Controllers.UI.Toggle(windowName)
-		end)
+	Theme.List(dock, 8, nil, Enum.HorizontalAlignment.Right)
+
+	local drawer = Theme.Panel(gui, {
+		Name = "MoreMenu",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -(DOCK_SIZE + 22), 0.42, 0),
+		Size = UDim2.fromOffset(190, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		Visible = false,
+		ZIndex = 4,
+	})
+	Theme.Padding(drawer, 8)
+	Theme.List(drawer, 6)
+
+	local function keyHint(key: string): string
+		return if keyboard then `  <font size="13" color="#9aa6c4">[{key}]</font>` else ""
+	end
+
+	-- A big square button: glyph on top, name underneath, shortcut key in the corner.
+	local function dockButton(glyph: string, label: string, key: string?, order: number): TextButton
+		local button = Theme.Button(dock, "", "Secondary", {
+			Name = label,
+			Size = UDim2.fromOffset(DOCK_SIZE, DOCK_SIZE),
+			LayoutOrder = order,
+		})
+		Theme.Text(button, glyph, if touch then 24 else 28, {
+			FontFace = Theme.Heavy,
+			Position = UDim2.fromOffset(0, 5),
+			Size = UDim2.new(1, 0, 0.55, 0),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextYAlignment = Enum.TextYAlignment.Center,
+		})
+		Theme.Text(button, label, 13, {
+			FontFace = Theme.Bold,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 0, 1, -7),
+			Size = UDim2.new(1, 0, 0, 15),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextWrapped = false,
+		})
+		if keyboard and key then
+			Theme.Text(button, key, 11, {
+				FontFace = Theme.Bold,
+				TextColor3 = Theme.Colors.Muted,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -6, 0, 4),
+				Size = UDim2.fromOffset(14, 12),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Right,
+			})
+		end
+		button:SetAttribute("Tooltip", label)
 		return button
 	end
-	menuButton("❦", "Creatures", "C", "Creatures", 1)
-	menuButton("⌂", "Build", "B", "Build", 2)
-	menuButton("✎", "Quests", "J", "Quests", 3)
-	menuButton("▤", "Inventory", "G", "Inventory", 4)
-	menuButton("✈", "Map", "M", "Map", 5)
-	menuButton("☺", "Players", "U", "Players", 6)
-	menuButton("♛", "Rankings", "L", "Leaderboards", 7)
-	menuButton("⚡", "Shop", "K", "Shop", 8)
-	menuButton("⚙", "Settings", "P", "Settings", 9)
+
+	local function setDrawer(open: boolean)
+		drawer.Visible = open
+		if open then
+			Theme.PopIn(drawer)
+		end
+	end
+
+	local function windowButton(glyph: string, label: string, key: string, windowName: string, order: number)
+		dockButton(glyph, label, key, order).Activated:Connect(function()
+			setDrawer(false)
+			ctx.Controllers.UI.Toggle(windowName)
+		end)
+	end
+	windowButton("⌂", "Build", "B", "Build", 1)
+	windowButton("❦", "Creatures", "C", "Creatures", 2)
+	windowButton("✈", "Map", "M", "Map", 3)
+	windowButton("⚡", "Shop", "K", "Shop", 4)
+	local more = dockButton("☰", "More", nil, 5)
+	more.Activated:Connect(function()
+		setDrawer(not drawer.Visible)
+	end)
+
+	local function drawerButton(glyph: string, label: string, key: string, windowName: string, order: number)
+		local button = Theme.Button(drawer, `{glyph}  {label}` .. keyHint(key), "Secondary", {
+			Size = UDim2.new(1, 0, 0, if touch then 50 else 42),
+			LayoutOrder = order,
+			RichText = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		})
+		Theme.Padding(button, 0, 14)
+		button.Activated:Connect(function()
+			setDrawer(false)
+			ctx.Controllers.UI.Toggle(windowName)
+		end)
+	end
+	drawerButton("✎", "Quests", "J", "Quests", 1)
+	drawerButton("▤", "Inventory", "G", "Inventory", 2)
+	drawerButton("☺", "Players & trading", "U", "Players", 3)
+	drawerButton("♛", "Rankings", "L", "Leaderboards", 4)
+	drawerButton("⚙", "Settings", "P", "Settings", 5)
 
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {
@@ -355,12 +442,14 @@ function Hud.new(ctx: any)
 		return slot
 	end
 
+	-- Phones show fewer cards so the bar stays clear of the thumbstick and jump button.
+	local maxSlots = if Theme.IsTouch() then 5 else 8
 	State.OnChanged("Creatures", function(creatures)
 		local seen = {}
 		local count = 0
 		for id, info in creatures.List do
 			count += 1
-			if count > 8 then
+			if count > maxSlots then
 				break
 			end
 			seen[id] = true
@@ -620,6 +709,7 @@ function Hud.new(ctx: any)
 		Position = UDim2.new(1, -12, 0, 56),
 		Size = UDim2.fromOffset(270, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
+		Visible = false,
 	})
 	Theme.Padding(eventPanel, 8, 12)
 	Theme.List(eventPanel, 4)
@@ -636,7 +726,7 @@ function Hud.new(ctx: any)
 				local left = math.max(((eventFolder:GetAttribute("EndsAt") :: number?) or now) - now, 0)
 				eventTitle.Text =
 					`<font color="#{def.Color:ToHex()}">{def.Glyph}</font> {def.Name} · {Format.Duration(left)}`
-				eventPanel.BackgroundTransparency = 0.05
+				eventPanel.Visible = true
 				if kind == "Bloom" then
 					local progress = (eventFolder:GetAttribute("Progress") :: number?) or 0
 					local goal = math.max((eventFolder:GetAttribute("Goal") :: number?) or 1, 1)
@@ -658,14 +748,8 @@ function Hud.new(ctx: any)
 					eventBarFrame.Visible = false
 				end
 			else
-				local nextKind = eventFolder:GetAttribute("NextKind") :: string?
-				local nextDef = nextKind and WorldEventConfig.Events[nextKind]
-				local nextAt = (eventFolder:GetAttribute("NextAt") :: number?) or now
-				eventTitle.Text = if nextDef
-					then `<font color="#9aa6c4">Next event:</font> {nextDef.Glyph} {nextDef.Name}`
-					else "World events"
-				eventText.Text = `Starts in {Format.Duration(math.max(nextAt - now, 0))}`
-				eventBarFrame.Visible = false
+				-- Nothing running: keep the corner clear (the countdown was just noise).
+				eventPanel.Visible = false
 			end
 			task.wait(0.5)
 		end

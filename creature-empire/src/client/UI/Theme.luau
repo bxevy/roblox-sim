@@ -34,6 +34,12 @@ Theme.Colors = {
 
 Theme.ReducedMotion = false
 
+-- Phones and tablets: bigger tap targets and fewer things on screen at once.
+function Theme.IsTouch(): boolean
+	local uis = game:GetService("UserInputService")
+	return uis.TouchEnabled and not uis.MouseEnabled
+end
+
 local FAST = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local POP = TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 

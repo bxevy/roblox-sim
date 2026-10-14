@@ -49,8 +49,9 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
-		Size = UDim2.fromOffset(36, 36),
-		TextSize = 18,
+		-- Bigger on phones so it is easy to hit with a thumb.
+		Size = if Theme.IsTouch() then UDim2.fromOffset(46, 46) else UDim2.fromOffset(36, 36),
+		TextSize = if Theme.IsTouch() then 22 else 18,
 	})
 	close.Activated:Connect(onClose)
 
