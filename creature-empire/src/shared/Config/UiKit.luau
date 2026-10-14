@@ -37,7 +37,7 @@ local IDS: { [string]: number } = {
 	IconShop = 78339137500390,
 	IconMore = 71580186205315,
 	-- Starter screen sheet (art/ui-starter): whole pieces shown at their real shape.
-	WindowFrame = 112864856413373,
+	WindowFrame = 76221640150895,
 	HeaderPlaque = 115207371374649,
 	CardFrameGreen = 121857964643675,
 	CardFrameOrange = 115797231894650,
