@@ -40,6 +40,7 @@ local SettingsService = require(Services.SettingsService)
 local AntiExploitService = require(Services.AntiExploitService)
 local DevService = require(Services.DevService)
 
+require(script.Parent.World.AssetLoader).Load() -- custom models by asset id, before building
 require(script.Parent.World.WorldBuilder).Build()
 require(script.Parent.World.EmberfallBuilder).Build()
 

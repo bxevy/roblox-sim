@@ -76,4 +76,18 @@ AssetConfig.Particles = {
 -- rigged models and animations are imported. Fill these in per species when they exist.
 AssetConfig.Animations = {} :: { [string]: { Idle: string?, Walk: string?, Work: string? } }
 
+-- Hand-made models loaded from Roblox by asset id when the server starts (for models too
+-- big to keep as files). Each id must be a Model asset uploaded by the account or group
+-- that owns the game (Toolbox → My Models → right-click → Copy Asset ID). The loaded model
+-- is used exactly like one placed in ReplicatedStorage/Assets/<Category>/<Name>; a model
+-- already placed there by hand wins. See docs/ASSETS.md.
+AssetConfig.ModelAssets = {
+	Creatures = {
+		-- Supplied by the game's creator: their imported Sproutling model.
+		Sproutling = 120629196068989,
+	},
+	Buildings = {},
+	World = {},
+} :: { [string]: { [string]: number } }
+
 return AssetConfig

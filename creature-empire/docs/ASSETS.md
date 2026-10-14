@@ -139,3 +139,24 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Lamp` | Lamp posts on the plaza and paths | Not resized. |
 
 **To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.
+
+## Big models: load them by asset id
+
+A `.rbxm` file can be too big to share or keep in the project (imported meshes with textures easily pass 30 MB). Load the model from Roblox instead:
+
+1. In Studio, open **Toolbox → My Models**. Right-click your model and choose **Copy Asset ID**. The id is also shown in the model's **Asset Configuration** window.
+2. Add it to `AssetConfig.ModelAssets` in `src/shared/Config/AssetConfig.luau` under the right category, using the same name a model in the folder would have:
+   ```lua
+   AssetConfig.ModelAssets = {
+       Creatures = { Sproutling = 120629196068989 },
+       Buildings = { TradingPost = 1234567890 },
+       World = { FenceSegment = 1234567890 },
+   }
+   ```
+3. When the server starts (`server/World/AssetLoader.luau`), it loads each one with `InsertService:LoadAsset` into `ReplicatedStorage/Assets/<Category>/<Name>`. The game then treats it exactly like a model you placed there. Any scripts inside are removed.
+
+Rules:
+- The model asset must belong to the **same account or group that owns the game**, or Roblox refuses to load it. The Output shows a "Could not load model" warning when that happens.
+- A model you put in the folder by hand takes priority over the asset id.
+- Attributes like `Facing` and `HeightOffset` are part of the uploaded model. After changing them, re-upload: right-click the model → **Save to Roblox**, then choose your existing model to overwrite it so the id stays the same.
+- Keep imported creatures light: roughly a few thousand triangles and 1024 px textures. Dozens of creatures can be on screen at once.
