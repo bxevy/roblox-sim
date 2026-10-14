@@ -96,6 +96,11 @@ function Theme.Gradient(parent: Instance, top: number?, bottom: number?): UIGrad
 	}, parent)
 end
 
+-- Escapes player-chosen text (names) so it can't inject rich-text tags.
+function Theme.Escape(text: string): string
+	return (string.gsub(string.gsub(string.gsub(text, "&", "&amp;"), "<", "&lt;"), ">", "&gt;"))
+end
+
 -- Text label. Size defaults to automatic height at the given text size.
 function Theme.Text(parent: Instance?, text: string, size: number, props: { [string]: any }?): TextLabel
 	local label = Theme.Make("TextLabel", {

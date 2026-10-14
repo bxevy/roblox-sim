@@ -784,6 +784,25 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 	local rigRoot: BasePart? = if rigged
 		then (model:FindFirstChild("HumanoidRootPart", true) :: BasePart?) or model.PrimaryPart
 		else nil
+	-- Parts held by the rig's joints; anything else (loose meshes) gets welded directly.
+	local jointed: { [BasePart]: boolean } = {}
+	if rigged then
+		for _, joint in model:GetDescendants() do
+			if joint:IsA("Motor6D") or joint:IsA("Weld") or joint:IsA("WeldConstraint") then
+				local a = (joint :: any).Part0
+				local b = (joint :: any).Part1
+				if a then
+					jointed[a] = true
+				end
+				if b then
+					jointed[b] = true
+				end
+				if not rigRoot and a and a:IsA("BasePart") then
+					rigRoot = a -- no HumanoidRootPart/PrimaryPart: the first joint's base
+				end
+			end
+		end
+	end
 	if not rigged then
 		for _, d in model:GetDescendants() do
 			if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then
@@ -809,7 +828,7 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 			d.CanTouch = false
 			d.Massless = true
 			d.CastShadow = false
-			if not rigged or d == rigRoot then
+			if not rigged or d == rigRoot or not jointed[d] then
 				weld(root, d)
 			end
 		end

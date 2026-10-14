@@ -91,13 +91,15 @@ end
 -- Whether a straight line between two cell centres only crosses walkable cells.
 function Path.Clear(a: Cell, b: Cell, blocked: (number, number) -> boolean, endpoints: { Cell }): boolean
 	local dx, dz = b.X - a.X, b.Z - a.Z
+	local length = math.sqrt(dx * dx + dz * dz)
+	-- Unit normal to the line: samples on both sides check the creature's width fits.
+	local nx, nz = if length > 0 then -dz / length else 0, if length > 0 then dx / length else 0
 	local steps = math.max(math.ceil(math.max(math.abs(dx), math.abs(dz)) * 4), 1)
 	for i = 0, steps do
 		local t = i / steps
-		-- Sample both sides of the centre line so the creature's width fits too.
-		for _, offset in { -0.3, 0.3 } do
-			local x = math.floor(a.X + 0.5 + dx * t + offset)
-			local z = math.floor(a.Z + 0.5 + dz * t + offset)
+		for _, offset in { -0.3, 0, 0.3 } do
+			local x = math.floor(a.X + 0.5 + dx * t + nx * offset)
+			local z = math.floor(a.Z + 0.5 + dz * t + nz * offset)
 			local isEnd = false
 			for _, e in endpoints do
 				isEnd = isEnd or (e.X == x and e.Z == z)

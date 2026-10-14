@@ -383,6 +383,8 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 			return false, "Your next hatch is already blessed."
 		end
 		data.MutationCharm = math.clamp(ability.Power, 1, 5)
+		StateService.Push(player, "Hatchery")
+		StateService.Push(player, "Hatchery")
 		message = `{ability.Name}! Your next hatch has {math.floor(ability.Power)}× the usual mutation chance.`
 	elseif CreatureService.AbilityHandlers[ability.Kind] then
 		local ok, result =
@@ -478,6 +480,9 @@ local function rename(player: Player, creatureId: string, name: string): (boolea
 		return false, "That creature isn't yours."
 	end
 	local trimmed = string.gsub(string.gsub(name, "^%s+", ""), "%s+$", "")
+	if string.find(trimmed, "[<>&\n\r]") then
+		return false, "Names can't use < > & or line breaks."
+	end
 	if trimmed == "" then
 		creature.Nickname = nil
 	else
@@ -493,6 +498,10 @@ local function rename(player: Player, creatureId: string, name: string): (boolea
 		end
 		if string.find(filtered, "#", 1, true) then
 			return false, "That name isn't allowed. Try another one."
+		end
+		-- Filtering yields: the creature may have been traded or released meanwhile.
+		if data ~= PlayerDataService.GetData(player) or data.Creatures[creatureId] ~= creature then
+			return false, "That creature isn't yours any more."
 		end
 		creature.Nickname = filtered
 	end

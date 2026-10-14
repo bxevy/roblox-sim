@@ -40,6 +40,7 @@ MonetizationConfig.Products = {
 	},
 } :: { [string]: Product }
 
+-- The shop doesn't sell a boost that would take the time left past MaxSeconds.
 MonetizationConfig.Boost = { Stat = "WorkSpeed", Value = 0.25, MaxSeconds = 2 * 60 * 60 }
 MonetizationConfig.MaxReceipts = 200 -- receipts kept per profile (oldest pruned)
 

@@ -89,7 +89,7 @@ end
 
 function HatchingService.Start()
 	StateService.Register("Hatchery", function(_player, profile)
-		return { Pity = table.clone(profile.Data.Pity) }
+		return { Pity = table.clone(profile.Data.Pity), Charm = profile.Data.MutationCharm }
 	end)
 	Net.Handle("HatchEgg", { Rate = { 3, 1 }, Args = { Net.Check.Id } }, hatch)
 end

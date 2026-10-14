@@ -144,8 +144,25 @@ local function commit(session: Session)
 	})
 	close(session, "Trade complete!")
 	-- Save both sides now so a crash can't undo one half.
-	task.spawn(PlayerDataService.SaveNow, a)
-	task.spawn(PlayerDataService.SaveNow, b)
+	local results = {}
+	for _, player in { a, b } do
+		task.spawn(function()
+			local ok = false
+			for attempt = 1, 5 do
+				ok = PlayerDataService.SaveNow(player)
+				if ok or not player.Parent then
+					break
+				end
+				task.wait(2 ^ attempt)
+			end
+			results[player] = ok
+			if results[a] ~= nil and results[b] ~= nil and results[a] ~= results[b] then
+				-- Only one side stored: the other keeps retrying through autosave and the
+				-- release on leave, but flag it so it can be checked.
+				Log.Warn("Trade", "Only one side saved right away", { a = a.UserId, b = b.UserId })
+			end
+		end)
+	end
 end
 
 local function startCountdown(session: Session)

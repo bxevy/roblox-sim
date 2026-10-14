@@ -52,7 +52,7 @@ function InspectWindow.new(ctx: any)
 			Theme.Stroke(cell, rarity.Color, 0.5)
 			local art = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 100) }, cell)
 			Viewport.Creature(art, c.Species)
-			Theme.Text(cell, `<b>{c.Name}</b> Lv {c.Level}`, 14, {
+			Theme.Text(cell, `<b>{Theme.Escape(c.Name)}</b> Lv {c.Level}`, 14, {
 				Position = UDim2.fromOffset(8, 102),
 				Size = UDim2.new(1, -16, 0, 18),
 				AutomaticSize = Enum.AutomaticSize.None,

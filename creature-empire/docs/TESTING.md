@@ -112,12 +112,14 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Shop (K):
   - [ ] With ids at 0, both items show "Coming soon".
   - [ ] With test ids configured, buying the boost adds +25% speed (shown in building panels) and survives a rejoin.
-  - [ ] Buying again stacks the boost up to 2 hours.
+  - [ ] Buying again adds the full 30 minutes. With more than 1h30 left, the button says "Boost is full".
   - [ ] The Supporter pass shows ★ on the plot sign and a sparkle on your companion.
 - [ ] Receipts: in Studio, buy the product, then stop the server before it saves. On the next join, Roblox retries the purchase and it's granted exactly once.
 - [ ] Imported model: a model in Assets › Creatures replaces the species on plots, in portraits and in reveals, and stands on the ground. `Facing` and `HeightOffset` work. A rigged model with animation ids plays Idle, Walk and Work.
 - [ ] Thundermaw, Nocturnox and Abyssquid: *Developer → Grant* each one. Their abilities work, and Dark Gift makes the next hatch's mutation odds ×3, then resets.
 - [ ] Load a Phase 5 save: it migrates to v6.
+- [ ] Failure drill: with API access on, leave while the DataStore is throttled (or disconnect the network briefly). The log shows "Release save failed; retrying", rejoining the same server says "still being saved", and once the retry succeeds nothing is lost.
+- [ ] Rename a creature to `<b>hi</b>`: refused. Trade a renamed creature: the card shows its species name too.
 
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.

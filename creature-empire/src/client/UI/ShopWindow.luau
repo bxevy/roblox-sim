@@ -43,7 +43,24 @@ function ShopWindow.new(ctx: any)
 		return card
 	end
 
+	local rendering = 0
 	local function render()
+		rendering += 1
+		local mine = rendering
+		-- Fetch prices first (this can yield), then draw once; a newer render wins.
+		for _, pass in MonetizationConfig.Passes do
+			if pass.Id ~= 0 then
+				price(Enum.InfoType.GamePass, pass.Id)
+			end
+		end
+		for _, product in MonetizationConfig.Products do
+			if product.Id ~= 0 then
+				price(Enum.InfoType.Product, product.Id)
+			end
+		end
+		if mine ~= rendering then
+			return
+		end
 		Window.Clear(win.Body)
 		local shop = State.Get("Shop") or { Passes = {}, BoostUntil = 0 }
 		local intro = Window.Section(win.Body, nil, 0)
@@ -82,16 +99,18 @@ function ShopWindow.new(ctx: any)
 					Theme.Text(card, `Active: {Format.Duration(left)} left.`, 14, { TextColor3 = Theme.Colors.Success })
 				end
 			end
+			local full = product.Kind == "Boost"
+				and (shop.BoostUntil or 0) - os.time() > MonetizationConfig.Boost.MaxSeconds - product.Seconds
 			local cost = if configured then price(Enum.InfoType.Product, product.Id) else nil
 			local button = Theme.Button(
 				card,
-				if configured then `Buy · {cost or "?"} R$` else "Coming soon",
+				if not configured then "Coming soon" elseif full then "Boost is full" else `Buy · {cost or "?"} R$`,
 				"Primary",
 				{ Size = UDim2.fromOffset(200, 38) }
 			)
-			Theme.SetEnabled(button, configured)
+			Theme.SetEnabled(button, configured and not full)
 			button.Activated:Connect(function()
-				if configured then
+				if configured and not full then
 					MarketplaceService:PromptProductPurchase(Players.LocalPlayer, product.Id)
 				end
 			end)
@@ -100,7 +119,7 @@ function ShopWindow.new(ctx: any)
 
 	State.OnChanged("Shop", function()
 		if ctx.IsOpen("Shop") then
-			render()
+			task.spawn(render)
 		end
 	end)
 

@@ -120,6 +120,10 @@ local function finishLoad(player: Player, data: Types.PlayerData, canSave: boole
 	PlayerDataService.Loaded:Fire(player, profile)
 end
 
+-- Profiles whose release save failed: kept in memory and retried, and the player can't
+-- load again on this server until it succeeds (a fresh load would read stale data).
+local unreleased: { [number]: { Player: Player, Profile: Profile } } = {}
+
 local function load(player: Player)
 	Remotes.Events.DataStatus:FireClient(player, "Loading")
 	local now = os.time()
@@ -138,10 +142,14 @@ local function load(player: Player)
 	-- Rejoining the same server: wait for the previous session's release save, otherwise
 	-- this load could see that session's lock as ours and read stale data.
 	local deadline = os.clock() + 30
-	while releasing[player.UserId] and os.clock() < deadline do
+	while (releasing[player.UserId] or unreleased[player.UserId]) and os.clock() < deadline do
 		task.wait(0.25)
 	end
 	if not player.Parent then
+		return
+	end
+	if releasing[player.UserId] or unreleased[player.UserId] then
+		kick(player, "Your empire is still being saved. Please rejoin in a minute.")
 		return
 	end
 	local status, result = (core :: ProfileCore.ProfileCore):Load(key)
@@ -207,22 +215,30 @@ local function save(player: Player, profile: Profile, release: boolean): boolean
 		return true
 	end
 	profile.Saving = true
-	local data = profile.Data
-	data.LastOnline = os.time()
-	local shift = profile.Runtime.OfflineOverride
-	if release and type(shift) == "number" then
-		data.LastOnline -= shift -- DevService "offline" test command
-	end
-	Schema.Sanitize(data :: any, os.time())
+	-- Everything up to the write runs protected, so an error can never leave Saving stuck
+	-- (which would block every later save, including the one on leave).
+	local wrapped, status, err = pcall(function()
+		local data = profile.Data
+		data.LastOnline = os.time()
+		local shift = profile.Runtime.OfflineOverride
+		if release and type(shift) == "number" then
+			data.LastOnline -= shift -- DevService "offline" test command
+		end
+		Schema.Sanitize(data :: any, os.time())
 
-	local ok, encoded = pcall(HttpService.JSONEncode, HttpService, data)
-	if ok and #encoded > SIZE_WARNING then
-		Log.Warn("Data", "Large profile", { user = player.UserId, bytes = #encoded })
-	end
+		local ok, encoded = pcall(HttpService.JSONEncode, HttpService, data)
+		if ok and #encoded > SIZE_WARNING then
+			Log.Warn("Data", "Large profile", { user = player.UserId, bytes = #encoded })
+		end
 
-	profile.Dirty = false
-	local status, err = (core :: ProfileCore.ProfileCore):Save(profile.Key, data, release)
+		profile.Dirty = false
+		return (core :: ProfileCore.ProfileCore):Save(profile.Key, data, release)
+	end)
 	profile.Saving = false
+	if not wrapped then
+		err = tostring(status)
+		status = "Error"
+	end
 
 	if status == "Ok" then
 		profile.LastWrite = os.clock()
@@ -268,9 +284,13 @@ function PlayerDataService.MarkDirty(player: Player)
 end
 
 -- Saves right away (after important events such as a purchase). Still lock-checked.
+-- Returns true only when the data is safely stored (or this is an unsaved Studio test).
 function PlayerDataService.SaveNow(player: Player): boolean
 	local profile = profiles[player]
-	return if profile then save(player, profile, false) else false
+	if not profile or profile.Released then
+		return false
+	end
+	return save(player, profile, false)
 end
 
 function PlayerDataService.All(): { [Player]: Profile }
@@ -301,8 +321,32 @@ function PlayerDataService.Start()
 		end
 		releasing[player.UserId] = true
 		PlayerDataService.BeforeRelease:Fire(player, profile)
-		save(player, profile, true)
+		local saved = save(player, profile, true)
+		-- A couple of quick retries, then keep trying in the background.
+		for attempt = 1, 3 do
+			if saved or profile.Released or not profile.CanSave then
+				break
+			end
+			task.wait(2 ^ attempt)
+			saved = save(player, profile, true)
+		end
 		profiles[player] = nil
+		if not (saved or profile.Released or not profile.CanSave) then
+			local userId = player.UserId
+			unreleased[userId] = { Player = player, Profile = profile }
+			Log.Warn("Data", "Release save failed; retrying in the background", { user = userId })
+			task.spawn(function()
+				local tries = 0
+				while unreleased[userId] and tries < 20 do
+					task.wait(15)
+					tries += 1
+					if save(player, profile, true) or profile.Released then
+						unreleased[userId] = nil
+					end
+				end
+				unreleased[userId] = nil -- the lock times out on its own after this
+			end)
+		end
 		releasing[player.UserId] = nil
 	end)
 
@@ -324,6 +368,15 @@ function PlayerDataService.Start()
 			task.spawn(function()
 				PlayerDataService.BeforeRelease:Fire(player, profile)
 				save(player, profile, true)
+				pending -= 1
+			end)
+		end
+		for userId, entry in unreleased do
+			pending += 1
+			task.spawn(function()
+				if save(entry.Player, entry.Profile, true) then
+					unreleased[userId] = nil
+				end
 				pending -= 1
 			end)
 		end

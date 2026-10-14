@@ -1044,7 +1044,9 @@ function BuildingPanel.new(ctx: any)
 				)
 			end
 			local research = State.Get("Research")
-			local mutationBoost = if research and research.Done and research.Done.MutationTheory then 2 else 1
+			local charm = (hatchery.Charm or 0) > 0
+			local mutationBoost = (if research and research.Done and research.Done.MutationTheory then 2 else 1)
+				* (if charm then hatchery.Charm else 1)
 			local mutationParts = {}
 			for _, mutationId in { "Prismatic", "Ancient", "Shadow" } do
 				local mutation = MutationConfig.Mutations[mutationId]
@@ -1055,7 +1057,10 @@ function BuildingPanel.new(ctx: any)
 			end
 			Theme.Text(
 				text,
-				"Mutation chances: " .. table.concat(mutationParts, " · ") .. " (Shadow: Umbral creatures only)",
+				(if charm then "☾ Dark Gift on your next hatch! " else "")
+					.. "Mutation chances: "
+					.. table.concat(mutationParts, " · ")
+					.. " (Shadow: Umbral creatures only)",
 				12,
 				{
 					TextColor3 = Theme.Colors.Muted,

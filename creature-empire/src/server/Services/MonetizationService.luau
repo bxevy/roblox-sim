@@ -23,6 +23,8 @@ local PlotService = require(script.Parent.PlotService)
 local MonetizationService = {}
 
 local passes: { [Player]: { [string]: boolean } } = {}
+-- Purchases granted in memory whose save hasn't succeeded yet (confirmed only once saved).
+local unsaved: { [string]: boolean } = {}
 
 local function productById(id: number): (string?, MonetizationConfig.Product?)
 	for key, product in MonetizationConfig.Products do
@@ -54,7 +56,15 @@ local function checkPasses(player: Player)
 			owned[key] = ok and result == true
 		end
 	end
-	passes[player] = owned
+	if not player.Parent then
+		return -- left while checking
+	end
+	-- Merge: a pass bought while this check ran stays owned.
+	local current = passes[player] or {}
+	for key, value in owned do
+		current[key] = current[key] == true or value
+	end
+	passes[player] = current
 	applyPasses(player)
 end
 
@@ -71,8 +81,8 @@ end
 local function grant(player: Player, data: Types.PlayerData, product: MonetizationConfig.Product)
 	if product.Kind == "Boost" then
 		local now = os.time()
-		data.BoostUntil =
-			math.min(math.max(data.BoostUntil, now) + product.Seconds, now + MonetizationConfig.Boost.MaxSeconds)
+		-- Always the full time paid for (the shop stops selling near the limit).
+		data.BoostUntil = math.max(data.BoostUntil, now) + product.Seconds
 		applyBoost(player, data)
 	end
 end
@@ -102,6 +112,13 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 	end
 	local purchaseId = tostring(receipt.PurchaseId)
 	if data.Receipts[purchaseId] then
+		if unsaved[purchaseId] then
+			-- Granted earlier but not stored yet: confirm only once it's saved.
+			if not PlayerDataService.SaveNow(player) then
+				return Enum.ProductPurchaseDecision.NotProcessedYet
+			end
+			unsaved[purchaseId] = nil
+		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted -- already granted (a retry)
 	end
 	local key, product = productById(receipt.ProductId)
@@ -114,7 +131,8 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 	pruneReceipts(data)
 	PlayerDataService.MarkDirty(player)
 	if not PlayerDataService.SaveNow(player) then
-		-- The grant stays recorded in memory; the retry finds the receipt and confirms it.
+		-- The grant stays recorded in memory; the retry saves again before confirming.
+		unsaved[purchaseId] = true
 		Log.Warn("Shop", "Save after purchase failed; will confirm on retry", { user = player.UserId })
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end

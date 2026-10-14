@@ -109,7 +109,7 @@ function CreaturesWindow.new(ctx: any)
 		}, top)
 		Theme.List(identity, 6)
 		local nameRow = Window.Row(identity, 34)
-		Theme.Text(nameRow, info.Name, 24, {
+		Theme.Text(nameRow, Theme.Escape(info.Name), 24, {
 			FontFace = Theme.Heavy,
 			Size = UDim2.new(1, -110, 1, 0),
 			AutomaticSize = Enum.AutomaticSize.None,
@@ -665,7 +665,7 @@ function CreaturesWindow.new(ctx: any)
 				).Ready
 			table.insert(
 				parts,
-				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}`
+				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}:{info.Name}:{info.Mutation}`
 			)
 		end
 		local buildings = State.Get("Buildings")

@@ -139,6 +139,19 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 
 **Before release:** run the full manual checklist and the release checklist in [TESTING.md](TESTING.md) on desktop, phone emulator and gamepad, with 2–6 players. Configure product ids only after creating them on the Creator Dashboard.
 
+### Release review: fixed and known
+
+**Fixed before release:**
+- **Saving:** a failed save on leave is retried in the background, and rejoining the same server waits for it instead of loading a stale copy. Saves can't get stuck behind an error. Trades retry both saves.
+- **Purchases:** a purchase is confirmed only after a successful save. Boosts always grant the full time, and the shop stops selling when the boost is full.
+- **Renaming:** nicknames can't contain rich-text tags and are escaped wherever they're shown. Trade cards show the species name next to a nickname, and a rename can't land on a creature that was traded while the name was being checked.
+- **Models and paths:** rigged models without a root part still hold together. Path searches are spread over frames, and path smoothing can't squeeze between touching buildings.
+
+**Known (acceptable for release, worth revisiting):**
+- **Gathering:** resource node cooldowns are per server session, so rejoining resets them.
+- **Distance checks:** these (gathering, befriending, guardian, collecting) trust the character's position, which is normal on Roblox. A movement anti-cheat would harden them.
+- **Trades:** both saves retry, but they still aren't a single atomic write. A "pending trade" journal on both profiles would make them fully safe even against a DataStore outage plus a crash.
+
 ### Still not built (ideas for future updates)
 
 - New biomes beyond Emberfall: Sunken Archive, Storm Peaks and others (`BiomeConfig`, Phase 7).

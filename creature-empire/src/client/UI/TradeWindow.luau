@@ -73,7 +73,9 @@ function TradeWindow.new(ctx: any)
 		local mutation = c.Mutation and MutationConfig.Mutations[c.Mutation]
 		Theme.Text(
 			row,
-			`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> <b>{c.Name}</b> Lv {c.Level}`
+			`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> <b>{Theme.Escape(c.Name)}</b>`
+				.. (if species and c.Name ~= species.Name then ` <font color="#9aa6c4">({species.Name})</font>` else "")
+				.. ` Lv {c.Level}`
 				.. (if mutation then ` {mutation.Glyph}` else ""),
 			14,
 			{

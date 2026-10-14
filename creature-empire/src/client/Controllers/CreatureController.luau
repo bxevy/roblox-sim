@@ -141,6 +141,8 @@ end
 -- worked out on that grid (Shared/Util/Path) only for creatures near the camera.
 
 type PlotGrid = { Version: number, Cells: { [string]: string }, Dirty: boolean }
+local replansThisFrame = 0
+local MAX_REPLANS_PER_FRAME = 3 -- spread path searches over frames (no hitches)
 local plotGrids: { [Instance]: PlotGrid } = {}
 
 local function gridFor(plot: Folder): PlotGrid
@@ -585,7 +587,12 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 		if entity.Plot and entity.State ~= "Following" and detailed then
 			local grid = gridFor(entity.Plot)
 			if entity.PathFor ~= target or entity.PathVersion ~= grid.Version then
-				planPath(entity, target)
+				if replansThisFrame < MAX_REPLANS_PER_FRAME then
+					replansThisFrame += 1
+					planPath(entity, target)
+				elseif entity.PathFor ~= target then
+					entity.Waypoints = nil -- old route led elsewhere; plan on a later frame
+				end
 			end
 		elseif entity.PathFor ~= target then
 			entity.Waypoints = nil
@@ -840,6 +847,20 @@ function CreatureController.GetPosition(creatureId: string): Vector3?
 end
 
 function CreatureController.Start()
+	-- A player becoming a Supporter: rebuild their companion so it gets its sparkle.
+	local function watchSupporter(player: Player)
+		player:GetAttributeChangedSignal("Supporter"):Connect(function()
+			for _, entity in entities do
+				if entity.Anchor:GetAttribute("OwnerUserId") == player.UserId then
+					dropModel(entity)
+				end
+			end
+		end)
+	end
+	Players.PlayerAdded:Connect(watchSupporter)
+	for _, player in Players:GetPlayers() do
+		watchSupporter(player)
+	end
 	local plots = Workspace:WaitForChild("PlayerPlots")
 	for _, plot in plots:GetChildren() do
 		task.spawn(watchPlot, plot)
@@ -895,6 +916,7 @@ function CreatureController.Start()
 	local frame = 0
 	RunService.RenderStepped:Connect(function(dt)
 		frame += 1
+		replansThisFrame = 0
 		local camera = Workspace.CurrentCamera
 		if not camera then
 			return
