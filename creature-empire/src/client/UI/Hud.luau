@@ -410,6 +410,57 @@ function Hud.new(ctx: any)
 	drawerButton("♛", "Rankings", "L", "Leaderboards", 4)
 	drawerButton("⚙", "Settings", "P", "Settings", 5)
 
+	------------------------------------------------------------------ Quick travel (top right)
+	-- One tap back to your plot or over to the plaza shop.
+	local travelBar = Theme.Make("Frame", {
+		Name = "QuickTravel",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 8),
+		Size = UDim2.fromOffset(0, 44),
+		AutomaticSize = Enum.AutomaticSize.X,
+		BackgroundTransparency = 1,
+	}, gui)
+	Theme.List(travelBar, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right)
+	local function travelButton(label: string, destination: string, style: Theme.ButtonStyle, order: number)
+		local button = Theme.Button(travelBar, label, style, {
+			Size = UDim2.fromOffset(if touch then 104 else 96, 44),
+			LayoutOrder = order,
+			TextSize = 17,
+		})
+		button.Activated:Connect(function()
+			local ok, result = ctx.Request("Travel", destination)
+			if not ok then
+				ctx.Notify(result, "Error")
+			end
+		end)
+	end
+	travelButton("Home", "Home", "Primary", 1)
+	travelButton("Shop", "Shop", "Gold", 2)
+
+	------------------------------------------------------------------ Sprint (touch)
+	-- Keyboards hold Shift and gamepads press the left stick; phones get a Run button,
+	-- left of the menu and above the jump button.
+	if touch then
+		local Sprint = ctx.Controllers.Sprint
+		local run = Theme.Button(gui, "Run", "Secondary", {
+			Name = "SprintButton",
+			AnchorPoint = Vector2.new(1, 1),
+			Position = UDim2.new(1, -(DOCK_SIZE + 34), 1, -230),
+			Size = UDim2.fromOffset(66, 66),
+			TextSize = 18,
+		})
+		local corner = run:FindFirstChildOfClass("UICorner")
+		if corner then
+			corner.CornerRadius = UDim.new(0.5, 0) -- round
+		end
+		run.Activated:Connect(Sprint.Toggle)
+		Sprint.OnChanged = function(running: boolean)
+			Theme.SetStyle(run, if running then "Primary" else "Secondary")
+			run.Text = if running then "Running" else "Run"
+			run.TextSize = if running then 14 else 18
+		end
+	end
+
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {
 		Name = "CreatureBar",
@@ -760,7 +811,7 @@ function Hud.new(ctx: any)
 	local eventPanel = Theme.Panel(gui, {
 		Name = "WorldEvent",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -12, 0, 56),
+		Position = UDim2.new(1, -12, 0, 60),
 		Size = UDim2.fromOffset(270, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Visible = false,

@@ -10,6 +10,7 @@
 --   U                 Players (visit, trade, collaborators)
 --   L                 Leaderboards
 --   K                 Shop
+--   Shift / L3        sprint (SprintController)
 --   B (gamepad)       close the open window
 
 local ContextActionService = game:GetService("ContextActionService")

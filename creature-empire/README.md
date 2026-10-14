@@ -184,7 +184,9 @@ rojo build -o creature-empire.rbxl
 | Quest journal      | J                     | D-pad right            | Quests button       |
 | Settings           | P                     | D-pad down             | Settings button     |
 | Inventory          | G                     | Inventory button       | Inventory button    |
-| Close window       | ✕ / click outside     | B                      | ✕ / tap outside     |
+| Sprint             | hold Shift            | press left stick (L3)  | Run button (toggle) |
+| Go home / to shop  | Home / Shop buttons (top right) | Home / Shop buttons | Home / Shop buttons |
+| Close window       | X / click outside     | B                      | X / tap outside     |
 | Placement          | R rotate, click place, X / right-click cancel | Y rotate, A place, B cancel | tap ground, then Rotate / Place / Cancel |
 
 ## Project layout

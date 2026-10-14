@@ -23,6 +23,7 @@ local TutorialController = require(Controllers.TutorialController)
 local InputController = require(Controllers.InputController)
 local RegionController = require(Controllers.RegionController)
 local GuardianController = require(Controllers.GuardianController)
+local SprintController = require(Controllers.SprintController)
 
 StateController.Start()
 AudioController.Start()
@@ -37,6 +38,7 @@ UIController.Start({
 	UI = UIController,
 	Region = RegionController,
 	Guardian = GuardianController,
+	Sprint = SprintController,
 })
 local ctx = UIController.Context()
 
@@ -85,6 +87,7 @@ PlacementController.Start()
 TutorialController.Start()
 RegionController.Start()
 GuardianController.Start()
+SprintController.Start()
 InputController.Start(UIController, PlacementController)
 
 -- First-time flow: pick a starter (modal until chosen).

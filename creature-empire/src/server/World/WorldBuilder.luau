@@ -163,17 +163,6 @@ local function buildTerrain()
 	end
 end
 
--- Is `position` (flat) within `clearance` studs of any plaza station?
-local function nearStation(position: Vector3, clearance: number): boolean
-	for id in PlazaConfig.Stations do
-		local station = PlazaConfig.Position(id)
-		if (Vector3.new(position.X, 0, position.Z) - Vector3.new(station.X, 0, station.Z)).Magnitude < clearance then
-			return true
-		end
-	end
-	return false
-end
-
 -- The Spin Wheel: a stone plinth, two posts and a big prize wheel facing the crystal. The
 -- wheel itself is its own model so the client can turn it slowly (CE_Spin).
 local function spinWheel(parent: Instance, cf: CFrame): Model
@@ -355,42 +344,6 @@ local function buildPlaza(folder: Folder)
 		decal:Destroy()
 	end
 
-	for i = 0, 7 do
-		local angle = (i + 0.5) / 8 * math.pi * 2
-		local spot = Vector3.new(math.sin(angle) * 31, 0.5, math.cos(angle) * 31)
-		if not nearStation(spot, 9) then
-			lamp(plaza, spot, -spot) -- face the Founders' Crystal
-		end
-	end
-
-	-- Benches (where the stations leave room)
-	for i = 0, 3 do
-		local angle = i / 4 * math.pi * 2 + math.pi / 8
-		if nearStation(Vector3.new(math.sin(angle) * 22, 0, math.cos(angle) * 22), 12) then
-			continue
-		end
-		local cf = CFrame.new(Vector3.new(math.sin(angle) * 22, 0.5, math.cos(angle) * 22)) * CFrame.Angles(0, angle, 0)
-		Parts.Part(plaza, {
-			Size = Vector3.new(6, 0.5, 1.8),
-			CFrame = cf * CFrame.new(0, 1.4, 0),
-			Color = Color3.fromRGB(130, 92, 60),
-			Material = Enum.Material.WoodPlanks,
-		})
-		Parts.Part(plaza, {
-			Size = Vector3.new(6, 1.4, 0.4),
-			CFrame = cf * CFrame.new(0, 2.2, 0.8),
-			Color = Color3.fromRGB(130, 92, 60),
-			Material = Enum.Material.WoodPlanks,
-		})
-		for _, x in { -2.5, 2.5 } do
-			Parts.Part(plaza, {
-				Size = Vector3.new(0.4, 1.2, 1.6),
-				CFrame = cf * CFrame.new(x, 0.7, 0),
-				Color = Color3.fromRGB(60, 58, 64),
-				Material = Enum.Material.Metal,
-			})
-		end
-	end
 	for i = 1, 24 do
 		local angle = i / 24 * math.pi * 2
 		wildPetal(plaza, Vector3.new(math.sin(angle) * 9, 3.4, math.cos(angle) * 9))

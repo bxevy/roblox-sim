@@ -12,6 +12,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage.Shared
 local RegionConfig = require(Shared.Config.RegionConfig)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
@@ -92,6 +93,17 @@ local function travel(player: Player, destination: string): (boolean, any)
 	if destination == "Home" then
 		runtime.LastTravel = os.clock()
 		PlotService.SendHome(player)
+		return true, nil
+	end
+	if destination == "Shop" then
+		-- The plaza, just in front of the Trading Post, facing it.
+		runtime.LastTravel = os.clock()
+		local shop = PlazaConfig.Position("TradingPost")
+		local spot = shop - Vector3.new(shop.X, 0, shop.Z).Unit * 10
+		local character = player.Character
+		if character then
+			character:PivotTo(CFrame.lookAt(spot + Vector3.new(0, 3, 0), Vector3.new(shop.X, spot.Y + 3, shop.Z)))
+		end
 		return true, nil
 	end
 	local region = RegionConfig.Regions[destination]
