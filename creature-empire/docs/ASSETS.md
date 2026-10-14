@@ -115,10 +115,10 @@ Every building and some world pieces can be swapped for your own models, made in
 | `CrystalSmelter` | Crystal Smelter | 12 × 12 studs |
 | `EssenceCondenser` | Essence Condenser | 12 × 12 studs |
 | `ExpeditionPortal` | Expedition Portal | 16 × 16 studs |
-| `Hatchery` | Hatchery | 12 × 12 studs |
+| `Hatchery` | The Hatchery nest in the plaza | 12 × 12 studs |
 | `EvolutionChamber` | Evolution Chamber | 16 × 16 studs |
 | `ResourceSilo` | Resource Silo | 12 × 12 studs |
-| `TradingPost` | Trading Post | 12 × 12 studs |
+| `TradingPost` | The Trading Post (shop) in the plaza | 12 × 12 studs |
 | `Habitat` | Creature Habitat | 20 × 16 studs |
 | `ResearchStation` | Research Station | 16 × 16 studs |
 | `CourierPost` | Courier Post | 12 × 12 studs |
@@ -137,6 +137,7 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Tree` | The trees around the world | Sized to 13 studs tall (unless `KeepSize`), then given a random turn and the size variation of the originals (about 1.2–1.9×). |
 | `Rock` | The rocks around the plaza | Same as trees. |
 | `Lamp` | Lamp posts on the plaza and paths | Scaled to 11 studs tall (unless `KeepSize`); a warm light is added near the top. |
+| `SpinWheel` | The Spin Wheel in the plaza | Stands on a 14 × 6 stone plinth, scaled to 16 studs tall. Its front faces the Founders' Crystal. |
 
 **To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.
 

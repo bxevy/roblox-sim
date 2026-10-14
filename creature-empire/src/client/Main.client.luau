@@ -57,6 +57,7 @@ UIController.Register("Trade", require(UIFolder.TradeWindow).new(ctx))
 UIController.Register("Players", require(UIFolder.PlayersWindow).new(ctx))
 UIController.Register("Leaderboards", require(UIFolder.LeaderboardWindow).new(ctx))
 UIController.Register("Shop", require(UIFolder.ShopWindow).new(ctx))
+UIController.Register("Spin", require(UIFolder.SpinWindow).new(ctx))
 local starter = require(UIFolder.StarterSelect).new(ctx)
 UIController.Register("Starter", starter)
 local reveal = require(UIFolder.RevealOverlay).new(ctx)
@@ -67,6 +68,9 @@ BuildingController.OpenPanel = function(buildingId)
 end
 BuildingController.OpenInspect = function(ownerUserId)
 	UIController.Open("Inspect", ownerUserId)
+end
+BuildingController.OpenSpin = function()
+	UIController.Open("Spin")
 end
 BuildingController.Notify = UIController.Notify
 RegionController.Notify = UIController.Notify
@@ -101,7 +105,11 @@ end)
 -- Moments from the server ------------------------------------------------------------------
 Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: any)
 	if name == "CreatureObtained" then
-		reveal.Show(payload)
+		if type(payload.Delay) == "number" then
+			task.delay(math.clamp(payload.Delay, 0, 10), reveal.Show, payload) -- after the wheel stops
+		else
+			reveal.Show(payload)
+		end
 	elseif name == "CreatureEvolved" then
 		UIController.Close()
 		reveal.Show({

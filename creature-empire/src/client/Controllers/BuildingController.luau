@@ -6,6 +6,7 @@
 --     updates from the server-provided rate (display only; the server decides amounts).
 --   * Farm petals glow brighter as storage fills; the silo gauge shows how full it is.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -17,6 +18,7 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Remotes = require(Shared.Remotes)
 local Format = require(Shared.Util.Format)
 local Production = require(Shared.Util.Production)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
 local StateController = require(script.Parent.StateController)
 local EffectsController = require(script.Parent.EffectsController)
 local AudioController = require(script.Parent.AudioController)
@@ -28,6 +30,7 @@ local BuildingController = {}
 -- Set by Main: open the building panel / the visitor inspect window.
 BuildingController.OpenPanel = function(_buildingId: string) end
 BuildingController.OpenInspect = function(_ownerUserId: number) end
+BuildingController.OpenSpin = function() end
 
 -- Confetti over an empire that was just cheered.
 function BuildingController.CheerFx(ownerUserId: number)
@@ -333,7 +336,37 @@ local function update()
 	end
 end
 
+-- The plaza stations (Trading Post, Hatchery, Spin Wheel) everyone shares.
+local function trackStation(model: Instance)
+	if not model:IsA("Model") then
+		return
+	end
+	local id = model:GetAttribute("PlazaStation") :: string?
+	local station = id and PlazaConfig.Stations[id]
+	local base = model.PrimaryPart or model:WaitForChild("Base", 5)
+	if not station or not base or not base:IsA("BasePart") or base:FindFirstChild("StationPrompt") then
+		return
+	end
+	local p = prompt(base, station.Action, station.Name, Enum.KeyCode.E, Enum.KeyCode.ButtonX, 0)
+	p.Name = "StationPrompt"
+	p.MaxActivationDistance = 16
+	p.Triggered:Connect(function()
+		if id == "SpinWheel" then
+			BuildingController.OpenSpin()
+		else
+			BuildingController.OpenPanel("plaza:" .. (id :: string))
+		end
+	end)
+end
+
 function BuildingController.Start()
+	for _, model in CollectionService:GetTagged("CE_PlazaStation") do
+		task.spawn(trackStation, model)
+	end
+	CollectionService:GetInstanceAddedSignal("CE_PlazaStation"):Connect(function(model)
+		task.defer(trackStation, model) -- wait for its parts to replicate
+	end)
+
 	local plots = Workspace:WaitForChild("PlayerPlots")
 	for _, plot in plots:GetChildren() do
 		task.spawn(watchPlot, plot)

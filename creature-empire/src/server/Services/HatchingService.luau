@@ -1,5 +1,5 @@
 --!strict
--- Egg hatching at the Hatchery. Costs are in-game resources only. Odds and the pity rule
+-- Egg hatching at the Hatchery nest in the plaza. Costs are in-game resources only. Odds and the pity rule
 -- live in Shared/Util/Hatching (the same code the Hatchery panel uses to publish them),
 -- and the server does every roll.
 
@@ -12,6 +12,8 @@ local GameConfig = require(Shared.Config.GameConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Hatching = require(Shared.Util.Hatching)
 local Format = require(Shared.Util.Format)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
+local Spin = require(Shared.Util.Spin)
 
 local Core = script.Parent.Parent.Core
 local Net = require(Core.Net)
@@ -22,19 +24,11 @@ local StateService = require(script.Parent.StateService)
 local EconomyService = require(script.Parent.EconomyService)
 local BuildingService = require(script.Parent.BuildingService)
 local CreatureService = require(script.Parent.CreatureService)
+local PlotService = require(script.Parent.PlotService)
 
 local HatchingService = {}
 
 local rng = Random.new()
-
-local function hasHatchery(data: Types.PlayerData): boolean
-	for _, building in data.Buildings do
-		if building.Type == "Hatchery" then
-			return true
-		end
-	end
-	return false
-end
 
 local function creatureCount(data: Types.PlayerData): number
 	local count = 0
@@ -50,8 +44,8 @@ local function hatch(player: Player, eggId: string): (boolean, any)
 	if not egg or egg.Phase > GameConfig.Phase then
 		return false, "Unknown egg."
 	end
-	if not hasHatchery(data) then
-		return false, "Build a Hatchery first."
+	if not PlotService.IsNear(player, PlazaConfig.Position("Hatchery"), PlazaConfig.Range) then
+		return false, "Hatch eggs at the Hatchery in the plaza."
 	end
 	if creatureCount(data) >= BuildingService.CreatureCapacity(data) then
 		return false, "Your habitat is full. Upgrade it to make room."
@@ -61,9 +55,11 @@ local function hatch(player: Player, eggId: string): (boolean, any)
 	end
 
 	local pity = data.Pity[eggId] or 0
+	-- The Spin Wheel's 2x Luck makes rare-or-better creatures twice as likely.
+	local luck = Spin.Multiplier(data.Boosts, "Luck", os.time())
 	local speciesId, guaranteed, newPity = Hatching.Roll(egg, pity, function()
 		return rng:NextNumber()
-	end)
+	end, luck)
 	data.Pity[eggId] = newPity
 	data.Stats.Hatched = (data.Stats.Hatched or 0) + 1
 	PlayerDataService.MarkDirty(player)
@@ -82,7 +78,7 @@ local function hatch(player: Player, eggId: string): (boolean, any)
 	Log.Info(
 		"Hatching",
 		"Hatched",
-		{ user = player.UserId, egg = eggId, species = speciesId, pity = pity, guaranteed = guaranteed }
+		{ user = player.UserId, egg = eggId, species = speciesId, pity = pity, guaranteed = guaranteed, luck = luck }
 	)
 	return true, { CreatureId = record.Id, Species = speciesId, Pity = newPity }
 end

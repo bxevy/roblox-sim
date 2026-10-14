@@ -170,7 +170,7 @@ local function befriend(player: Player, wildId: string): (boolean, any)
 		return false, "Your habitat is full. Upgrade it to make room."
 	end
 	if not EconomyService.Spend(player, { EmberLure = 1 }, "Befriend") then
-		return false, "You need an Ember Lure (craft one at your Trading Post)."
+		return false, "You need an Ember Lure (craft one at the Trading Post in the plaza)."
 	end
 	despawn(wildId) -- whatever happens, it leaves
 	if wild.Special and region then

@@ -152,6 +152,11 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 - **Distance checks:** these (gathering, befriending, guardian, collecting) trust the character's position, which is normal on Roblox. A movement anti-cheat would harden them.
 - **Trades:** both saves retry, but they still aren't a single atomic write. A "pending trade" journal on both profiles would make them fully safe even against a DataStore outage plus a crash.
 
+## 1.1: plaza update ✔ built
+
+- The Trading Post and Hatchery are shared stations in the plaza instead of plot buildings (v7 saves remove the plot copies and refund a built Hatchery).
+- The Spin Wheel: a free spin every 30 minutes; gold, Essence, 2× Coins, 2× Luck and the Mythic Black Dragon, with exact odds on the wheel.
+
 ### Still not built (ideas for future updates)
 
 - New biomes beyond Emberfall: Sunken Archive, Storm Peaks and others (`BiomeConfig`, Phase 7).

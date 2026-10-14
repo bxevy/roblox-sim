@@ -16,7 +16,6 @@ PlotConfig.FloorHeight = 0.5 -- top surface of the plot floor (Y)
 PlotConfig.FixedLayout = {
 	{ Id = "core", Type = "EmpireCore", X = 10, Z = 10, Rot = 0 },
 	{ Id = "silo", Type = "ResourceSilo", X = 15, Z = 11, Rot = 0 },
-	{ Id = "trading", Type = "TradingPost", X = 6, Z = 3, Rot = 0 },
 	{ Id = "habitat", Type = "Habitat", X = 2, Z = 18, Rot = 0 },
 	{ Id = "research", Type = "ResearchStation", X = 18, Z = 18, Rot = 0 },
 }

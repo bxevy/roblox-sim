@@ -1155,6 +1155,47 @@ local list: { Types.SpeciesDef } = {
 		},
 		Habitat = "UmbralFrontier",
 	}),
+	species({
+		Id = "BlackDragon",
+		Name = "Black Dragon",
+		Family = "Umbral",
+		Rarity = "Mythic",
+		Phase = 6,
+		Description = "A dragon of living night. Its scales drink the light and its hoard never stops growing.",
+		Discovery = "Only from the Spin Wheel in the plaza (0.3% each spin).",
+		StageNames = { "Black Dragon", "Elder Black Dragon", "Eclipse Dragon" },
+		Stats = { CombatPower = 20, Luck = 18, Yield = 15, WorkSpeed = 14, Exploration = 16, AbilityStrength = 16 },
+		Jobs = { Guardian = 1.4, Smelter = 1.2, Alchemist = 1 },
+		Active = {
+			Id = "DragonHoard",
+			Name = "Dragon's Hoard",
+			Description = "Raids its hoard for a heap of gold. Bigger empires have bigger hoards.",
+			Cooldown = 300,
+			Kind = "GoldFind",
+			Power = 200,
+			RequiresAssignment = false,
+		},
+		Passive = {
+			Id = "Dread",
+			Name = "Dread Wings",
+			Description = "+20% yield and work speed at any job.",
+			Modifiers = {
+				{ Stat = "Yield", Category = "Passive", Value = 0.2 },
+				{ Stat = "WorkSpeed", Category = "Passive", Value = 0.2 },
+			},
+		},
+		Appearance = {
+			Body = "Long",
+			Size = 4.6,
+			Primary = rgb(22, 20, 28),
+			Secondary = rgb(190, 30, 50),
+			Glow = rgb(230, 40, 60),
+			Features = { "Wings", "CoilHorns", "CrystalSpikes", "EmberTail", "Legs" },
+			Eyes = "Bright",
+		},
+		Idle = { Personality = "Proud and watchful", Speed = 9, HopHeight = 0.2, IdleActions = { "Look", "Sniff" } },
+		Habitat = "UmbralFrontier",
+	}),
 
 	----------------------------------------------------------------------- Tideborn
 	species({

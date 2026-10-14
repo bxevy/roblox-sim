@@ -1,5 +1,5 @@
 --!strict
--- Crafting at the Trading Post (Ember Lures). Inputs are spent all-or-nothing.
+-- Crafting at the plaza Trading Post (Ember Lures). Inputs are spent all-or-nothing.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -8,12 +8,12 @@ local CraftConfig = require(Shared.Config.CraftConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local Format = require(Shared.Util.Format)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
 
 local Core = script.Parent.Parent.Core
 local Net = require(Core.Net)
 local Events = require(Core.Events)
 local EconomyService = require(script.Parent.EconomyService)
-local BuildingService = require(script.Parent.BuildingService)
 local PlotService = require(script.Parent.PlotService)
 
 local CraftingService = {}
@@ -23,9 +23,8 @@ local function craft(player: Player, recipeId: string): (boolean, any)
 	if not recipe or recipe.Phase > GameConfig.Phase then
 		return false, "Unknown recipe."
 	end
-	local post = BuildingService.GetModel(player, "trading")
-	if not post or not post.PrimaryPart or not PlotService.IsNear(player, post.PrimaryPart.Position, 40) then
-		return false, "Craft at your Trading Post."
+	if not PlotService.IsNear(player, PlazaConfig.Position("TradingPost"), PlazaConfig.Range) then
+		return false, "Craft at the Trading Post in the plaza."
 	end
 	if
 		EconomyService.Balance(player, recipe.Output) + recipe.Amount > EconomyService.Capacity(player, recipe.Output)

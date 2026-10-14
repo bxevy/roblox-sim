@@ -13,6 +13,8 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
+local Spin = require(Shared.Util.Spin)
 local Grid = require(Shared.Util.Grid)
 local Research = require(Shared.Util.Research)
 local ResearchConfig = require(Shared.Config.ResearchConfig)
@@ -146,14 +148,6 @@ function BuildingService.GetModel(player: Player, buildingId: string): Model?
 	local plot = PlotService.Get(player)
 	local folder = plot and plot.Folder:FindFirstChild("Buildings")
 	return folder and folder:FindFirstChild(buildingId) :: Model?
-end
-
-local function isNearBuilding(player: Player, buildingId: string, extra: number?): boolean
-	local model = BuildingService.GetModel(player, buildingId)
-	if not model or not model.PrimaryPart then
-		return false
-	end
-	return PlotService.IsNear(player, model.PrimaryPart.Position, PlotConfig.InteractRange + (extra or 0))
 end
 
 -- Requests -----------------------------------------------------------------------------------
@@ -346,8 +340,8 @@ local function sell(player: Player, resourceId: string, amount: any): (boolean, 
 	if not def or def.Kind ~= "Material" or not def.SellPrice then
 		return false, "That can't be sold."
 	end
-	if not isNearBuilding(player, "trading", 12) then
-		return false, "Sell at your Trading Post."
+	if not PlotService.IsNear(player, PlazaConfig.Position("TradingPost"), PlazaConfig.Range) then
+		return false, "Sell at the Trading Post in the plaza."
 	end
 	local have = EconomyService.Balance(player, resourceId)
 	local quantity: number
@@ -365,7 +359,8 @@ local function sell(player: Player, resourceId: string, amount: any): (boolean, 
 	if not EconomyService.Spend(player, { [resourceId] = quantity }, "Sell") then
 		return false, "Sale failed."
 	end
-	local gold = quantity * def.SellPrice
+	-- The Spin Wheel's 2x Coins doubles sale gold while it runs.
+	local gold = quantity * def.SellPrice * Spin.Multiplier(data.Boosts, "Coins", os.time())
 	EconomyService.Add(player, "Gold", gold, "Sell " .. resourceId)
 	data.Stats.Sold = (data.Stats.Sold or 0) + quantity
 	Events.Sold:Fire(player, resourceId, quantity, gold)

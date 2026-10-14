@@ -1,6 +1,7 @@
 --!strict
 -- The building panel: status, production, workers, synergies, upgrades, and the
--- type-specific sections (Trading Post sales, silo capacity, core tiers, habitat).
+-- type-specific sections (silo capacity, core tiers, habitat). It also shows the plaza
+-- stations everyone shares: open it with "plaza:TradingPost" or "plaza:Hatchery".
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -26,6 +27,7 @@ local WorldEventConfig = require(Shared.Config.WorldEventConfig)
 local WorldEvent = require(Shared.Util.WorldEvent)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local SynergyConfig = require(Shared.Config.SynergyConfig)
+local SpinConfig = require(Shared.Config.SpinConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 local Viewport = require(script.Parent.Viewport)
@@ -479,9 +481,26 @@ function BuildingPanel.new(ctx: any)
 		end)
 	end
 
+	-- Seconds left on a Spin Wheel boost (0 = not running).
+	local function boostLeft(boostId: string): number
+		local spin = State.Get("Spin")
+		local untilTime = spin and spin.Boosts and spin.Boosts[boostId] or 0
+		return math.max(untilTime - Workspace:GetServerTimeNow(), 0)
+	end
+
 	local function tradingSection()
 		local card = Window.Section(win.Body, "SELL MATERIALS", 2)
 		local wallet = State.Get("Wallet")
+		local coinsLeft = boostLeft("Coins")
+		local multiplier = if coinsLeft > 0 then SpinConfig.BoostMultiplier else 1
+		if coinsLeft > 0 then
+			Theme.Text(
+				card,
+				`<b>● 2× Coins is on!</b> Every sale pays double for {Format.Duration(coinsLeft)}.`,
+				15,
+				{ TextColor3 = Theme.Colors.Gold }
+			)
+		end
 		local ids = {}
 		for id, def in ResourceConfig do
 			if def.Kind == "Material" and def.SellPrice then
@@ -492,9 +511,10 @@ function BuildingPanel.new(ctx: any)
 		for _, id in ids do
 			local def = ResourceConfig[id]
 			local have = wallet and wallet.Resources[id] or 0
+			local price = (def.SellPrice or 0) * multiplier
 			Theme.Text(
 				card,
-				`<font color="#{def.Color:ToHex()}">{def.Icon}</font> <b>{def.Name}</b>: {Format.Number(have)} · {def.SellPrice} gold each`,
+				`<font color="#{def.Color:ToHex()}">{def.Icon}</font> <b>{def.Name}</b>: {Format.Number(have)} · {price} gold each`,
 				16
 			)
 			local row = Window.Row(card, 40)
@@ -514,7 +534,7 @@ function BuildingPanel.new(ctx: any)
 			end
 			local all = Theme.Button(
 				row,
-				`Sell all · {Format.Number(have * def.SellPrice)} gold`,
+				`Sell all · {Format.Number(have * price)} gold`,
 				"Gold",
 				{ Size = UDim2.fromOffset(220, 36), TextSize = 15 }
 			)
@@ -997,6 +1017,16 @@ function BuildingPanel.new(ctx: any)
 		local empire = State.Get("Empire") or {}
 		local hatchery = State.Get("Hatchery") or { Pity = {} }
 		local wallet = State.Get("Wallet")
+		local luckLeft = boostLeft("Luck")
+		local luck = if luckLeft > 0 then SpinConfig.BoostMultiplier else 1
+		if luckLeft > 0 then
+			Theme.Text(
+				card,
+				`<b>✦ 2× Luck is on!</b> Rare-or-better creatures are twice as likely for {Format.Duration(luckLeft)}. The odds below include it.`,
+				15,
+				{ TextColor3 = Theme.Colors.Gold }
+			)
+		end
 		Theme.Text(
 			card,
 			`Your habitat holds {empire.CreatureCount or 0} / {empire.CreatureCapacity or 6} creatures. Hatched creatures can be traded later on.`,
@@ -1029,7 +1059,7 @@ function BuildingPanel.new(ctx: any)
 			Theme.Text(text, `<b>{egg.Name}</b> · {Format.Cost(egg.Cost, ResourceConfig)}`, 17)
 			Theme.Text(text, egg.Description, 13, { TextColor3 = Theme.Colors.Muted })
 			-- Exact odds, rarest first, with rarity glyph + word (never colour alone).
-			for _, entry in Hatching.Odds(egg) do
+			for _, entry in Hatching.Odds(egg, nil, luck) do
 				local species = CreatureConfig.Species[entry.Species]
 				local rarity = RarityConfig.Get(entry.Rarity)
 				local owned = (State.Get("Collection") or {})[entry.Species] ~= nil
@@ -1194,6 +1224,21 @@ function BuildingPanel.new(ctx: any)
 	render = function()
 		Window.Clear(win.Body)
 		liveStorage = nil
+		-- Plaza stations: no level, upgrades or moving.
+		local plazaType = if buildingId then string.match(buildingId, "^plaza:(.+)$") else nil
+		if plazaType and BuildingConfig[plazaType] then
+			local def = BuildingConfig[plazaType]
+			win.SetTitle(def.Name)
+			local head = Window.Section(win.Body, nil, 1)
+			Theme.Text(head, def.Description, 15)
+			if plazaType == "TradingPost" then
+				tradingSection()
+				craftSection()
+			elseif plazaType == "Hatchery" then
+				hatcherySection()
+			end
+			return
+		end
 		local buildings = State.Get("Buildings")
 		local info = buildingId and buildings and buildings.List[buildingId]
 		if not info then
@@ -1301,6 +1346,7 @@ function BuildingPanel.new(ctx: any)
 	State.OnChanged("Wallet", schedule)
 	State.OnChanged("Empire", schedule)
 	State.OnChanged("Hatchery", schedule)
+	State.OnChanged("Spin", schedule)
 	State.OnChanged("Expeditions", schedule)
 	State.OnChanged("Research", schedule)
 	task.spawn(function()

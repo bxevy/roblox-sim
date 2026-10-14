@@ -2,6 +2,7 @@
 -- Guides new players: while a tutorial step has a `Pointer`, a glowing trail runs from
 -- the player to the target building and a bouncing marker floats above it.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -24,7 +25,21 @@ local marker: BillboardGui? = nil
 local markerLabel: TextLabel? = nil
 local currentTarget: BasePart? = nil
 
+-- The Trading Post and Hatchery are shared stations in the plaza.
+local function plazaStation(typeId: string): BasePart?
+	for _, model in CollectionService:GetTagged("CE_PlazaStation") do
+		if model:IsA("Model") and model:GetAttribute("PlazaStation") == typeId then
+			return model.PrimaryPart
+		end
+	end
+	return nil
+end
+
 local function myBuildingOfType(typeId: string): BasePart?
+	local station = plazaStation(typeId)
+	if station then
+		return station
+	end
 	local plots = Workspace:FindFirstChild("PlayerPlots")
 	if not plots then
 		return nil

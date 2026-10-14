@@ -351,6 +351,11 @@ describe("Update 4 content", function()
 		for _, id in CreatureConfig.Starters do
 			sources[id] = true
 		end
+		for _, prize in shared("Config", "SpinConfig").Prizes do
+			if prize.Species then
+				sources[prize.Species] = true
+			end
+		end
 		for id, species in CreatureConfig.Species do
 			if species.Phase <= GameConfig.Phase then
 				truthy(sources[id], id .. " has no source")

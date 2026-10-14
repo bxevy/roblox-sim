@@ -83,7 +83,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Phase = 1,
 		Levels = {
 			{
-				BuildingLimits = { MoonpetalFarm = 2, Hatchery = 1 },
+				BuildingLimits = { MoonpetalFarm = 2 },
 				EmpireBonus = 0,
 			},
 			{
@@ -91,7 +91,6 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter, Evolution Chamber, Expedition Portal and a Courier Post, +5% creature yield. Opens Emberfall Basin.",
 				BuildingLimits = {
 					MoonpetalFarm = 3,
-					Hatchery = 1,
 					CrystalMine = 1,
 					CrystalSmelter = 1,
 					EvolutionChamber = 1,
@@ -105,7 +104,6 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 3: 4 farms, 2 mines, the Essence Condenser, +10% creature yield, floating rings.",
 				BuildingLimits = {
 					MoonpetalFarm = 4,
-					Hatchery = 1,
 					CrystalMine = 2,
 					CrystalSmelter = 1,
 					EssenceCondenser = 1,
@@ -120,7 +118,6 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 4: 5 farms, 3 mines, 2 smelters, 2 Courier Posts, +15% creature yield, banners of your empire.",
 				BuildingLimits = {
 					MoonpetalFarm = 5,
-					Hatchery = 1,
 					CrystalMine = 3,
 					CrystalSmelter = 2,
 					EssenceCondenser = 1,
@@ -135,7 +132,6 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 5: 6 farms, 4 mines, 2 condensers, +20% creature yield, a beacon of light.",
 				BuildingLimits = {
 					MoonpetalFarm = 6,
-					Hatchery = 1,
 					CrystalMine = 4,
 					CrystalSmelter = 2,
 					EssenceCondenser = 2,
@@ -287,10 +283,10 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Id = "Hatchery",
 		Name = "Hatchery",
 		Category = "Creatures",
-		Description = "A warm nest where you hatch eggs. Every egg shows its exact odds.",
+		Description = "The warm nest in the plaza where everyone hatches eggs. Every egg shows its exact odds.",
 		Footprint = { X = 3, Z = 3 },
-		Placeable = true,
-		PlaceCost = { Gold = 400 },
+		Placeable = false, -- in the plaza (PlazaConfig), not on plots
+		PlaceCost = { Gold = 400 }, -- what plot Hatcheries cost before the move (refunded)
 		PlaceGrowth = 1,
 		Phase = 2,
 		Levels = { {} },
@@ -347,10 +343,9 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Id = "TradingPost",
 		Name = "Trading Post",
 		Category = "Empire",
-		Description = "Sell materials for Gold.",
+		Description = "The plaza shop: sell materials for Gold and craft lures.",
 		Footprint = { X = 3, Z = 3 },
-		Placeable = false,
-		Fixed = true,
+		Placeable = false, -- in the plaza (PlazaConfig), not on plots
 		Phase = 1,
 		Levels = { {} },
 	},

@@ -20,10 +20,12 @@ local ResearchConfig = require(Shared.Config.ResearchConfig)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local AscensionConfig = require(Shared.Config.AscensionConfig)
 local SocialConfig = require(Shared.Config.SocialConfig)
+local PlazaConfig = require(Shared.Config.PlazaConfig)
+local SpinConfig = require(Shared.Config.SpinConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 6
+Schema.CURRENT_VERSION = 7
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -98,6 +100,8 @@ function Schema.Default(now: number): Types.PlayerData
 		Season = { Week = 0, Gold = 0 },
 		MutationCharm = 0,
 		BoostUntil = 0,
+		Spin = { NextFreeAt = 0, Count = 0 },
+		Boosts = {},
 		Receipts = {},
 		Pity = {},
 		Expansions = {},
@@ -167,6 +171,26 @@ Schema.Migrations = {
 		data.MutationCharm = if type(data.MutationCharm) == "number" then data.MutationCharm else 0
 		data.BoostUntil = if type(data.BoostUntil) == "number" then data.BoostUntil else 0
 	end,
+	-- v6 -> v7 (plaza update): the Trading Post and Hatchery moved from every plot to the
+	-- plaza. Plot copies are removed and a built Hatchery's price is refunded. Spin Wheel.
+	[6] = function(data: { [string]: any })
+		if type(data.Buildings) == "table" then
+			for id, record in data.Buildings do
+				if type(record) == "table" and PlazaConfig.BuildingTypes[record.Type] then
+					if record.Type == "Hatchery" and type(data.Currencies) == "table" then
+						local cost: { [string]: number } = BuildingConfig.Hatchery.PlaceCost or {}
+						for currency, amount in cost do
+							local current = data.Currencies[currency]
+							data.Currencies[currency] = (if type(current) == "number" then current else 0) + amount
+						end
+					end
+					data.Buildings[id] = nil
+				end
+			end
+		end
+		data.Spin = if type(data.Spin) == "table" then data.Spin else { NextFreeAt = 0, Count = 0 }
+		data.Boosts = if type(data.Boosts) == "table" then data.Boosts else {}
+	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
 -- Runs every migration the profile needs. Returns ok, or false + reason when the profile
@@ -231,6 +255,11 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		if type(id) ~= "string" or type(record) ~= "table" or type(record.Type) ~= "string" then
 			data.Buildings[id] = nil
 			fix(`Building {tostring(id)} malformed, removed`)
+			continue
+		end
+		if PlazaConfig.BuildingTypes[record.Type] then
+			data.Buildings[id] = nil -- lives in the plaza now
+			fix(`Building {id} moved to the plaza`)
 			continue
 		end
 		record.Id = id
@@ -496,6 +525,23 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	data.Season.Gold = cleanAmount(data.Season.Gold)
 	data.MutationCharm = if isFiniteNumber(data.MutationCharm) then math.clamp(data.MutationCharm, 0, 5) else 0
 	data.BoostUntil = if isFiniteNumber(data.BoostUntil) then math.clamp(data.BoostUntil, 0, now + 30 * 86400) else 0
+	if type(data.Spin) ~= "table" then
+		data.Spin = { NextFreeAt = 0, Count = 0 }
+	end
+	data.Spin.NextFreeAt = if isFiniteNumber(data.Spin.NextFreeAt)
+		then math.clamp(data.Spin.NextFreeAt, 0, now + SpinConfig.FreeEvery)
+		else 0
+	data.Spin.Count = cleanInteger(data.Spin.Count, 0, 1e9, 0)
+	if type(data.Boosts) ~= "table" then
+		data.Boosts = {}
+	end
+	for boostId, untilTime in data.Boosts do
+		if not SpinConfig.Boosts[boostId] or not isFiniteNumber(untilTime) or untilTime <= now then
+			data.Boosts[boostId] = nil
+		else
+			data.Boosts[boostId] = math.min(untilTime, now + SpinConfig.MaxBoostSeconds)
+		end
+	end
 
 	-- Research: known nodes only, and only with their prerequisites.
 	if type(data.Research) ~= "table" then

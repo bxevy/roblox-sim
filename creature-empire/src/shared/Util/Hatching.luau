@@ -22,11 +22,16 @@ function Hatching.IsPityTier(egg: EggConfig.Egg, speciesId: string): boolean
 end
 
 -- Exact chances (0..1), rarest first. With `guaranteed` = true: the pity-hatch odds.
-function Hatching.Odds(egg: EggConfig.Egg, guaranteed: boolean?): { Odds }
+-- `luck` (default 1) multiplies the weight of every pity-tier (rare or better) creature;
+-- the Spin Wheel's 2x Luck sets it to 2.
+function Hatching.Odds(egg: EggConfig.Egg, guaranteed: boolean?, luck: number?): { Odds }
+	local function weight(entry: EggConfig.LootEntry): number
+		return if Hatching.IsPityTier(egg, entry.Species) then entry.Weight * (luck or 1) else entry.Weight
+	end
 	local total = 0
 	for _, entry in egg.Loot do
 		if not guaranteed or Hatching.IsPityTier(egg, entry.Species) then
-			total += entry.Weight
+			total += weight(entry)
 		end
 	end
 	local list: { Odds } = {}
@@ -36,7 +41,7 @@ function Hatching.Odds(egg: EggConfig.Egg, guaranteed: boolean?): { Odds }
 			table.insert(list, {
 				Species = entry.Species,
 				Rarity = (if species then species.Rarity else "Common") :: string,
-				Chance = entry.Weight / total,
+				Chance = weight(entry) / total,
 			})
 		end
 	end
@@ -56,9 +61,9 @@ end
 
 -- Rolls a hatch. `random` returns a number in [0, 1). Returns the species, whether pity
 -- decided it, and the new pity counter.
-function Hatching.Roll(egg: EggConfig.Egg, pity: number, random: () -> number): (string, boolean, number)
+function Hatching.Roll(egg: EggConfig.Egg, pity: number, random: () -> number, luck: number?): (string, boolean, number)
 	local guaranteed = Hatching.PityReady(egg, pity)
-	local odds = Hatching.Odds(egg, guaranteed)
+	local odds = Hatching.Odds(egg, guaranteed, luck)
 	local roll = random()
 	local cumulative = 0
 	local chosen = odds[#odds].Species

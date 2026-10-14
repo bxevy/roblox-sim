@@ -238,6 +238,8 @@ export type PlayerData = {
 	Season: { Week: number, Gold: number }, -- gold earned this week (weekly leaderboard)
 	MutationCharm: number, -- Nocturnox's Dark Gift: mutation chance multiplier for the next hatch (0 = none)
 	BoostUntil: number, -- os.time a purchased production boost lasts until (0 = none)
+	Spin: { NextFreeAt: number, Count: number }, -- Spin Wheel: when the next free spin is ready
+	Boosts: { [string]: number }, -- Spin Wheel boost id ("Coins" | "Luck") -> os.time it lasts until
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids

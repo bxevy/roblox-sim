@@ -60,7 +60,7 @@ QuestConfig.Tutorial = {
 	{
 		Id = "FirstSale",
 		Title = "Open for business",
-		Description = "Sell 10 moonpetals at the Trading Post.",
+		Description = "Sell 10 moonpetals at the Trading Post in the plaza.",
 		Kind = "Sell",
 		Target = "Moonpetal",
 		Amount = 10,
@@ -125,16 +125,16 @@ QuestConfig.Tutorial = {
 	{
 		Id = "Hatchery",
 		Title = "A warm nest",
-		Description = "Build a Hatchery (Build menu, Creature care).",
-		Kind = "BuildingCount",
-		Target = "Hatchery",
+		Description = "Visit the Hatchery nest in the plaza and hatch an egg. Its odds are shown before you hatch.",
+		Kind = "Hatch",
 		Amount = 1,
 		Reward = { Gold = 300 },
+		Pointer = "Hatchery",
 	},
 	{
 		Id = "FirstHatch",
 		Title = "Something is moving",
-		Description = "Hatch an egg at your Hatchery. Its odds are shown before you hatch.",
+		Description = "Hatch another egg at the plaza Hatchery.",
 		Kind = "Hatch",
 		Amount = 1,
 		Reward = { Gold = 150 },
@@ -218,7 +218,7 @@ QuestConfig.Tutorial = {
 	{
 		Id = "Lure",
 		Title = "Something sweet",
-		Description = "Craft an Ember Lure at your Trading Post.",
+		Description = "Craft an Ember Lure at the Trading Post in the plaza.",
 		Kind = "Craft",
 		Target = "EmberLure",
 		Amount = 1,

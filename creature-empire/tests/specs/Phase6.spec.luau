@@ -88,13 +88,13 @@ describe("Monetization rules", function()
 end)
 
 describe("Full roster", function()
-	test("all 32 species are obtainable in the release build", function()
+	test("all 33 species are obtainable in the release build", function()
 		local count = 0
 		for _, species in CreatureConfig.Species do
 			truthy(species.Phase <= GameConfig.Phase, species.Id)
 			count += 1
 		end
-		eq(count, 32)
+		eq(count, 33) -- 32 at release + the Black Dragon (Spin Wheel)
 	end)
 end)
 

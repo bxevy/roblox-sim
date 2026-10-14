@@ -14,6 +14,8 @@ local CreatureConfig = require(Shared.Config.CreatureConfig)
 local RegionConfig = require(Shared.Config.RegionConfig)
 local WorldEventConfig = require(Shared.Config.WorldEventConfig)
 local WorldEvent = require(Shared.Util.WorldEvent)
+local SpinConfig = require(Shared.Config.SpinConfig)
+local Spin = require(Shared.Util.Spin)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local Format = require(Shared.Util.Format)
@@ -238,6 +240,58 @@ function Hud.new(ctx: any)
 				{ Scale = 1.05 }
 			);
 			(claimPulse :: Tween):Play()
+		end
+	end)
+
+	------------------------------------------------------------------ Spin Wheel status (left)
+	-- The free spin (ready or how long to wait) and any boosts it gave, with timers.
+	-- Tapping it opens the wheel window.
+	local spinCard = Theme.Panel(leftColumn, {
+		Name = "SpinStatus",
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 3,
+		Visible = false,
+	})
+	Theme.Padding(spinCard, 8, 14)
+	Theme.List(spinCard, 2)
+	local spinLine = Theme.Text(spinCard, "", 15, { FontFace = Theme.Bold })
+	local boostLine = Theme.Text(spinCard, "", 14, { TextColor3 = Theme.Colors.Gold })
+	local spinHit = Theme.Make("TextButton", {
+		Text = "",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		ZIndex = 3,
+	}, spinCard)
+	spinHit.Activated:Connect(function()
+		ctx.Controllers.UI.Toggle("Spin")
+	end)
+	local function refreshSpin()
+		local spin = State.Get("Spin")
+		if not spin then
+			return
+		end
+		local now = Workspace:GetServerTimeNow()
+		local wait = Spin.FreeIn(spin.NextFreeAt or 0, now)
+		spinLine.Text = if wait <= 0
+			then `<font color="#{Theme.Colors.Gold:ToHex()}">✪ Free spin ready!</font> Spin the wheel in the plaza.`
+			else `<font color="#{Theme.Colors.Muted:ToHex()}">✪ Next free spin in {Format.Duration(wait)}</font>`
+		local lines = {}
+		for id, untilTime in spin.Boosts or {} do
+			local boost = SpinConfig.Boosts[id]
+			if boost and untilTime > now then
+				table.insert(lines, `{boost.Glyph} {boost.Name} · {Format.Duration(untilTime - now)}`)
+			end
+		end
+		boostLine.Text = table.concat(lines, "   ")
+		boostLine.Visible = #lines > 0
+		spinCard.Visible = true
+	end
+	State.OnChanged("Spin", refreshSpin)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			refreshSpin()
 		end
 	end)
 

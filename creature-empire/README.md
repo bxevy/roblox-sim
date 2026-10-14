@@ -136,6 +136,19 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
 - **Solid ground.** The plaza, plots and Emberfall floor are flat, so nothing sinks into the grass.
 - **Schema v6.**
 
+## Added in 1.1 (plaza update)
+
+- **The plaza is the shop area.** The Trading Post (sell and craft) and the Hatchery nest moved off every plot into the plaza, where everyone shares them. Players who had built a Hatchery get its 400 gold back.
+- **Spin Wheel.** One free spin every 30 minutes, at the wheel in the plaza. Prizes, with exact odds shown on the wheel:
+  - 500 / 1,000 / 2,500 / 5,000 Gold
+  - 25 Essence
+  - **2× Coins** for 30 minutes (double gold from selling and abilities)
+  - **2× Luck** for 30 minutes (rare-or-better creatures twice as likely from eggs)
+  - the super rare **Black Dragon** (Mythic, 0.3%)
+
+  Spins are only ever free; they are never sold. The HUD shows when your next free spin is ready and any boosts that are running.
+- **Schema v7.**
+
 ## Run it
 
 ### Option A: open the built place

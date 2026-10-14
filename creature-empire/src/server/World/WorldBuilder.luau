@@ -9,6 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local PlotConfig = require(ReplicatedStorage.Shared.Config.PlotConfig)
+local PlazaConfig = require(ReplicatedStorage.Shared.Config.PlazaConfig)
+local SpinConfig = require(ReplicatedStorage.Shared.Config.SpinConfig)
+local BuildingModels = require(script.Parent.BuildingModels)
 local Parts = require(script.Parent.Parts)
 local CustomModels = require(script.Parent.CustomModels)
 
@@ -160,6 +163,135 @@ local function buildTerrain()
 	end
 end
 
+-- Is `position` (flat) within `clearance` studs of any plaza station?
+local function nearStation(position: Vector3, clearance: number): boolean
+	for id in PlazaConfig.Stations do
+		local station = PlazaConfig.Position(id)
+		if (Vector3.new(position.X, 0, position.Z) - Vector3.new(station.X, 0, station.Z)).Magnitude < clearance then
+			return true
+		end
+	end
+	return false
+end
+
+-- The Spin Wheel: a stone plinth, two posts and a big prize wheel facing the crystal. The
+-- wheel itself is its own model so the client can turn it slowly (CE_Spin).
+local function spinWheel(parent: Instance, cf: CFrame): Model
+	local model = Instance.new("Model")
+	model.Name = "SpinWheel"
+	local base = Parts.Part(model, {
+		Name = "Base",
+		Size = Vector3.new(14, 1, 6),
+		CFrame = cf * CFrame.new(0, 0.5, 0),
+		Color = Color3.fromRGB(200, 196, 188),
+		Material = Enum.Material.Marble,
+	})
+	model.PrimaryPart = base
+	local custom = CustomModels.Find("World", "SpinWheel")
+	if custom then
+		-- Hand-made wheel: about 16 studs tall, standing on the plinth.
+		CustomModels.Place(custom, model, cf * CFrame.new(0, 1, 0), { Fit = Vector3.new(math.huge, 16, math.huge) })
+		model.Parent = parent
+		return model
+	end
+	local RADIUS = 6
+	local center = cf * CFrame.new(0, RADIUS + 2.6, 0)
+	for _, x in { -RADIUS - 0.8, RADIUS + 0.8 } do
+		Parts.Part(model, {
+			Size = Vector3.new(0.9, RADIUS + 3, 0.9),
+			CFrame = cf * CFrame.new(x, (RADIUS + 3) / 2 + 1, 0.6),
+			Color = Color3.fromRGB(125, 88, 58),
+			Material = Enum.Material.Wood,
+		})
+	end
+	Parts.Part(model, {
+		Size = Vector3.new(RADIUS * 2 + 2.5, 0.8, 0.8),
+		CFrame = center * CFrame.new(0, 0, 0.9),
+		Color = Color3.fromRGB(125, 88, 58),
+		Material = Enum.Material.Wood,
+	})
+
+	local disc = Instance.new("Model")
+	disc.Name = "WheelDisc"
+	local back = Parts.Part(disc, {
+		Name = "Disc",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.5, RADIUS * 2 + 0.8, RADIUS * 2 + 0.8),
+		CFrame = center * CFrame.Angles(0, math.rad(90), 0),
+		Color = Color3.fromRGB(240, 190, 70),
+		Material = Enum.Material.Metal,
+	})
+	disc.PrimaryPart = back
+	-- One coloured blade per prize, clockwise from the top as seen from the front.
+	local count = #SpinConfig.Prizes
+	for index, prize in SpinConfig.Prizes do
+		local angle = math.rad((index - 0.5) * 360 / count)
+		Parts.Decor(disc, {
+			Name = "Segment",
+			Size = Vector3.new(2 * RADIUS * math.sin(math.pi / count) * 0.92, RADIUS * 0.82, 0.3),
+			CFrame = center * CFrame.Angles(0, 0, angle) * CFrame.new(0, RADIUS * 0.53, -0.35),
+			Color = prize.Color,
+			Material = if prize.Kind == "Creature" then Enum.Material.Neon else Enum.Material.SmoothPlastic,
+		})
+	end
+	Parts.Ball(disc, (center * CFrame.new(0, 0, -0.5)).Position, 1.6, {
+		Color = Color3.fromRGB(240, 190, 70),
+		Material = Enum.Material.Metal,
+	})
+	disc.WorldPivot = center
+	disc:SetAttribute("SpinSpeed", 12)
+	disc:SetAttribute("SpinAxis", "Z")
+	CollectionService:AddTag(disc, "CE_Spin")
+	disc.Parent = model
+
+	-- The pointer at the top marks the prize.
+	Parts.Decor(model, {
+		Name = "Pointer",
+		ClassName = "WedgePart",
+		Size = Vector3.new(0.6, 1.6, 1.4),
+		CFrame = center * CFrame.new(0, RADIUS + 0.9, -0.6) * CFrame.Angles(math.rad(180), 0, 0),
+		Color = Color3.fromRGB(230, 60, 60),
+		Material = Enum.Material.Neon,
+	})
+	model.Parent = parent
+	return model
+end
+
+-- The shared shop area: the Trading Post, the Hatchery nest and the Spin Wheel. Players
+-- use them with proximity prompts (client BuildingController); the server checks range.
+local function buildStations(plaza: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Stations"
+	folder.Parent = plaza
+	for id, station in PlazaConfig.Stations do
+		local cf = PlazaConfig.CFrame(id)
+		local model: Model
+		if id == "SpinWheel" then
+			model = spinWheel(folder, cf)
+		else
+			model = BuildingModels.Build(id, 1, cf)
+			model.Parent = folder
+		end
+		model.Name = id
+		model:SetAttribute("PlazaStation", id)
+		-- Plaza buildings have no level: show just the name.
+		local base = model.PrimaryPart
+		local labelled = false
+		if base then
+			for _, d in base:GetDescendants() do
+				if d:IsA("TextLabel") then
+					d.Text = station.Name
+					labelled = true
+				end
+			end
+			if not labelled then
+				Parts.Label(base, station.Name, { Offset = Vector3.new(0, 18, 0), MaxDistance = 120 })
+			end
+		end
+		CollectionService:AddTag(model, "CE_PlazaStation")
+	end
+end
+
 local function buildPlaza(folder: Folder)
 	local plaza = Instance.new("Folder")
 	plaza.Name = "Plaza"
@@ -203,7 +335,7 @@ local function buildPlaza(folder: Folder)
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "PlazaSpawn"
 	spawn.Anchored = true
-	spawn.Size = Vector3.new(10, 1, 10)
+	spawn.Size = Vector3.new(8, 1, 8)
 	spawn.CFrame = CFrame.new(0, 0.5, 22)
 	spawn.Transparency = 1
 	spawn.CanCollide = false
@@ -218,12 +350,17 @@ local function buildPlaza(folder: Folder)
 	for i = 0, 7 do
 		local angle = (i + 0.5) / 8 * math.pi * 2
 		local spot = Vector3.new(math.sin(angle) * 31, 0.5, math.cos(angle) * 31)
-		lamp(plaza, spot, -spot) -- face the Founders' Crystal
+		if not nearStation(spot, 9) then
+			lamp(plaza, spot, -spot) -- face the Founders' Crystal
+		end
 	end
 
-	-- Benches and flower beds
+	-- Benches (where the stations leave room)
 	for i = 0, 3 do
 		local angle = i / 4 * math.pi * 2 + math.pi / 8
+		if nearStation(Vector3.new(math.sin(angle) * 22, 0, math.cos(angle) * 22), 12) then
+			continue
+		end
 		local cf = CFrame.new(Vector3.new(math.sin(angle) * 22, 0.5, math.cos(angle) * 22)) * CFrame.Angles(0, angle, 0)
 		Parts.Part(plaza, {
 			Size = Vector3.new(6, 0.5, 1.8),
@@ -250,6 +387,8 @@ local function buildPlaza(folder: Folder)
 		local angle = i / 24 * math.pi * 2
 		wildPetal(plaza, Vector3.new(math.sin(angle) * 9, 3.4, math.cos(angle) * 9))
 	end
+
+	buildStations(plaza)
 end
 
 local function buildPaths(folder: Folder)

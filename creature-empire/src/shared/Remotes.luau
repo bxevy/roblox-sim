@@ -27,6 +27,7 @@ local FUNCTIONS = {
 	"MoveBuilding", -- (buildingId, x, z, rot)
 	"BuyExpansion", -- (zoneId)
 	"HatchEgg", -- (eggId) -> (ok, { CreatureId, Species, Pity })
+	"Spin", -- () -> (ok, { Index, Prize }) the free Spin Wheel spin
 	"Evolve", -- (creatureId)
 	"Travel", -- (regionId | "Home")
 	"Gather", -- (nodeId)

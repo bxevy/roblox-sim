@@ -4,7 +4,7 @@
 local GameConfig = {}
 
 GameConfig.Name = "Creature Empire"
-GameConfig.Version = "1.0.0"
+GameConfig.Version = "1.1.0"
 
 -- Development phase this build implements. Content with a higher `Phase` in the configs is
 -- designed but not obtainable or buildable yet.

@@ -1,7 +1,7 @@
 --!strict
 -- Hand-made models that replace the code-built ones. Put a Model in
 --   ReplicatedStorage/Assets/Buildings/<BuildingType>      (or <BuildingType>_<level>)
---   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, Tree, Rock, Lamp)
+--   ReplicatedStorage/Assets/World/<Piece>                 (FenceSegment, Tree, Rock, Lamp, SpinWheel)
 -- and it is used automatically (see docs/ASSETS.md). Models can be built or imported in
 -- Studio in any position, size or rotation: they are measured, resized to fit and placed
 -- with their bottom centre on the ground.

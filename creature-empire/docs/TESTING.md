@@ -35,14 +35,14 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] Choose each starter on different test accounts. The reveal plays and the creature appears in the habitat. Quest 2 points a trail at the farm.
 - [ ] Assign the creature from the farm's **Manage** prompt. It walks to the farm and works. Harvest popups appear and the storage bubble fills.
 - [ ] Collect at the farm (**E**). The wallet increases and the silo gauge rises.
-- [ ] Sell at the Trading Post. Gold increases. The quest gives the second starter and its reveal plays.
+- [ ] Sell at the Trading Post in the plaza (there is no Trading Post on plots any more). Gold increases. The quest gives the second starter and its reveal plays.
 - [ ] Upgrade the farm to level 2. The model changes (second bed) and slots become 2/2. Assign the second creature.
 - [ ] Use an ability from the creature bar. The effect plays, the cooldown counts down, and it survives a rejoin.
 - [ ] Place a second farm: the preview is green or red, rotation works, and you can't place on the path or another building. Gold is spent and the third starter is granted.
 - [ ] Upgrade the silo and then the core. The core gate message shows when a farm is ahead of the core. The quest line finishes.
 
 ### Phase 2: hatching, crystals, evolution, land
-- [ ] Build a Hatchery. Each egg lists every creature with its exact % and rarity word. The odds add up to 100%.
+- [ ] Open the Hatchery nest in the plaza. Each egg lists every creature with its exact % and rarity word. The odds add up to 100%.
 - [ ] Hatch a Meadow Egg. Gold is spent and an egg-coloured reveal plays. Pity goes up by 1, or resets on a Rare.
 - [ ] *Developer → +1,000 gold* repeatedly and hatch 14 Meadow Eggs. If no Rare appeared, the panel says the next hatch is guaranteed, and it is.
 - [ ] Fill the habitat (6). Hatch is disabled with "Habitat full". Upgrading the habitat makes room.
@@ -155,6 +155,15 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 ### Performance
 - [ ] 6 players × 3 creatures × 6 farms: server heartbeat stays near 60 in the MicroProfiler. `ProductionService` and `StateService` each take well under 1 ms per tick.
 - [ ] Client: frame time with every plot in view. The creature model count stays at or below 60.
+
+## Plaza and Spin Wheel (1.1)
+
+- [ ] The plaza has the Trading Post, the Hatchery nest and the Spin Wheel, between the paths, clear of the travel gate and the leaderboard board. Plots have neither a Trading Post nor a Hatchery, and the Build menu doesn't offer a Hatchery.
+- [ ] An old save that had a Hatchery loses it and gets 400 gold back.
+- [ ] Walking up to each station shows its prompt (Sell & craft / Hatch eggs / Spin). Selling, crafting and hatching from far away are refused with a message naming the plaza.
+- [ ] Spin Wheel: the window lists every prize with its % (they add up to 100%). The first spin is free; afterwards the button counts down 30:00 and the HUD card shows "Next free spin in …".
+- [ ] The wheel stops on the prize the toast names. 2× Coins doubles the Trading Post prices shown and the gold received. 2× Luck adds a note in the Hatchery and raises the rare-or-better odds shown.
+- [ ] *Developer*: winning the Black Dragon (try `SpinConfig` with its weight raised in Studio only) plays the reveal after the wheel stops, and other players get a toast.
 
 ## Debugging guide
 

@@ -73,7 +73,7 @@ function BefriendWindow.new(ctx: any)
 		Theme.SetEnabled(throw, lures >= 1)
 		throw.Activated:Connect(function()
 			if throw:GetAttribute("Disabled") then
-				ctx.Notify("Craft Ember Lures at your Trading Post (5 Emberstone + 10 Moonpetals).", "Error")
+				ctx.Notify("Craft Ember Lures at the plaza Trading Post (5 Emberstone + 10 Moonpetals).", "Error")
 				return
 			end
 			Theme.SetEnabled(throw, false)

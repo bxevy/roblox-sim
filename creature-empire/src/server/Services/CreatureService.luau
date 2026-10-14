@@ -22,6 +22,7 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local Mutation = require(Shared.Util.Mutation)
 local Research = require(Shared.Util.Research)
+local Spin = require(Shared.Util.Spin)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -369,7 +370,12 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		)}s.`
 	elseif ability.Kind == "GoldFind" then
 		local tier = Production.CoreTier(data)
-		local gold = math.floor(ability.Power * strength * (1 + EconomyConfig.GoldFindPerCoreLevel * (tier - 1)))
+		local gold = math.floor(
+			ability.Power
+				* strength
+				* (1 + EconomyConfig.GoldFindPerCoreLevel * (tier - 1))
+				* Spin.Multiplier(data.Boosts, "Coins", os.time())
+		)
 		EconomyService.Add(player, "Gold", gold, "Ability " .. ability.Id)
 		message = `{ability.Name}! {displayName(creature)} dug up {gold} gold.`
 	elseif ability.Kind == "Collect" then
