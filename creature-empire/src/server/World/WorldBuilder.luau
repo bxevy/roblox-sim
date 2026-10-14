@@ -91,10 +91,12 @@ end
 
 local LAMP_HEIGHT = 11 -- studs: imported lamps are scaled to this unless they have KeepSize
 
-local function lamp(parent: Instance, position: Vector3)
+-- `facing` is the flat direction the lamp's front points (toward the walkway it lights).
+local function lamp(parent: Instance, position: Vector3, facing: Vector3)
 	local template = CustomModels.Find("World", "Lamp")
 	if template then
-		local model = CustomModels.Place(template, parent, CFrame.new(position), {
+		local look = Vector3.new(facing.X, 0, facing.Z).Unit
+		local model = CustomModels.Place(template, parent, CFrame.lookAt(position, position + look), {
 			Fit = Vector3.new(math.huge, LAMP_HEIGHT, math.huge),
 		})
 		-- Imported meshes carry no light, so add a glow near the top to keep paths lit at night.
@@ -213,7 +215,8 @@ local function buildPlaza(folder: Folder)
 
 	for i = 0, 7 do
 		local angle = (i + 0.5) / 8 * math.pi * 2
-		lamp(plaza, Vector3.new(math.sin(angle) * 31, 0.5, math.cos(angle) * 31))
+		local spot = Vector3.new(math.sin(angle) * 31, 0.5, math.cos(angle) * 31)
+		lamp(plaza, spot, -spot) -- face the Founders' Crystal
 	end
 
 	-- Benches and flower beds
@@ -263,7 +266,8 @@ local function buildPaths(folder: Folder)
 			Color = PATH,
 			Material = Enum.Material.Pavement,
 		})
-		lamp(paths, direction * (from + length * 0.6) + Vector3.new(-direction.Z, 0, direction.X) * 6)
+		local side = Vector3.new(-direction.Z, 0, direction.X)
+		lamp(paths, direction * (from + length * 0.6) + side * 6, -side) -- face the path
 	end
 end
 
