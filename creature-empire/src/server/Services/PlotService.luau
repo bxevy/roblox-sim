@@ -39,11 +39,12 @@ local plotsFolder: Folder
 local WIDTH = PlotConfig.GridX * PlotConfig.CellSize
 local DEPTH = PlotConfig.GridZ * PlotConfig.CellSize
 
+local OWNER_TAG_HEIGHT = 26 -- studs above the plot floor
+
 local function setSignText(sign: BasePart, text: string)
-	for _, surface in sign:GetChildren() do
-		local label = surface:FindFirstChildOfClass("TextLabel")
-		if label then
-			label.Text = text
+	for _, d in sign:GetDescendants() do
+		if d:IsA("TextLabel") then
+			d.Text = text
 		end
 	end
 end
@@ -96,43 +97,33 @@ local function buildPlot(index: number): Plot
 		})
 	end
 
-	-- Entrance arch with the owner's name
-	local archCF = origin * CFrame.new(WIDTH / 2, 0, -1)
-	local customArch = CustomModels.Find("World", "EntranceArch")
-	local sign: BasePart
-	if customArch then
-		-- Hand-made arch, fitted to the entrance. A part named "Sign" (or "Board") in it
-		-- gets the owner's name; otherwise a plain name board hangs above it.
-		local arch = CustomModels.Place(customArch, ground, archCF, { Fit = Vector3.new(14, 0, 4) })
-		local board: BasePart? = nil
-		for _, d in arch:GetDescendants() do
-			if d:IsA("BasePart") and (d.Name == "Sign" or d.Name == "Board" or d.Name == "NameBoard") then
-				board = d
-			end
-		end
-		if not board then
-			local _, size = CustomModels.Bounds(arch)
-			board = Parts.Part(ground, {
-				Name = "NameBoard",
-				Size = Vector3.new(10, 2.2, 0.4),
-				CFrame = archCF * CFrame.new(0, size.Y + 1.4, 0),
-				Color = Color3.fromRGB(150, 110, 70),
-				Material = Enum.Material.WoodPlanks,
-			})
-		end
-		Parts.SignText(board :: BasePart, "Unclaimed plot")
-		sign = board :: BasePart
-	else
-		for _, x in { -5.5, 5.5 } do
-			Parts.Part(ground, {
-				Size = Vector3.new(1.4, 10, 1.4),
-				CFrame = archCF * CFrame.new(x, 5, 0),
-				Color = Color3.fromRGB(120, 86, 56),
-				Material = Enum.Material.Wood,
-			})
-		end
-		sign = Parts.Sign(ground, archCF * CFrame.new(0, 5.6, 0), "Unclaimed plot", 12)
-	end
+	-- The owner's name floats above the middle of the plot (seen from the plaza and paths).
+	local sign = Instance.new("Part")
+	sign.Name = "OwnerTag"
+	sign.Anchored = true
+	sign.CanCollide = false
+	sign.CanQuery = false
+	sign.CanTouch = false
+	sign.Transparency = 1
+	sign.Size = Vector3.new(1, 1, 1)
+	sign.CFrame = origin * CFrame.new(WIDTH / 2, OWNER_TAG_HEIGHT, DEPTH / 2)
+	sign.Parent = ground
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "OwnerTag"
+	tag.Size = UDim2.fromScale(40, 6) -- studs: shrinks with distance like a real sign
+	tag.LightInfluence = 0
+	tag.MaxDistance = 600
+	tag.Parent = sign
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = "Unclaimed plot"
+	label.TextScaled = true
+	label.Font = Enum.Font.BuilderSansExtraBold
+	label.TextColor3 = Color3.fromRGB(255, 244, 220)
+	label.TextStrokeColor3 = Color3.fromRGB(40, 30, 20)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = tag
 
 	-- Where the owner appears (just inside the entrance, facing the Empire Core).
 	local spawn = Instance.new("Part")

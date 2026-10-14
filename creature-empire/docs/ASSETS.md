@@ -137,7 +137,6 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Tree` | The trees around the world | Placed with a random turn and the size variation of the originals (about 1.2–1.9×). |
 | `Rock` | The rocks around the plaza | Same as trees. |
 | `Lamp` | Lamp posts on the plaza and paths | Not resized. |
-| `EntranceArch` (or `Arch`, `Gate`) | The archway at the front of every plot | Fitted to the 14-stud-wide entrance. A part named `Sign` or `Board` in it shows the owner's name on both sides; without one, a name board hangs above the arch. |
 
 **To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.
 

@@ -59,7 +59,6 @@ CustomModels.Aliases = {
 	EssenceCondenser = { "Condenser" },
 	EvolutionChamber = { "Evolution" },
 	FenceSegment = { "Fence" },
-	EntranceArch = { "Arch", "Gate", "Entrance", "PlotGate", "Archway", "EntranceGate" },
 } :: { [string]: { string } }
 
 -- The template for `name` in Assets/<category>, preferring a per-level variant
