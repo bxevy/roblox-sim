@@ -72,6 +72,9 @@ end
 
 local function buildTerrain()
 	local terrain = Workspace.Terrain
+	-- Clear anything already above ground level around the plaza, paths and plots (for
+	-- example terrain made with Studio's Terrain Editor), so it can't bury them.
+	terrain:FillBlock(CFrame.new(0, 40, 0), Vector3.new(600, 80, 600), Enum.Material.Air)
 	terrain:FillBlock(CFrame.new(0, -6, 0), Vector3.new(1100, 12, 1100), Enum.Material.Grass)
 	terrain:SetMaterialColor(Enum.Material.Grass, GROUND)
 	-- No animated grass: its blades grow taller than the plot floors and paths, which made
