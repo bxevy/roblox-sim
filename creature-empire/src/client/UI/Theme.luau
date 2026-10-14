@@ -138,6 +138,7 @@ end
 -- vine corners keep their shape. Returns nil (and changes nothing) while the piece has no
 -- uploaded id, so everything falls back to the drawn wood look.
 local kitFailed: { [string]: boolean } = {}
+local kitStatus: { [string]: string } = {}
 
 function Theme.KitImage(name: string): string?
 	local piece = UiKit[name]
@@ -169,12 +170,15 @@ function Theme.PreloadKit(timeout: number?): { string }
 			total += 1
 			task.spawn(function()
 				local content = `rbxassetid://{piece.Id}`
-				if fetch(content) == Enum.AssetFetchStatus.Failure then
+				local status = fetch(content)
+				if status == Enum.AssetFetchStatus.Failure then
 					task.wait(1)
-					if fetch(content) == Enum.AssetFetchStatus.Failure then
+					status = fetch(content)
+					if status == Enum.AssetFetchStatus.Failure then
 						kitFailed[name] = true
 					end
 				end
+				kitStatus[name] = if status then status.Name else "no answer"
 				pending -= 1
 			end)
 		end
@@ -187,7 +191,7 @@ function Theme.PreloadKit(timeout: number?): { string }
 	for name in kitFailed do
 		table.insert(failed, name)
 		warn(
-			`[UI kit] {name} (id {UiKit[name].Id}) didn't load; using the drawn look. Is it an Image id (not a Decal id), and approved?`
+			`[UI kit] {name} (id {UiKit[name].Id}) didn't load (Roblox said: {kitStatus[name] or "?"}); using the drawn look.`
 		)
 	end
 	table.sort(failed)
