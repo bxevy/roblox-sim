@@ -97,6 +97,8 @@ AssetConfig.ModelAssets = {
 		FenceSegment = 103118385802066,
 		-- Supplied by the game's creator: their lamp post.
 		Lamp = 122745821192170,
+		-- Supplied by the game's creator: their tree.
+		Tree = 136607943988536,
 	},
 } :: { [string]: { [string]: number } }
 

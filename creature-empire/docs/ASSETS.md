@@ -134,7 +134,7 @@ Every building and some world pieces can be swapped for your own models, made in
 | Name | Replaces | Notes |
 | --- | --- | --- |
 | `FenceSegment` | The plot fence (curb, posts and rails) | One section of fence built along its **X axis** (left to right). Copies are laid end to end around every plot, slightly stretched to fill each side exactly. About 6–8 studs long works well. |
-| `Tree` | The trees around the world | Placed with a random turn and the size variation of the originals (about 1.2–1.9×). |
+| `Tree` | The trees around the world | Sized to 13 studs tall (unless `KeepSize`), then given a random turn and the size variation of the originals (about 1.2–1.9×). |
 | `Rock` | The rocks around the plaza | Same as trees. |
 | `Lamp` | Lamp posts on the plaza and paths | Scaled to 11 studs tall (unless `KeepSize`); a warm light is added near the top. |
 

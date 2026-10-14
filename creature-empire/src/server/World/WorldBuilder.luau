@@ -21,18 +21,31 @@ local STONE = Color3.fromRGB(160, 156, 150)
 local rng = Random.new(20261013) -- fixed seed: same world every server
 
 -- A hand-made Assets/World/<name> model at `position` (random turn, scaled), if one exists.
-local function customPiece(name: string, parent: Instance, position: Vector3, scale: number, turn: boolean): boolean
+-- With `height`, the model is first sized to that many studs tall (unless it has KeepSize).
+local function customPiece(
+	name: string,
+	parent: Instance,
+	position: Vector3,
+	scale: number,
+	turn: boolean,
+	height: number?
+): boolean
 	local template = CustomModels.Find("World", name)
 	if not template then
 		return false
 	end
 	local yaw = if turn then rng:NextNumber(0, math.pi * 2) else 0
-	CustomModels.Place(template, parent, CFrame.new(position) * CFrame.Angles(0, yaw, 0), { Scale = scale })
+	CustomModels.Place(template, parent, CFrame.new(position) * CFrame.Angles(0, yaw, 0), {
+		Scale = scale,
+		Fit = if height then Vector3.new(math.huge, height, math.huge) else nil,
+	})
 	return true
 end
 
+local TREE_HEIGHT = 13 -- studs at scale 1: imported trees are sized like the built-in ones
+
 local function tree(parent: Instance, position: Vector3, scale: number)
-	if customPiece("Tree", parent, position, scale, true) then
+	if customPiece("Tree", parent, position, scale, true, TREE_HEIGHT) then
 		return
 	end
 	local trunkHeight = 7 * scale
