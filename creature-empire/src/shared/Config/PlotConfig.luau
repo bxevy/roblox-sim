@@ -16,11 +16,11 @@ PlotConfig.FloorHeight = 0.5 -- top surface of the plot floor (Y)
 PlotConfig.FixedLayout = {
 	{ Id = "core", Type = "EmpireCore", X = 10, Z = 10, Rot = 0 },
 	{ Id = "silo", Type = "ResourceSilo", X = 15, Z = 11, Rot = 0 },
-	{ Id = "habitat", Type = "Habitat", X = 2, Z = 18, Rot = 0 },
 	{ Id = "research", Type = "ResearchStation", X = 18, Z = 18, Rot = 0 },
 }
 
 PlotConfig.StarterBuildings = {
+	{ Id = "habitat", Type = "Habitat", X = 2, Z = 18, Rot = 0 },
 	{ Id = "farm1", Type = "MoonpetalFarm", X = 4, Z = 10, Rot = 0 },
 }
 

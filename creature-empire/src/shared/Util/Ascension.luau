@@ -9,6 +9,7 @@ local EconomyConfig = require(Shared.Config.EconomyConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Research = require(script.Parent.Research)
+local Housing = require(script.Parent.Housing)
 
 local Ascension = {}
 
@@ -78,6 +79,8 @@ function Ascension.Apply(data: Types.PlayerData, _now: number): number
 	for _, creature in data.Creatures do
 		creature.Assignment = nil
 	end
+	-- Back to one habitat: the creatures that no longer fit wait in the backpack.
+	Housing.Fit(data)
 	-- Progress
 	data.Ascension.Count += 1
 	data.Ascension.Shards += shards

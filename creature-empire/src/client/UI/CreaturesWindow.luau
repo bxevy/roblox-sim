@@ -188,8 +188,42 @@ function CreaturesWindow.new(ctx: any)
 				}
 			)
 		end
+		-- Backpack: pets that don't fit in a habitat wait here (no work, no following).
+		if info.Stored then
+			Theme.Text(
+				jobCard,
+				"In your backpack: it can't work or follow you until it lives in a habitat.",
+				13,
+				{ TextColor3 = Theme.Colors.Muted }
+			)
+			local takeOut = Theme.Button(
+				jobCard,
+				"Take out to a habitat",
+				"Primary",
+				{ Size = UDim2.fromOffset(220, 36), TextSize = 15 }
+			)
+			takeOut.Activated:Connect(function()
+				local ok, result = ctx.Request("StoreCreature", info.Id, false)
+				if not ok then
+					ctx.Notify(result, "Error")
+				else
+					ctx.Notify(`{info.Name} moved into a habitat.`, "Success")
+				end
+			end)
+		elseif not info.Expedition then
+			local putAway =
+				Theme.Button(jobCard, "Put in backpack", "Ghost", { Size = UDim2.fromOffset(200, 32), TextSize = 14 })
+			putAway.Activated:Connect(function()
+				local ok, result = ctx.Request("StoreCreature", info.Id, true)
+				if not ok then
+					ctx.Notify(result, "Error")
+				else
+					ctx.Notify(`{info.Name} is in your backpack. Its habitat spot is free.`, "Success")
+				end
+			end)
+		end
 		-- Companion: follows you into the wild, helps befriend and gather, and resists heat.
-		if not info.Expedition then
+		if not info.Expedition and not info.Stored then
 			local follow = Theme.Button(
 				jobCard,
 				if info.Companion then "Stop following" else "★ Take with me",
@@ -483,7 +517,12 @@ function CreaturesWindow.new(ctx: any)
 		for id in list do
 			table.insert(ids, id)
 		end
+		-- Pets living on the plot first, then the backpack.
 		table.sort(ids, function(a, b)
+			local sa, sb = list[a].Stored == true, list[b].Stored == true
+			if sa ~= sb then
+				return not sa
+			end
 			return (list[a].ObtainedAt or 0) < (list[b].ObtainedAt or 0)
 		end)
 		if #ids == 0 then
@@ -508,8 +547,20 @@ function CreaturesWindow.new(ctx: any)
 			LayoutOrder = 1,
 		}, layout)
 		Theme.List(side, 8)
+		local empire = State.Get("Empire") or {}
+		Theme.Text(
+			side,
+			`<b>Habitats</b> {empire.HabitatCount or 0} / {empire.HabitatCapacity or 0}   <b>Backpack</b> {empire.BackpackCount or 0} / {empire.BackpackCapacity or 0}`,
+			14,
+			{ TextColor3 = Theme.Colors.Muted }
+		)
+		local backpackHeader = false
 		for _, id in ids do
 			local info = list[id]
+			if info.Stored and not backpackHeader then
+				backpackHeader = true
+				Theme.Text(side, "BACKPACK", 13, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted })
+			end
 			local species = CreatureConfig.Species[info.Species]
 			local rarity = RarityConfig.Get(species.Rarity)
 			local card = Theme.Button(
@@ -532,8 +583,9 @@ function CreaturesWindow.new(ctx: any)
 			})
 			Theme.Text(
 				card,
-				`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> {rarity.Label} · {if info.Assignment
-					then "Working"
+				`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> {rarity.Label} · {if info.Stored
+					then "In backpack"
+					elseif info.Assignment then "Working"
 					else "Idle"}`,
 				13,
 				{
@@ -665,13 +717,15 @@ function CreaturesWindow.new(ctx: any)
 				).Ready
 			table.insert(
 				parts,
-				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}:{info.Name}:{info.Mutation}`
+				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}:{info.Name}:{info.Mutation}:{info.Stored}`
 			)
 		end
 		local buildings = State.Get("Buildings")
 		for id, b in buildings and buildings.List or {} do
 			table.insert(parts, `{id}:{b.Level}:{#b.Assigned}`)
 		end
+		local empire = State.Get("Empire") or {}
+		table.insert(parts, `~housing:{empire.HabitatCapacity}:{empire.BackpackCount}`)
 		table.sort(parts)
 		return table.concat(parts, "|")
 	end
@@ -687,6 +741,7 @@ function CreaturesWindow.new(ctx: any)
 	State.OnChanged("Creatures", markDirty)
 	State.OnChanged("Buildings", markDirty)
 	State.OnChanged("Wallet", markDirty)
+	State.OnChanged("Empire", markDirty)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)

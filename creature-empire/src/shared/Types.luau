@@ -190,6 +190,7 @@ export type CreatureRecord = {
 	WorkCycles: number, -- lifetime count
 	JobCycles: { [string]: number }, -- work cycles per job, used by evolution requirements
 	Expedition: string?, -- id of the expedition it's on (can't work or follow meanwhile)
+	Stored: boolean?, -- in the backpack (Util/Housing): not on the plot, can't work or follow
 	RestUntil: number, -- os.time when it can go on another expedition
 	AbilityReadyAt: number, -- os.time when the active ability can be used again (saved so rejoining does not reset it)
 }

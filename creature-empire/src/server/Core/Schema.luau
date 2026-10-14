@@ -22,10 +22,12 @@ local AscensionConfig = require(Shared.Config.AscensionConfig)
 local SocialConfig = require(Shared.Config.SocialConfig)
 local PlazaConfig = require(Shared.Config.PlazaConfig)
 local SpinConfig = require(Shared.Config.SpinConfig)
+local Formulas = require(Shared.Util.Formulas)
+local Housing = require(Shared.Util.Housing)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 7
+Schema.CURRENT_VERSION = 8
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -191,6 +193,27 @@ Schema.Migrations = {
 		data.Spin = if type(data.Spin) == "table" then data.Spin else { NextFreeAt = 0, Count = 0 }
 		data.Boosts = if type(data.Boosts) == "table" then data.Boosts else {}
 	end,
+	-- v7 -> v8 (habitats update): every Creature Habitat holds 5 creatures and you build
+	-- more instead of upgrading one. Habitat upgrades are refunded (the v7 prices); extra
+	-- creatures move to the backpack in Sanitize (Housing.Fit).
+	[7] = function(data: { [string]: any })
+		if type(data.Buildings) ~= "table" or type(data.Currencies) ~= "table" then
+			return
+		end
+		for _, record in data.Buildings do
+			if type(record) == "table" and record.Type == "Habitat" and type(record.Level) == "number" then
+				for level = 2, math.clamp(math.floor(record.Level), 1, 5) do
+					local gold = Formulas.CostAt(500, 2.6, level - 1)
+					data.Currencies.Gold = (tonumber(data.Currencies.Gold) or 0) + gold
+					if level >= 4 and type(data.Resources) == "table" then
+						data.Resources.RefinedCrystal = (tonumber(data.Resources.RefinedCrystal) or 0)
+							+ Formulas.CostAt(10, 2.6, level - 1)
+					end
+				end
+				record.Level = 1
+			end
+		end
+	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
 -- Runs every migration the profile needs. Returns ok, or false + reason when the profile
@@ -326,6 +349,10 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 		record.ObtainedAt = if isFiniteNumber(record.ObtainedAt) then record.ObtainedAt else now
 		record.Source = if type(record.Source) == "string" then record.Source else "Unknown"
 		record.Tradable = record.Tradable == true
+		record.Stored = if record.Stored == true and record.Expedition == nil then true else nil
+		if record.Stored then
+			record.Assignment = nil
+		end
 		if record.Nickname ~= nil and type(record.Nickname) ~= "string" then
 			record.Nickname = nil
 		end
@@ -452,9 +479,13 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	end
 	if data.Companion ~= nil then
 		local companion = type(data.Companion) == "string" and data.Creatures[data.Companion]
-		if not companion or companion.Expedition or companion.Assignment then
+		if not companion or companion.Expedition or companion.Assignment or companion.Stored then
 			data.Companion = nil
 		end
+	end
+	-- More creatures on the plot than the habitats hold: the extras go to the backpack.
+	for _, id in Housing.Fit(data :: any) do
+		fix(`Creature {id} moved to the backpack`)
 	end
 	for id, at in data.Discoveries do
 		if type(id) ~= "string" or not isFiniteNumber(at) then

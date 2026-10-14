@@ -34,6 +34,7 @@ local FUNCTIONS = {
 	"Befriend", -- (wildId)
 	"SetCompanion", -- (creatureId?) nil = no companion
 	"RenameCreature", -- (creatureId, name) "" restores the species name
+	"StoreCreature", -- (creatureId, putAway: boolean) backpack in / out
 	"Craft", -- (recipeId)
 	"LaunchExpedition", -- (destinationId, { creatureIds }, approach, { supplyIds })
 	"ClaimExpedition", -- (expeditionId)

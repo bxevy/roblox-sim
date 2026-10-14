@@ -101,7 +101,24 @@ local function habitatPoint(entity: Entity): Vector3
 		return entity.Home + Vector3.new(rng:NextNumber(-8, 8), 0, rng:NextNumber(-8, 8))
 	end
 	local plot = entity.Plot :: Folder
-	local habitat = buildingModel(plot, "habitat")
+	-- Each creature calls one of the plot's habitats home (picked by its id, so it stays
+	-- the same), which spreads them across every habitat you build.
+	local habitats = {}
+	local buildings = plot:FindFirstChild("Buildings")
+	local children: { Instance } = if buildings then buildings:GetChildren() else {}
+	for _, model in children do
+		if model:IsA("Model") and model.PrimaryPart and model:GetAttribute("BuildingType") == "Habitat" then
+			table.insert(habitats, model)
+		end
+	end
+	table.sort(habitats, function(a, b)
+		return a.Name < b.Name
+	end)
+	local hash = 0
+	for i = 1, #entity.Id do
+		hash = (hash * 31 + string.byte(entity.Id, i)) % 100003
+	end
+	local habitat: Model? = habitats[hash % math.max(#habitats, 1) + 1]
 	if habitat and habitat.PrimaryPart then
 		local base = habitat.PrimaryPart
 		local half = base.Size * 0.5 - Vector3.new(2.5, 0, 2.5)

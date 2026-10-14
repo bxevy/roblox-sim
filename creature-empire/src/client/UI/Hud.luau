@@ -553,6 +553,9 @@ function Hud.new(ctx: any)
 		local seen = {}
 		local count = 0
 		for id, info in creatures.List do
+			if info.Stored then
+				continue -- in the backpack
+			end
 			count += 1
 			if count > maxSlots then
 				break

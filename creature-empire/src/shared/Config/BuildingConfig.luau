@@ -83,7 +83,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Phase = 1,
 		Levels = {
 			{
-				BuildingLimits = { MoonpetalFarm = 2 },
+				BuildingLimits = { MoonpetalFarm = 2, Habitat = 2 },
 				EmpireBonus = 0,
 			},
 			{
@@ -91,6 +91,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter, Evolution Chamber, Expedition Portal and a Courier Post, +5% creature yield. Opens Emberfall Basin.",
 				BuildingLimits = {
 					MoonpetalFarm = 3,
+					Habitat = 3,
 					CrystalMine = 1,
 					CrystalSmelter = 1,
 					EvolutionChamber = 1,
@@ -104,6 +105,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 3: 4 farms, 2 mines, the Essence Condenser, +10% creature yield, floating rings.",
 				BuildingLimits = {
 					MoonpetalFarm = 4,
+					Habitat = 4,
 					CrystalMine = 2,
 					CrystalSmelter = 1,
 					EssenceCondenser = 1,
@@ -118,6 +120,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 4: 5 farms, 3 mines, 2 smelters, 2 Courier Posts, +15% creature yield, banners of your empire.",
 				BuildingLimits = {
 					MoonpetalFarm = 5,
+					Habitat = 5,
 					CrystalMine = 3,
 					CrystalSmelter = 2,
 					EssenceCondenser = 1,
@@ -132,6 +135,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 				Description = "Tier 5: 6 farms, 4 mines, 2 condensers, +20% creature yield, a beacon of light.",
 				BuildingLimits = {
 					MoonpetalFarm = 6,
+					Habitat = 6,
 					CrystalMine = 4,
 					CrystalSmelter = 2,
 					EssenceCondenser = 2,
@@ -354,25 +358,15 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Id = "Habitat",
 		Name = "Creature Habitat",
 		Category = "Creatures",
-		Description = "Creatures without a job relax and play here. Its level sets how many creatures you can keep.",
+		Description = "Home for 5 creatures. Build more to keep more on your plot; the rest wait in your backpack.",
 		Footprint = { X = 5, Z = 4 },
-		Placeable = false,
-		Fixed = true,
+		Placeable = true,
+		PlaceCost = { Gold = 1500 },
+		PlaceGrowth = 1.8,
+		FreeCount = 1, -- the one every plot starts with
 		Phase = 1,
 		Levels = {
-			{ CreatureCapacity = 6 },
-			{ Cost = gold(500, 2.6, 2), Description = "Room for 10 creatures. A third hutch.", CreatureCapacity = 10 },
-			{ Cost = gold(500, 2.6, 3), Description = "Room for 15 creatures. A bigger pond.", CreatureCapacity = 15 },
-			{
-				Cost = goldAnd(500, 2.6, 4, "RefinedCrystal", 10),
-				Description = "Room for 22 creatures. A play tower.",
-				CreatureCapacity = 22,
-			},
-			{
-				Cost = goldAnd(500, 2.6, 5, "RefinedCrystal", 10),
-				Description = "Room for 30 creatures. A glowing grove.",
-				CreatureCapacity = 30,
-			},
+			{ CreatureCapacity = 5 },
 		},
 	},
 

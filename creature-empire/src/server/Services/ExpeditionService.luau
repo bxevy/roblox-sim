@@ -143,6 +143,9 @@ local function launch(
 		if creature.Expedition then
 			return false, "One of them is already away."
 		end
+		if creature.Stored then
+			return false, "Take your team out of the backpack first."
+		end
 		if creature.RestUntil > now then
 			local species = CreatureConfig.Species[creature.Species]
 			return false,

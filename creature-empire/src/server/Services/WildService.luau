@@ -167,7 +167,7 @@ local function befriend(player: Player, wildId: string): (boolean, any)
 	end
 	local data = PlayerDataService.GetData(player) :: Types.PlayerData
 	if creatureCount(data) >= BuildingService.CreatureCapacity(data) then
-		return false, "Your habitat is full. Upgrade it to make room."
+		return false, "Your habitats and backpack are full. Build another Creature Habitat to make room."
 	end
 	if not EconomyService.Spend(player, { EmberLure = 1 }, "Befriend") then
 		return false, "You need an Ember Lure (craft one at the Trading Post in the plaza)."

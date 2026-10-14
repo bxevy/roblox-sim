@@ -165,6 +165,13 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] The wheel stops on the prize the toast names. 2× Coins doubles the Trading Post prices shown and the gold received. 2× Luck adds a note in the Hatchery and raises the rare-or-better odds shown.
 - [ ] *Developer*: winning the Black Dragon (try `SpinConfig` with its weight raised in Studio only) plays the reveal after the wheel stops, and other players get a toast.
 
+## Habitats and backpack (1.2)
+
+- [ ] A new plot has one habitat; the Creatures window shows "Habitats 0 / 5". The 6th pet you get goes to the backpack with a message, and doesn't appear on the plot.
+- [ ] Build a second Creature Habitat (Build → Creature care, 1,500 gold): capacity becomes 10, and "Take out to a habitat" works for a backpack pet. Pets wander around both habitats.
+- [ ] "Put in backpack" on a working pet stops its job and hides it; on your companion it stops following. A backpack pet can't be assigned, taken along, sent on an expedition or use its ability.
+- [ ] An old save with a level-3 habitat gets the upgrade gold back and keeps 5 pets on the plot.
+
 ## Debugging guide
 
 - **Logs** are structured: `[CE][Tag] message key=value`. Useful tags:

@@ -48,7 +48,7 @@ local function hatch(player: Player, eggId: string): (boolean, any)
 		return false, "Hatch eggs at the Hatchery in the plaza."
 	end
 	if creatureCount(data) >= BuildingService.CreatureCapacity(data) then
-		return false, "Your habitat is full. Upgrade it to make room."
+		return false, "Your habitats and backpack are full. Build another Creature Habitat to make room."
 	end
 	if not EconomyService.Spend(player, egg.Cost, "Hatch " .. eggId) then
 		return false, "You need " .. Format.Cost(egg.Cost, ResourceConfig) .. "."

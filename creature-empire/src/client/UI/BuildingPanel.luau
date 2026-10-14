@@ -1029,7 +1029,7 @@ function BuildingPanel.new(ctx: any)
 		end
 		Theme.Text(
 			card,
-			`Your habitat holds {empire.CreatureCount or 0} / {empire.CreatureCapacity or 6} creatures. Hatched creatures can be traded later on.`,
+			`Room for creatures: {empire.HabitatCount or 0} / {empire.HabitatCapacity or 0} in habitats, {empire.BackpackCount or 0} / {empire.BackpackCapacity or 0} in your backpack. When the habitats are full, new creatures wait in the backpack. Hatched creatures can be traded later on.`,
 			14,
 			{
 				TextColor3 = Theme.Colors.Muted,
@@ -1126,7 +1126,7 @@ function BuildingPanel.new(ctx: any)
 				if button:GetAttribute("Disabled") then
 					ctx.Notify(
 						if full
-							then "Your habitat is full. Upgrade it to make room."
+							then "Your habitats and backpack are full. Build another Creature Habitat to make room."
 							else "You need " .. Format.Cost(egg.Cost, ResourceConfig) .. ".",
 						"Error"
 					)
@@ -1195,13 +1195,22 @@ function BuildingPanel.new(ctx: any)
 		local empire = State.Get("Empire") or {}
 		local card = Window.Section(
 			win.Body,
-			`RESTING CREATURES · {empire.CreatureCount or 0} / {empire.CreatureCapacity or 6} housed`,
+			`HOUSING · {empire.HabitatCount or 0} / {empire.HabitatCapacity or 0} in {empire.Habitats or 0} habitat{if empire.Habitats
+					== 1
+				then ""
+				else "s"} · backpack {empire.BackpackCount or 0} / {empire.BackpackCapacity or 0}`,
 			2
+		)
+		Theme.Text(
+			card,
+			"Each habitat is home to 5 creatures. Build more from the Build menu (Creature care); pets that don't fit wait in your backpack (Creatures window).",
+			13,
+			{ TextColor3 = Theme.Colors.Muted }
 		)
 		local creatures = State.Get("Creatures")
 		local any = false
 		for id, c in creatures and creatures.List or {} do
-			if not c.Assignment then
+			if not c.Assignment and not c.Stored and not c.Expedition then
 				any = true
 				local row = Window.Row(card, 40)
 				Theme.Text(row, `<b>{c.Name}</b> Lv {c.Level}`, 15, {

@@ -7,6 +7,7 @@ local Types = require(Shared.Types)
 local SocialConfig = require(Shared.Config.SocialConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
+local Housing = require(script.Parent.Housing)
 
 export type Offer = { Creatures: { string }, Resources: { [string]: number } }
 -- Limits of the receiving player (from their buildings).
@@ -155,6 +156,7 @@ local function move(fromData: Types.PlayerData, toData: Types.PlayerData, offer:
 		local creature = fromData.Creatures[id]
 		fromData.Creatures[id] = nil
 		creature.Assignment = nil
+		creature.Stored = nil -- moves in on the plot if there's room (Housing.Fit after)
 		toData.Creatures[id] = creature
 		local entry = toData.Collection[creature.Species]
 		if entry then
@@ -177,6 +179,9 @@ end
 function Trade.Apply(dataA: Types.PlayerData, offerA: Offer, dataB: Types.PlayerData, offerB: Offer, now: number)
 	move(dataA, dataB, offerA, now)
 	move(dataB, dataA, offerB, now)
+	-- New arrivals live on the plot while the habitats have room; the rest wait in the backpack.
+	Housing.Fit(dataA)
+	Housing.Fit(dataB)
 	dataA.Stats.Trades = (dataA.Stats.Trades or 0) + 1
 	dataB.Stats.Trades = (dataB.Stats.Trades or 0) + 1
 end

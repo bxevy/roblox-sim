@@ -14,6 +14,7 @@ require("./specs/Phase4.spec")
 require("./specs/Phase5.spec")
 require("./specs/Phase6.spec")
 require("./specs/Plaza.spec")
+require("./specs/Housing.spec")
 
 local results = H.Results
 print(`\n{results.Passed} passed, {results.Failed} failed`)

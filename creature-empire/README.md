@@ -149,6 +149,13 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
   Spins are only ever free; they are never sold. The HUD shows when your next free spin is ready and any boosts that are running.
 - **Schema v7.**
 
+## Added in 1.2 (habitats update)
+
+- **Each Creature Habitat holds 5 creatures.** Build more from the Build menu (Creature care) to keep more pets on your plot: 2 at Empire Core tier 1, up to 6 at tier 5. The second costs 1,500 gold and each after that costs more. Pets spread out across all your habitats.
+- **Backpack.** Pets that don't fit in a habitat wait in your backpack (40 slots). They don't show on the plot, work, follow you or go on expeditions until you take them out. New pets go straight to the backpack when the habitats are full. Open Creatures to put a pet away or take it out.
+- **Old saves:** habitat upgrades are refunded and any pets over the limit move to the backpack.
+- **Schema v8.**
+
 ## Run it
 
 ### Option A: open the built place

@@ -151,7 +151,7 @@ local function reward(fight: Fight)
 				else
 					Remotes.Events.Notify:FireClient(
 						player,
-						"A young Magmaul wanted to join you, but your habitat is full. Defeat the Matriarch again with room to spare.",
+						"A young Magmaul wanted to join you, but your habitats and backpack are full. Defeat the Matriarch again with room to spare.",
 						"Error"
 					)
 					record.Defeats = 0 -- try again next time

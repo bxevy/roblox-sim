@@ -15,6 +15,7 @@ local GameConfig = require(Shared.Config.GameConfig)
 local PlotConfig = require(Shared.Config.PlotConfig)
 local PlazaConfig = require(Shared.Config.PlazaConfig)
 local Spin = require(Shared.Util.Spin)
+local Housing = require(Shared.Util.Housing)
 local Grid = require(Shared.Util.Grid)
 local Research = require(Shared.Util.Research)
 local ResearchConfig = require(Shared.Config.ResearchConfig)
@@ -74,11 +75,9 @@ function BuildingService.UnlockTier(typeId: string): number?
 	return nil
 end
 
--- How many creatures the habitat holds.
+-- How many creatures you can keep in all: habitats plus backpack (Util/Housing).
 function BuildingService.CreatureCapacity(data: Types.PlayerData): number
-	local habitat = data.Buildings.habitat
-	local level = habitat and BuildingConfig.Habitat.Levels[habitat.Level]
-	return level and level.CreatureCapacity or 6
+	return Housing.TotalCapacity(data.Buildings)
 end
 
 -- Why a building cannot be upgraded right now (nil = it can, cost permitting).
@@ -446,10 +445,16 @@ function BuildingService.Start()
 		for _ in profile.Data.Creatures do
 			count += 1
 		end
+		local plot, backpack = Housing.Counts(profile.Data)
 		return {
 			Expansions = table.clone(profile.Data.Expansions),
-			CreatureCount = count,
-			CreatureCapacity = BuildingService.CreatureCapacity(profile.Data),
+			CreatureCount = count, -- every creature you own
+			CreatureCapacity = BuildingService.CreatureCapacity(profile.Data), -- habitats + backpack
+			HabitatCount = plot, -- living on the plot
+			HabitatCapacity = Housing.PlotCapacity(profile.Data.Buildings),
+			Habitats = Housing.Habitats(profile.Data.Buildings),
+			BackpackCount = backpack,
+			BackpackCapacity = Housing.BackpackSize,
 		}
 	end)
 

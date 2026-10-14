@@ -23,6 +23,7 @@ local MutationConfig = require(Shared.Config.MutationConfig)
 local Mutation = require(Shared.Util.Mutation)
 local Research = require(Shared.Util.Research)
 local Spin = require(Shared.Util.Spin)
+local Housing = require(Shared.Util.Housing)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -69,7 +70,8 @@ local function updateAnchor(player: Player, creature: Types.CreatureRecord)
 	a:SetAttribute("Assignment", creature.Assignment or "")
 	local data = PlayerDataService.GetData(player)
 	a:SetAttribute("Companion", data ~= nil and data.Companion == creature.Id)
-	a:SetAttribute("Away", creature.Expedition ~= nil) -- on an expedition: not shown on the plot
+	-- On an expedition or in the backpack: not shown on the plot.
+	a:SetAttribute("Away", creature.Expedition ~= nil or creature.Stored == true)
 	a:SetAttribute("OwnerUserId", player.UserId)
 end
 
@@ -106,6 +108,8 @@ function CreatureService.Grant(
 		JobCycles = {},
 		RestUntil = 0,
 		AbilityReadyAt = 0,
+		-- No room in the habitats: it waits in the backpack.
+		Stored = if Housing.PlotHasRoom(data) then nil else true,
 	}
 	if MutationConfig.RollSources[source] then
 		local multiplier = CreatureService.MutationMultiplier(data)
@@ -126,6 +130,13 @@ function CreatureService.Grant(
 	PlayerDataService.MarkDirty(player)
 	updateAnchor(player, record)
 	StateService.Push(player, "Creatures", "Collection", "Empire")
+	if record.Stored then
+		Remotes.Events.Notify:FireClient(
+			player,
+			`Your habitats are full, so your new {species.Name} is waiting in your backpack.`,
+			"Info"
+		)
+	end
 	local payload: { [string]: any } = {
 		Id = record.Id,
 		Species = speciesId,
@@ -195,6 +206,9 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 	if creature.Expedition then
 		return false, "It's away on an expedition."
 	end
+	if creature.Stored and buildingId ~= nil then
+		return false, `Take {displayName(creature)} out of your backpack first.`
+	end
 	if buildingId ~= nil and data.Companion == creatureId then
 		-- Going to work: it stops following you.
 		data.Companion = nil
@@ -251,6 +265,9 @@ local function setCompanion(player: Player, creatureId: string?): (boolean, any)
 		end
 		if creature.Expedition then
 			return false, "It's away on an expedition."
+		end
+		if creature.Stored then
+			return false, `Take {displayName(creature)} out of your backpack first.`
 		end
 		if creature.Assignment then
 			creature.Assignment = nil -- leaves its job to come with you
@@ -309,6 +326,9 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 	end
 	if creature.Expedition then
 		return false, "It's away on an expedition."
+	end
+	if creature.Stored then
+		return false, `Take {displayName(creature)} out of your backpack first.`
 	end
 	local ability = species.Active
 	if not IMPLEMENTED_ABILITIES[ability.Kind] and not CreatureService.AbilityHandlers[ability.Kind] then
@@ -436,6 +456,7 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 			local task = if data.Companion == id
 				then "Following you"
 				elseif creature.Expedition then "Away on an expedition"
+				elseif creature.Stored then "In your backpack"
 				else "Relaxing in the habitat"
 			if job and building then
 				local rate = ProductionService.GetRate(player, building.Id)
@@ -471,11 +492,70 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 				-- a fresh push.
 				RestUntilServer = Workspace:GetServerTimeNow() + math.max(creature.RestUntil - now, 0),
 				Companion = data.Companion == id,
+				Stored = creature.Stored == true,
 				ObtainedAt = creature.ObtainedAt,
 			}
 		end
 	end
 	return { List = list, StarterChosen = data.StarterChosen }
+end
+
+-- Backpack: put a creature away (it stops working and following) or take it out to live
+-- on the plot (needs room in a habitat).
+local function store(player: Player, creatureId: string, put: boolean): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local creature = data.Creatures[creatureId]
+	if not creature then
+		return false, "That creature isn't yours."
+	end
+	if (creature.Stored == true) == put then
+		return true, nil
+	end
+	if put then
+		if creature.Expedition then
+			return false, "It's away on an expedition."
+		end
+		local _, backpack = Housing.Counts(data)
+		if backpack >= Housing.BackpackSize then
+			return false, `Your backpack is full ({Housing.BackpackSize} creatures).`
+		end
+		local wasCompanion = data.Companion == creatureId
+		Housing.Store(data, creatureId)
+		if wasCompanion then
+			StateService.Push(player, "Exploration")
+		end
+	else
+		if not Housing.PlotHasRoom(data) then
+			return false, "Your habitats are full. Build another Creature Habitat (Build menu) or put a creature away."
+		end
+		creature.Stored = nil
+	end
+	PlayerDataService.MarkDirty(player)
+	updateAnchor(player, creature)
+	ProductionService.Invalidate(player)
+	Events.AssignmentsChanged:Fire(player)
+	StateService.Push(player, "Creatures", "Empire")
+	return true, nil
+end
+
+-- After the buildings change (an Ascension, a trade): moves extras to the backpack.
+function CreatureService.FitToHabitats(player: Player)
+	local data = PlayerDataService.GetData(player)
+	if not data then
+		return
+	end
+	local moved = Housing.Fit(data)
+	if #moved > 0 then
+		PlayerDataService.MarkDirty(player)
+		ProductionService.Invalidate(player)
+		CreatureService.RefreshAll(player)
+		StateService.Push(player, "Creatures", "Empire", "Exploration")
+		Remotes.Events.Notify:FireClient(
+			player,
+			`Your habitats are full: {#moved} creature{if #moved == 1 then "" else "s"} moved to your backpack.`,
+			"Info"
+		)
+	end
 end
 
 -- Nicknames go through Roblox text filtering; an empty name restores the species name.
@@ -548,6 +628,7 @@ function CreatureService.Start()
 	Net.Handle("UseAbility", { Rate = { 4, 1 }, Args = { Check.Id } }, useAbility)
 	Net.Handle("SetCompanion", { Rate = { 4, 1 }, Args = { Check.OptionalId } }, setCompanion)
 	Net.Handle("RenameCreature", { Rate = { 3, 0.2 }, Args = { Check.Id, Check.String } }, rename)
+	Net.Handle("StoreCreature", { Rate = { 8, 3 }, Args = { Check.Id, Check.Boolean } }, store)
 end
 
 return CreatureService
