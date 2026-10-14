@@ -58,6 +58,7 @@ CustomModels.Aliases = {
 	CrystalSmelter = { "Smelter", "Furnace" },
 	EssenceCondenser = { "Condenser" },
 	EvolutionChamber = { "Evolution" },
+	Hatchery = { "Nest", "Incubator", "HatchStand", "EggStand" },
 	FenceSegment = { "Fence" },
 } :: { [string]: { string } }
 
