@@ -63,6 +63,9 @@ AssetConfig.Images = {
 	EmpireShards = "",
 	Moonpetal = "",
 	GameIcon = "",
+	-- Spin Wheel window art (see docs/ASSETS.md). Empty = the wheel drawn in code.
+	SpinWheelFace = "", -- the spinning wheel face: square PNG, slices as in SpinConfig
+	SpinWheelFrame = "", -- optional: a ring/frame drawn on top that doesn't spin
 } :: { [string]: string }
 
 -- Particle textures that ship with the Roblox client.

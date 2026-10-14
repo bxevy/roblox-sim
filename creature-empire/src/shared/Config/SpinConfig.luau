@@ -6,7 +6,7 @@
 export type Prize = {
 	Id: string,
 	Name: string,
-	Short: string, -- text on the wheel segment
+	Short: string, -- text on the wheel segment (two lines)
 	Kind: "Currency" | "Boost" | "Creature",
 	Currency: string?,
 	Amount: number?,
@@ -23,6 +23,10 @@ SpinConfig.BoostSeconds = 30 * 60 -- how long a 2x boost lasts
 SpinConfig.BoostMultiplier = 2
 SpinConfig.MaxBoostSeconds = 6 * 3600 -- boosts stack up to this much time
 SpinConfig.AnimationSeconds = 4.5 -- how long the wheel spins on screen
+-- Where the prizes sit on the wheel picture (degrees, clockwise): the slices go round in
+-- Prizes order and this turns them so 1,000 Gold is at the top, like the creator's art.
+-- Change it if a wheel image (AssetConfig.Images.SpinWheelFace) is laid out differently.
+SpinConfig.WheelOffset = -112.5
 
 SpinConfig.Boosts = {
 	Coins = { Id = "Coins", Name = "2× Coins", Glyph = "●", Description = "Double gold from selling and abilities." },
@@ -39,79 +43,79 @@ SpinConfig.Prizes = {
 	{
 		Id = "Gold500",
 		Name = "500 Gold",
-		Short = "500",
+		Short = "500\nGold",
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 500,
 		Weight = 321,
-		Color = Color3.fromRGB(240, 190, 70),
+		Color = Color3.fromRGB(250, 210, 40),
 	},
 	{
 		Id = "CoinBoost",
 		Name = "2× Coins for 30 minutes",
-		Short = "2× Coins",
+		Short = "2×\nCoins",
 		Kind = "Boost",
 		Boost = "Coins",
 		Weight = 100,
-		Color = Color3.fromRGB(255, 140, 60),
+		Color = Color3.fromRGB(255, 140, 30),
 	},
 	{
 		Id = "Gold1000",
 		Name = "1,000 Gold",
-		Short = "1K",
+		Short = "1,000\nGold",
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 1000,
 		Weight = 220,
-		Color = Color3.fromRGB(110, 200, 120),
+		Color = Color3.fromRGB(40, 215, 140),
 	},
 	{
 		Id = "Essence25",
 		Name = "25 Essence",
-		Short = "25 Ess",
+		Short = "25\nEssence",
 		Kind = "Currency",
 		Currency = "Essence",
 		Amount = 25,
 		Weight = 120,
-		Color = Color3.fromRGB(150, 120, 255),
+		Color = Color3.fromRGB(150, 70, 230),
 	},
 	{
 		Id = "Gold2500",
 		Name = "2,500 Gold",
-		Short = "2.5K",
+		Short = "2,500\nGold",
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 2500,
 		Weight = 100,
-		Color = Color3.fromRGB(80, 170, 255),
+		Color = Color3.fromRGB(40, 215, 240),
 	},
 	{
 		Id = "LuckBoost",
 		Name = "2× Luck for 30 minutes",
-		Short = "2× Luck",
+		Short = "2×\nLuck",
 		Kind = "Boost",
 		Boost = "Luck",
 		Weight = 100,
-		Color = Color3.fromRGB(70, 210, 190),
+		Color = Color3.fromRGB(30, 200, 190),
 	},
 	{
 		Id = "Gold5000",
 		Name = "5,000 Gold",
-		Short = "5K",
+		Short = "5,000\nGold",
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 5000,
 		Weight = 36,
-		Color = Color3.fromRGB(230, 90, 120),
+		Color = Color3.fromRGB(240, 60, 140),
 	},
 	{
 		Id = "BlackDragon",
 		Name = "BLACK DRAGON",
-		Short = "DRAGON",
+		Short = "BLACK\nDRAGON",
 		Kind = "Creature",
 		Species = "BlackDragon",
 		Weight = 3,
-		Color = Color3.fromRGB(30, 26, 36),
+		Color = Color3.fromRGB(28, 22, 52),
 	},
 } :: { Prize }
 

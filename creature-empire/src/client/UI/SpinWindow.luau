@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local SpinConfig = require(Shared.Config.SpinConfig)
+local AssetConfig = require(Shared.Config.AssetConfig)
 local Spin = require(Shared.Util.Spin)
 local Format = require(Shared.Util.Format)
 local Theme = require(script.Parent.Theme)
@@ -16,7 +17,7 @@ local Window = require(script.Parent.Window)
 
 local SpinWindow = {}
 
-local WHEEL = 280 -- pixels across
+local WHEEL = 300 -- pixels across
 local RAYS = 10 -- strips per segment (they fan out to fill it)
 
 local function percent(chance: number): string
@@ -26,95 +27,127 @@ end
 
 function SpinWindow.new(ctx: any)
 	local State = ctx.Controllers.State
-	local win = Window.new(ctx.Gui, "Spin Wheel", "●", Vector2.new(520, 640), ctx.Close)
+	local win = Window.new(ctx.Gui, "Spin Wheel", "●", Vector2.new(540, 680), ctx.Close)
 	Theme.List(win.Body, 10, nil, Enum.HorizontalAlignment.Center)
 
 	------------------------------------------------------------------ The wheel
+	local face = AssetConfig.Images.SpinWheelFace or ""
+	local frameArt = AssetConfig.Images.SpinWheelFrame or ""
 	local holder = Theme.Make("Frame", {
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(WHEEL + 20, WHEEL + 30),
+		Size = UDim2.fromOffset(WHEEL + 40, WHEEL + 40),
 		LayoutOrder = 1,
 	}, win.Body)
 	local wheel = Theme.Make("Frame", {
 		Name = "Wheel",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 8),
+		Position = UDim2.new(0.5, 0, 0.5, 6),
 		Size = UDim2.fromOffset(WHEEL, WHEEL),
-		BackgroundColor3 = Color3.fromRGB(240, 190, 70),
+		BackgroundColor3 = Color3.fromRGB(250, 200, 60),
+		BackgroundTransparency = if face ~= "" then 1 else 0,
 	}, holder)
 	Theme.Corner(wheel, WHEEL)
-	Theme.Stroke(wheel, Color3.fromRGB(120, 80, 20), 0, 3)
-
-	-- A ray is a strip the height of the wheel, turned around the wheel's centre; only its
-	-- top half is painted, so many rays fan out into a coloured slice.
-	local function ray(angle: number, width: number, color: Color3, zIndex: number)
-		local strip = Theme.Make("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(0, width, 1, 0),
-			BackgroundTransparency = 1,
-			Rotation = angle,
-			ZIndex = zIndex,
-		}, wheel)
-		Theme.Make("Frame", {
-			Position = UDim2.fromOffset(0, 6),
-			Size = UDim2.new(1, 0, 0.5, -6),
-			BackgroundColor3 = color,
-			BorderSizePixel = 0,
-			ZIndex = zIndex,
-		}, strip)
-	end
 
 	local count = #SpinConfig.Prizes
 	local slice = 360 / count
-	local rayWidth = math.ceil(math.pi * WHEEL / (count * RAYS)) + 3
-	for index, prize in SpinConfig.Prizes do
-		local start = (index - 1) * slice
-		for k = 0, RAYS - 1 do
-			ray(start + (k + 0.5) * slice / RAYS, rayWidth, prize.Color, 2)
-		end
-		ray(start, 3, Color3.fromRGB(40, 30, 20), 3) -- divider
-		-- The prize name, reading outwards along the middle of its slice.
-		local spoke = Theme.Make("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 1),
+	if face ~= "" then
+		-- The creator's wheel picture turns as one piece.
+		Theme.Make("ImageLabel", {
 			BackgroundTransparency = 1,
-			Rotation = start + slice / 2,
-			ZIndex = 4,
+			Size = UDim2.fromScale(1, 1),
+			Image = face,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 2,
 		}, wheel)
-		Theme.Text(spoke, prize.Short, if prize.Kind == "Creature" then 15 else 18, {
-			FontFace = Theme.Heavy,
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.17),
-			Size = UDim2.fromOffset(90, 24),
-			AutomaticSize = Enum.AutomaticSize.None,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextColor3 = if prize.Kind == "Creature" then Color3.fromRGB(255, 80, 90) else Color3.new(1, 1, 1),
-			TextStrokeTransparency = 0.3,
-			TextWrapped = false,
-			ZIndex = 4,
-		})
+	else
+		Theme.Stroke(wheel, Color3.fromRGB(110, 70, 30), 0, 5)
+		-- A ray is a strip the height of the wheel, turned around the wheel's centre; only
+		-- its top half is painted, so many rays fan out into a coloured slice.
+		local function ray(angle: number, width: number, color: Color3, zIndex: number)
+			local strip = Theme.Make("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.new(0, width, 1, 0),
+				BackgroundTransparency = 1,
+				Rotation = angle,
+				ZIndex = zIndex,
+			}, wheel)
+			Theme.Make("Frame", {
+				Position = UDim2.fromOffset(0, 9),
+				Size = UDim2.new(1, 0, 0.5, -9),
+				BackgroundColor3 = color,
+				BorderSizePixel = 0,
+				ZIndex = zIndex,
+			}, strip)
+			return strip
+		end
+		local rayWidth = math.ceil(math.pi * WHEEL / (count * RAYS)) + 3
+		for index, prize in SpinConfig.Prizes do
+			local start = (index - 1) * slice + SpinConfig.WheelOffset
+			for k = 0, RAYS - 1 do
+				ray(start + (k + 0.5) * slice / RAYS, rayWidth, prize.Color, 2)
+			end
+			ray(start, 4, Color3.fromRGB(90, 55, 25), 3) -- divider
+			-- The prize, two lines reading outwards along the middle of its slice.
+			local spoke = Theme.Make("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				Rotation = start + slice / 2,
+				ZIndex = 4,
+			}, wheel)
+			local dragon = prize.Kind == "Creature"
+			Theme.Text(spoke, prize.Short, if dragon then 15 else 19, {
+				FontFace = Theme.Heavy,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.2),
+				Size = UDim2.fromOffset(92, 44),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				LineHeight = 0.9,
+				TextColor3 = if dragon then Color3.fromRGB(200, 120, 255) else Color3.new(1, 1, 1),
+				TextStrokeColor3 = Color3.fromRGB(40, 25, 10),
+				TextStrokeTransparency = 0,
+				ZIndex = 4,
+			})
+		end
 	end
-	-- Hub and pointer stay still while the wheel turns.
-	local hub = Theme.Make("Frame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 8),
-		Size = UDim2.fromOffset(46, 46),
-		BackgroundColor3 = Color3.fromRGB(240, 190, 70),
-		ZIndex = 5,
-	}, holder)
-	Theme.Corner(hub, 46)
-	Theme.Stroke(hub, Color3.fromRGB(120, 80, 20), 0, 3)
-	Theme.Text(holder, "▼", 34, {
+	if frameArt ~= "" then
+		-- The creator's frame sits over the wheel and stays still.
+		Theme.Make("ImageLabel", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, 6),
+			Size = UDim2.fromOffset(WHEEL + 40, WHEEL + 40),
+			BackgroundTransparency = 1,
+			Image = frameArt,
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 5,
+		}, holder)
+	else
+		-- Hub stays still while the wheel turns.
+		local hub = Theme.Make("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, 6),
+			Size = UDim2.fromOffset(54, 54),
+			BackgroundColor3 = Color3.fromRGB(250, 205, 70),
+			ZIndex = 5,
+		}, holder)
+		Theme.Corner(hub, 54)
+		Theme.Stroke(hub, Color3.fromRGB(110, 70, 30), 0, 4)
+		Theme.Gradient(hub, 1, 0.75)
+	end
+	Theme.Text(holder, "▼", 40, {
 		FontFace = Theme.Heavy,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromOffset(40, 34),
+		Size = UDim2.fromOffset(44, 40),
 		AutomaticSize = Enum.AutomaticSize.None,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextColor3 = Color3.fromRGB(235, 60, 60),
-		TextStrokeTransparency = 0.2,
+		TextStrokeColor3 = Color3.fromRGB(60, 10, 10),
+		TextStrokeTransparency = 0,
 		ZIndex = 6,
 	})
 
@@ -206,7 +239,7 @@ function SpinWindow.new(ctx: any)
 		local index = data.Index :: number
 		local prize = SpinConfig.Prizes[index]
 		-- Turn so the prize's slice stops under the pointer, after a few full turns.
-		local middle = (index - 0.5) * slice
+		local middle = (index - 0.5) * slice + SpinConfig.WheelOffset
 		local current = wheel.Rotation % 360
 		wheel.Rotation = current
 		local wobble = (math.random() - 0.5) * slice * 0.6 -- land anywhere inside the slice

@@ -38,6 +38,8 @@ Formats: OGG or MP3, mono for 3D effects, normalised to about −14 LUFS. Every 
 | --- | --- | --- |
 | `Gold`, `Essence`, `EmpireShards`, `Moonpetal` | 128×128 PNG, transparent | Currency and material icons. Until set, the HUD uses the glyphs ● ✧ ⬢ ✿. |
 | `GameIcon` | 512×512 | Experience icon: a Sproutling, Cindercub and Pebblit around the glowing core crystal. |
+| `SpinWheelFace` | 1024×1024 PNG, transparent corners | The face of the wheel in the Spin Wheel window, seen straight on and centred, with no frame or pointer. It turns as one picture. Slices go clockwise in `SpinConfig.Prizes` order with 1,000 Gold at the top (`SpinConfig.WheelOffset` = -112.5): 1,000 Gold, 25 Essence, 2,500 Gold, 2× Luck, 5,000 Gold, Black Dragon, 500 Gold, 2× Coins. Until set, the wheel is drawn in code. |
+| `SpinWheelFrame` | 1024×1024 PNG, transparent | Optional. A ring or frame (vines, wood, the centre flower) drawn over the wheel. It doesn't turn. Leave the middle see-through. |
 | Thumbnails | 1920×1080 | Upload in the Creator Dashboard (not used by code). |
 
 ## Creature models (optional) → `ReplicatedStorage/Assets/Creatures/<SpeciesId>`
