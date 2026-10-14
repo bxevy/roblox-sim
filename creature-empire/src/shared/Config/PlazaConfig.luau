@@ -22,11 +22,12 @@ export type Station = {
 PlazaConfig.FloorY = 0.55 -- top of the plaza paving
 
 PlazaConfig.Stations = {
-	-- The shop and the wheel flank the spawn; the nest is to the east. The travel gate
-	-- (about 146 degrees) and the leaderboard board (270) keep their places.
-	TradingPost = { Id = "TradingPost", Name = "Trading Post", Action = "Sell & craft", Angle = 36, Radius = 24 },
-	Hatchery = { Id = "Hatchery", Name = "Hatchery", Action = "Hatch eggs", Angle = 90, Radius = 24 },
-	SpinWheel = { Id = "SpinWheel", Name = "Spin Wheel", Action = "Spin", Angle = 324, Radius = 24 },
+	-- One in every other corner of the hexagon, all the same distance from the crystal and
+	-- turned to face it. The other three corners keep the spawn side open and hold the
+	-- travel gate (about 146 degrees) and the leaderboard board (270).
+	TradingPost = { Id = "TradingPost", Name = "Trading Post", Action = "Sell & craft", Angle = 210, Radius = 26 },
+	Hatchery = { Id = "Hatchery", Name = "Hatchery", Action = "Hatch eggs", Angle = 90, Radius = 26 },
+	SpinWheel = { Id = "SpinWheel", Name = "Spin Wheel", Action = "Spin", Angle = 330, Radius = 26 },
 } :: { [string]: Station }
 
 -- How close (studs from a station's centre) a player must be to use it.
