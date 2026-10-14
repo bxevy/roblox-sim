@@ -48,6 +48,8 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		TextWrapped = false,
 	})
 	-- A plain "X": Builder Sans has no "✕" glyph, which showed as an empty box.
+	Theme.Skin(root, "LargeFrame")
+	Theme.Skin(header, "HeaderBanner")
 	local close = Theme.Button(header, "X", "Ghost", {
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -58,6 +60,30 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		FontFace = Theme.Heavy,
 	})
 	close.Activated:Connect(onClose)
+	-- The kit's flower close button replaces the drawn X.
+	local closeArt = Theme.KitImage("CloseButton")
+	if closeArt then
+		for _, child in close:GetChildren() do
+			if
+				child.Name == "Skin"
+				or child.Name == "SkinLabel"
+				or child:IsA("UIStroke")
+				or child:IsA("UIGradient")
+			then
+				child:Destroy()
+			end
+		end
+		close.Text = ""
+		close.BackgroundTransparency = 1
+		Theme.Make("ImageLabel", {
+			Name = "Art",
+			BackgroundTransparency = 1,
+			Image = closeArt,
+			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromScale(1.15, 1.15),
+			Position = UDim2.fromScale(-0.075, -0.075),
+		}, close)
+	end
 
 	local body = Theme.Make("ScrollingFrame", {
 		Name = "Body",

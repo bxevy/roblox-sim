@@ -595,6 +595,13 @@ function CreaturesWindow.new(ctx: any)
 		Theme.Corner(button, 12)
 		Theme.Stroke(button, rarity.Color, 0, 3)
 		Theme.Gradient(button, 1, 0.7)
+		-- The kit's rarity frames (green, blue, purple, gold) when uploaded.
+		local tilePiece = if rarity.Order >= 5
+			then "TileMythic"
+			elseif rarity.Order == 4 then "TileEpic"
+			elseif rarity.Order == 3 then "TileRare"
+			else "TileCommon"
+		Theme.Skin(button, tilePiece)
 		local art = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromOffset(4, 16),

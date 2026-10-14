@@ -42,6 +42,7 @@ function Hud.new(ctx: any)
 
 	type Pill = { Frame: Frame, Label: TextLabel, Value: number }
 	local pills: { [string]: Pill } = {}
+	local WALLET_BADGES: { [string]: string } = { Gold = "BadgeGold", Moonpetal = "BadgeEssence" }
 	local function pill(id: string, order: number): Pill
 		local def = ResourceConfig[id]
 		local frame = Theme.Panel(wallet, {
@@ -52,7 +53,7 @@ function Hud.new(ctx: any)
 		})
 		Theme.Padding(frame, 0, 14)
 		Theme.List(frame, 8, Enum.FillDirection.Horizontal).VerticalAlignment = Enum.VerticalAlignment.Center
-		Theme.Text(frame, def.Icon, 22, {
+		local glyphLabel = Theme.Text(frame, def.Icon, 22, {
 			FontFace = Theme.Heavy,
 			TextColor3 = def.Color,
 			Size = UDim2.fromOffset(22, 30),
@@ -66,6 +67,18 @@ function Hud.new(ctx: any)
 			TextWrapped = false,
 			TextYAlignment = Enum.TextYAlignment.Center,
 		})
+		-- The kit's badges (coin for gold, flower for moonpetals) carry their own icon.
+		local badge = WALLET_BADGES[id]
+		if badge and Theme.Skin(frame, badge) then
+			glyphLabel.Visible = false
+			local padding = frame:FindFirstChildOfClass("UIPadding")
+			if padding then
+				padding.PaddingLeft = UDim.new(0, 48)
+				padding.PaddingRight = UDim.new(0, 18)
+			end
+			label.TextStrokeColor3 = Theme.Colors.TextShadow
+			label.TextStrokeTransparency = 0.3
+		end
 		-- Screen readers / colour-blind players: the name is part of the hover text.
 		frame:SetAttribute("Tooltip", def.Name)
 		local p = { Frame = frame, Label = label, Value = 0 }
@@ -337,15 +350,42 @@ function Hud.new(ctx: any)
 			Size = UDim2.fromOffset(DOCK_SIZE, DOCK_SIZE),
 			LayoutOrder = order,
 		})
-		Theme.Text(button, glyph, if touch then 24 else 28, {
-			FontFace = Theme.Heavy,
-			Position = UDim2.fromOffset(0, 5),
-			Size = UDim2.new(1, 0, 0.55, 0),
-			AutomaticSize = Enum.AutomaticSize.None,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextYAlignment = Enum.TextYAlignment.Center,
-		})
+		-- The kit's round icon (Build, Creatures, Map, Shop, More) replaces the drawn glyph.
+		local icon = Theme.KitImage("Icon" .. label)
+		if icon then
+			for _, child in button:GetChildren() do
+				if
+					child.Name == "Skin"
+					or child.Name == "SkinLabel"
+					or child:IsA("UIStroke")
+					or child:IsA("UIGradient")
+				then
+					child:Destroy()
+				end
+			end
+			button.BackgroundTransparency = 1
+			Theme.Make("ImageLabel", {
+				Name = "Icon",
+				BackgroundTransparency = 1,
+				Image = icon,
+				ScaleType = Enum.ScaleType.Fit,
+				Position = UDim2.fromScale(-0.08, -0.1),
+				Size = UDim2.fromScale(1.16, 1.05),
+			}, button)
+		else
+			Theme.Text(button, glyph, if touch then 24 else 28, {
+				FontFace = Theme.Heavy,
+				Position = UDim2.fromOffset(0, 5),
+				Size = UDim2.new(1, 0, 0.55, 0),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextYAlignment = Enum.TextYAlignment.Center,
+			})
+		end
 		Theme.Text(button, label, 13, {
+			ZIndex = 2,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.2,
 			FontFace = Theme.Bold,
 			AnchorPoint = Vector2.new(0, 1),
 			Position = UDim2.new(0, 0, 1, -7),

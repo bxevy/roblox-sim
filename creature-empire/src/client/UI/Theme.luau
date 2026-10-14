@@ -9,7 +9,10 @@
 -- turns the pops into simple fades.
 
 local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+
+local UiKit = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"):WaitForChild("UiKit"))
 
 local Theme = {}
 
@@ -131,6 +134,59 @@ function Theme.Text(parent: Instance?, text: string, size: number, props: { [str
 	return label
 end
 
+-- The creator's UI kit (Config/UiKit): a picture behind a frame or button, 9-sliced so the
+-- vine corners keep their shape. Returns nil (and changes nothing) while the piece has no
+-- uploaded id, so everything falls back to the drawn wood look.
+function Theme.KitImage(name: string): string?
+	local piece = UiKit[name]
+	return if piece and piece.Id ~= 0 then `rbxassetid://{piece.Id}` else nil
+end
+
+function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
+	local image = Theme.KitImage(name)
+	if not image then
+		return nil
+	end
+	local piece = UiKit[name]
+	local skin = gui:FindFirstChild("Skin") :: ImageLabel?
+	if not skin then
+		local new = Instance.new("ImageLabel")
+		new.Name = "Skin"
+		new.BackgroundTransparency = 1
+		new.Size = UDim2.fromScale(1, 1)
+		new.ZIndex = 0 -- behind the frame's own children
+		new.Parent = gui
+		skin = new
+		-- Keep the corners in proportion to the frame's height.
+		local function rescale()
+			local current = gui:FindFirstChild("Skin") :: ImageLabel?
+			local kit = current and UiKit[current:GetAttribute("Piece") :: string]
+			if current and kit and kit.SliceCenter then
+				local fit = math.min(gui.AbsoluteSize.Y / kit.Size.Y, gui.AbsoluteSize.X / kit.Size.X * 2.5)
+				current.SliceScale = math.clamp(fit, 0.08, 1)
+			end
+		end
+		gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
+		task.defer(rescale)
+	end
+	local s = skin :: ImageLabel
+	s:SetAttribute("Piece", name)
+	s.Image = image
+	if piece.SliceCenter then
+		s.ScaleType = Enum.ScaleType.Slice
+		s.SliceCenter = piece.SliceCenter
+	else
+		s.ScaleType = Enum.ScaleType.Fit
+	end
+	gui.BackgroundTransparency = 1
+	for _, child in gui:GetChildren() do
+		if child:IsA("UIStroke") or child:IsA("UIGradient") then
+			child:Destroy()
+		end
+	end
+	return s
+end
+
 function Theme.Panel(parent: Instance?, props: { [string]: any }?): Frame
 	local frame = Theme.Make("Frame", {
 		BackgroundColor3 = Theme.Colors.Panel,
@@ -144,11 +200,81 @@ function Theme.Panel(parent: Instance?, props: { [string]: any }?): Frame
 	-- A golden trim around every wooden panel.
 	Theme.Stroke(frame, Theme.Colors.Border, 0.15, 2)
 	Theme.Gradient(frame, 1, 0.8)
+	Theme.Skin(frame, "CardFrame")
 	frame.Parent = parent
 	return frame
 end
 
 export type ButtonStyle = "Primary" | "Secondary" | "Gold" | "Danger" | "Ghost"
+
+-- Kit pictures per button style (the green button has its leaf, the orange its coin).
+local STYLE_KIT: { [string]: string } = {
+	Primary = "ButtonGreen",
+	Gold = "ButtonOrange",
+	Secondary = "TabInactive",
+	Ghost = "TabInactive",
+}
+
+-- A kit button draws its text on a label above the picture (a button's own text would be
+-- hidden under it), kept in sync with the button's Text, size, font and colour.
+local function skinButton(button: TextButton, style: string)
+	local kitName = STYLE_KIT[style]
+	local skin = kitName and Theme.Skin(button, kitName)
+	local label = button:FindFirstChild("SkinLabel") :: TextLabel?
+	if not skin then
+		local old = button:FindFirstChild("Skin")
+		if old then
+			old:Destroy() -- a style without kit art (Danger): back to the drawn look
+			button.BackgroundTransparency = 0
+		end
+		if label then
+			label:Destroy()
+			button.TextTransparency = (button:GetAttribute("Disabled") and 0.45) or 0
+			button.TextStrokeTransparency = 0.25
+		end
+		return
+	end
+	if not label then
+		local new = Instance.new("TextLabel")
+		new.Name = "SkinLabel"
+		new.BackgroundTransparency = 1
+		new.Size = UDim2.fromScale(1, 1)
+		new.ZIndex = 2
+		new.TextStrokeColor3 = Theme.Colors.TextShadow
+		new.TextStrokeTransparency = 0.25
+		new.Parent = button
+		label = new
+		local function sync()
+			local l = button:FindFirstChild("SkinLabel") :: TextLabel?
+			if not l then
+				return
+			end
+			l.Text = button.Text
+			l.TextSize = button.TextSize
+			l.FontFace = button.FontFace
+			l.TextColor3 = button.TextColor3
+			l.RichText = button.RichText
+			l.TextWrapped = button.TextWrapped
+			l.TextXAlignment = button.TextXAlignment
+			-- Leave room for the icon painted on the left of the picture.
+			local skinNow = button:FindFirstChild("Skin") :: ImageLabel?
+			local kit = skinNow and UiKit[skinNow:GetAttribute("Piece") :: string]
+			local inset = if kit and kit.SliceCenter
+				then button.AbsoluteSize.Y * (kit.SliceCenter.Min.X / kit.Size.Y) * 0.8
+				else 0
+			l.Position = UDim2.fromOffset(inset, 0)
+			l.Size = UDim2.new(1, -inset - 6, 1, 0)
+			button.TextTransparency = 1
+			button.TextStrokeTransparency = 1
+		end
+		for _, property in { "Text", "TextSize", "FontFace", "TextColor3", "RichText", "AbsoluteSize" } do
+			button:GetPropertyChangedSignal(property):Connect(sync)
+		end
+		task.defer(sync)
+	end
+	local l = label :: TextLabel
+	l.TextTransparency = if button:GetAttribute("Disabled") then 0.45 else 0
+end
 
 local STYLE_COLORS: { [string]: Color3 } = {
 	Primary = Theme.Colors.Primary,
@@ -185,14 +311,22 @@ function Theme.Button(parent: Instance?, text: string, style: ButtonStyle?, prop
 	local scale = Theme.Make("UIScale", { Scale = 1 }, button)
 
 	button:SetAttribute("BaseColor", color)
+	skinButton(button, style or "Secondary")
 	local function hover(on: boolean)
 		if button:GetAttribute("Disabled") then
 			return
 		end
 		local base = button:GetAttribute("BaseColor") :: Color3
-		TweenService
-			:Create(button, FAST, { BackgroundColor3 = if on then base:Lerp(Color3.new(1, 1, 1), 0.12) else base })
-			:Play()
+		local skin = button:FindFirstChild("Skin") :: ImageLabel?
+		if skin then
+			TweenService
+				:Create(skin, FAST, { ImageColor3 = if on then Color3.new(1, 1, 1) else Color3.fromRGB(235, 235, 235) })
+				:Play()
+		else
+			TweenService
+				:Create(button, FAST, { BackgroundColor3 = if on then base:Lerp(Color3.new(1, 1, 1), 0.12) else base })
+				:Play()
+		end
 		if not Theme.ReducedMotion then
 			TweenService:Create(scale, FAST, { Scale = if on then 1.04 else 1 }):Play()
 		end
@@ -230,7 +364,16 @@ function Theme.SetEnabled(button: TextButton, enabled: boolean)
 	button:SetAttribute("Disabled", not enabled)
 	local base = button:GetAttribute("BaseColor") :: Color3
 	button.BackgroundColor3 = if enabled then base else base:Lerp(Color3.fromRGB(40, 44, 56), 0.7)
-	button.TextTransparency = if enabled then 0 else 0.45
+	local skin = button:FindFirstChild("Skin") :: ImageLabel?
+	local label = button:FindFirstChild("SkinLabel") :: TextLabel?
+	if skin then
+		skin.ImageColor3 = if enabled then Color3.fromRGB(235, 235, 235) else Color3.fromRGB(110, 105, 100)
+	end
+	if label then
+		label.TextTransparency = if enabled then 0 else 0.45
+	else
+		button.TextTransparency = if enabled then 0 else 0.45
+	end
 end
 
 function Theme.SetStyle(button: TextButton, style: ButtonStyle)
@@ -238,6 +381,7 @@ function Theme.SetStyle(button: TextButton, style: ButtonStyle)
 	button:SetAttribute("BaseColor", color)
 	button.BackgroundColor3 = color
 	button.TextColor3 = Theme.Colors.Text
+	skinButton(button, style)
 end
 
 -- Horizontal progress bar. Returns the frame and a setter (0..1).

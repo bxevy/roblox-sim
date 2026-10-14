@@ -55,6 +55,23 @@ Formats: OGG or MP3, mono for 3D effects, normalised to about −14 LUFS. Every 
 
 Phase 1 animates creatures procedurally (hop, peck, spin, nap). Rigged models can supply looping `Idle`, `Walk` and `Work` animations of 0.5–1.5 s each. The animator needs a small change to play them; see the roadmap, Phase 6.
 
+## UI kit → `Config/UiKit.luau`
+
+The creator's kit sheet is cut into separate pieces in `art/ui/` (the grey background and the painted words removed). Upload each PNG and put its id in `UiKit.luau`; a piece with id 0 keeps the drawn wood look.
+
+| Piece | Used for |
+| --- | --- |
+| `LargeFrame` | every window |
+| `CardFrame` | HUD panels, shop cards, toasts |
+| `HeaderBanner` | window title bars |
+| `ButtonGreen` / `ButtonOrange` | green (main) and orange (buy, claim) buttons; text is drawn right of the painted icon |
+| `TabInactive` | wood buttons and inactive tabs |
+| `TabActive`, `ProgressBar` | (ready for tabs and bars) |
+| `CloseButton` | the close button of every window |
+| `BadgeGold` / `BadgeEssence` | the gold and moonpetal counters at the top |
+| `TileCommon` / `TileRare` / `TileEpic` / `TileMythic` | creature tiles by rarity (Legendary uses Mythic) |
+| `IconBuild` / `IconCreatures` / `IconMap` / `IconShop` / `IconMore` | the menu buttons on the right |
+
 ## Building models (optional)
 
 Each builder in `server/World/BuildingModels.luau` can be swapped for a cloned model. Keep these conventions:
