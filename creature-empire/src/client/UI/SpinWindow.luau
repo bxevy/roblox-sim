@@ -26,7 +26,10 @@ local FRAME_SCALE = 1.334
 
 local function percent(chance: number): string
 	local value = chance * 100
-	return if value < 1 then string.format("%.1f%%", value) else string.format("%.0f%%", value)
+	-- Exact: whole numbers as "32%", the rest with one decimal ("2.5%", "0.5%").
+	return if math.abs(value - math.round(value)) < 0.001
+		then string.format("%.0f%%", value)
+		else string.format("%.1f%%", value)
 end
 
 -- Shows an uploaded picture. Image ids load directly; a Decal id doesn't, so if it fails

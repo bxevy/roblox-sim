@@ -1200,7 +1200,7 @@ local list: { Types.SpeciesDef } = {
 		Rarity = "Mythic",
 		Phase = 6,
 		Description = "A dragon of living night. Its scales drink the light and its hoard never stops growing.",
-		Discovery = "Only from the Spin Wheel in the plaza (0.3% each spin).",
+		Discovery = "Only from the Spin Wheel in the plaza (0.5% each spin).",
 		StageNames = { "Black Dragon", "Elder Black Dragon", "Eclipse Dragon" },
 		Stats = { CombatPower = 20, Luck = 18, Yield = 15, WorkSpeed = 14, Exploration = 16, AbilityStrength = 16 },
 		Jobs = { Guardian = 1.4, Smelter = 1.2, Alchemist = 1 },

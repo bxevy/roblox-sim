@@ -47,7 +47,7 @@ SpinConfig.Prizes = {
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 500,
-		Weight = 321,
+		Weight = 320,
 		Color = Color3.fromRGB(250, 210, 40),
 	},
 	{
@@ -56,7 +56,7 @@ SpinConfig.Prizes = {
 		Short = "2×\nCoins",
 		Kind = "Boost",
 		Boost = "Coins",
-		Weight = 100,
+		Weight = 150,
 		Color = Color3.fromRGB(255, 140, 30),
 	},
 	{
@@ -66,7 +66,7 @@ SpinConfig.Prizes = {
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 1000,
-		Weight = 220,
+		Weight = 200,
 		Color = Color3.fromRGB(40, 215, 140),
 	},
 	{
@@ -76,7 +76,7 @@ SpinConfig.Prizes = {
 		Kind = "Currency",
 		Currency = "Essence",
 		Amount = 25,
-		Weight = 120,
+		Weight = 150,
 		Color = Color3.fromRGB(150, 70, 230),
 	},
 	{
@@ -95,7 +95,7 @@ SpinConfig.Prizes = {
 		Short = "2×\nLuck",
 		Kind = "Boost",
 		Boost = "Luck",
-		Weight = 100,
+		Weight = 25,
 		Color = Color3.fromRGB(30, 200, 190),
 	},
 	{
@@ -105,7 +105,7 @@ SpinConfig.Prizes = {
 		Kind = "Currency",
 		Currency = "Gold",
 		Amount = 5000,
-		Weight = 36,
+		Weight = 50,
 		Color = Color3.fromRGB(240, 60, 140),
 	},
 	{
@@ -114,7 +114,7 @@ SpinConfig.Prizes = {
 		Short = "BLACK\nDRAGON",
 		Kind = "Creature",
 		Species = "BlackDragon",
-		Weight = 3,
+		Weight = 5,
 		Color = Color3.fromRGB(28, 22, 52),
 	},
 } :: { Prize }
