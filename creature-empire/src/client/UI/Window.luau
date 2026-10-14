@@ -48,16 +48,23 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		TextWrapped = false,
 	})
 	-- A plain "X": Builder Sans has no "✕" glyph, which showed as an empty box.
-	Theme.Skin(root, "LargeFrame")
+	local framed = Theme.Skin(root, "LargeFrame") ~= nil
 	local bannered = Theme.Skin(header, "HeaderBanner") ~= nil
 	if bannered then
-		-- On the kit banner the title sits in the middle, like the mockup's "Empire Shop".
+		-- Like the mockup's "Empire Shop": the banner sits across the top edge of the frame,
+		-- centred, with the title in the middle of it.
+		header.AnchorPoint = Vector2.new(0.5, 0)
+		header.Position = UDim2.new(0.5, 0, 0, -22)
+		header.Size = UDim2.new(0.66, 0, 0, 62)
+		header.ZIndex = 12
 		titleLabel.Text = title
-		titleLabel.Position = UDim2.fromOffset(54, 0)
-		titleLabel.Size = UDim2.new(1, -108, 1, 0)
+		titleLabel.TextSize = 26
+		titleLabel.Position = UDim2.fromOffset(40, 0)
+		titleLabel.Size = UDim2.new(1, -80, 1, 0)
 		titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+		titleLabel.ZIndex = 13
 	end
-	local close = Theme.Button(header, "X", "Ghost", {
+	local close = Theme.Button(if bannered then root else header, "X", "Ghost", {
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0.5, 0),
@@ -67,6 +74,13 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		FontFace = Theme.Heavy,
 	})
 	close.Activated:Connect(onClose)
+	if bannered then
+		-- In the frame's top-right corner, over the vines.
+		close.AnchorPoint = Vector2.new(1, 0)
+		close.Position = UDim2.new(1, 6, 0, -10)
+		close.Size = if Theme.IsTouch() then UDim2.fromOffset(54, 54) else UDim2.fromOffset(46, 46)
+		close.ZIndex = 14
+	end
 	-- The kit's flower close button replaces the drawn X.
 	local closeArt = Theme.KitImage("CloseButton")
 	if closeArt then
@@ -95,8 +109,8 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		Name = "Body",
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(0, 56),
-		Size = UDim2.new(1, 0, 1, -60),
+		Position = UDim2.fromOffset(0, if bannered then 48 else 56),
+		Size = UDim2.new(1, 0, 1, if bannered then -52 else -60),
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollBarThickness = 5,
@@ -104,7 +118,12 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		Selectable = false,
 	}, root)
-	Theme.Padding(body, 12, 16)
+	-- Inside the vines when the kit frame is drawn.
+	if framed then
+		Theme.Padding(body, 12, 32).PaddingBottom = UDim.new(0, 36)
+	else
+		Theme.Padding(body, 12, 16)
+	end
 
 	return {
 		Root = root,
@@ -142,8 +161,8 @@ function Window.Section(parent: Instance, title: string?, order: number?): Frame
 	Theme.Corner(card, 12)
 	-- Drawn outline when the kit picture isn't available.
 	Theme.Stroke(card, Theme.Colors.Border, 0.35, 2)
-	local framed = Theme.Skin(card, "CardFrame") ~= nil
-	Theme.Padding(card, if framed then 18 else 12)
+	local sectionFramed = Theme.Skin(card, "CardFrame", 0.55) ~= nil
+	Theme.Padding(card, if sectionFramed then 22 else 12)
 	Theme.List(card, 8)
 	if title then
 		Theme.Text(card, title, 15, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted, LayoutOrder = -1 })

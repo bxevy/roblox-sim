@@ -217,11 +217,29 @@ local STRIPS: { [string]: boolean } = {
 	HeaderBanner = true,
 	ProgressBar = true,
 }
-local function kitFit(kit: UiKit.Piece, size: Vector2): number
+-- How big frame corners are drawn by default (times the art's size). The art looks right
+-- near full size: smaller, the vines and flowers thin out to a plain edge.
+local FRAME_SCALE: { [string]: number } = {
+	LargeFrame = 0.75,
+	CardFrame = 0.45,
+	TileCommon = 0.6,
+	TileRare = 0.6,
+	TileEpic = 0.6,
+	TileMythic = 0.6,
+}
+local function kitFit(kit: UiKit.Piece, size: Vector2, wanted: number?): number
 	if STRIPS[kit.Name] then
 		return math.max(size.Y / kit.Size.Y, 0.05)
 	end
-	return math.clamp(math.min(size.Y / kit.Size.Y, size.X / kit.Size.X * 2.5), 0.08, 0.4)
+	local s = wanted or FRAME_SCALE[kit.Name] or 0.45
+	local slice = kit.SliceCenter
+	if slice then
+		-- The corners never take more than 80% of the box, so small boxes stay boxes.
+		local edgeX = slice.Min.X + (kit.Size.X - slice.Max.X)
+		local edgeY = slice.Min.Y + (kit.Size.Y - slice.Max.Y)
+		s = math.min(s, size.X * 0.8 / edgeX, size.Y * 0.8 / edgeY)
+	end
+	return math.max(s, 0.08)
 end
 
 -- SliceScale for a kit piece drawn `wanted` times its original size.
@@ -298,10 +316,13 @@ function Theme.PreloadKit(timeout: number?): { string }
 	return failed
 end
 
-function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
+function Theme.Skin(gui: GuiObject, name: string, scale: number?): ImageLabel?
 	local image = Theme.KitImage(name)
 	if not image then
 		return nil
+	end
+	if scale then
+		gui:SetAttribute("KitScale", scale)
 	end
 	-- Panels are ImageLabels: the picture is their own image, so it never takes a slot in
 	-- their UIListLayout / UIGridLayout (a child picture would be stacked like an item).
@@ -321,7 +342,9 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			local function rescale()
 				local kit = UiKit[own:GetAttribute("Piece") :: string]
 				if kit and kit.SliceCenter then
-					own.SliceScale = sliceScale(own, kitFit(kit, own.AbsoluteSize))
+					local wanted = own:GetAttribute("KitScale")
+					own.SliceScale =
+						sliceScale(own, kitFit(kit, own.AbsoluteSize, if type(wanted) == "number" then wanted else nil))
 				end
 			end
 			own:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -344,7 +367,9 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			local current = gui:FindFirstChild("Skin") :: ImageLabel?
 			local kit = current and UiKit[current:GetAttribute("Piece") :: string]
 			if current and kit and kit.SliceCenter then
-				current.SliceScale = sliceScale(current, kitFit(kit, gui.AbsoluteSize))
+				local wanted = gui:GetAttribute("KitScale")
+				current.SliceScale =
+					sliceScale(current, kitFit(kit, gui.AbsoluteSize, if type(wanted) == "number" then wanted else nil))
 			end
 		end
 		gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)

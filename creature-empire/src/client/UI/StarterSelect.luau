@@ -14,14 +14,12 @@ local Viewport = require(script.Parent.Viewport)
 local StarterSelect = {}
 
 -- Card colours and button style per family (the mockup: green, orange, crystal blue).
--- Tile: the kit's vine-framed tile with the matching coloured rim.
-type Look = { Card: Color3, Tile: string, Button: string, ButtonColor: Color3? }
+type Look = { Card: Color3, Button: string, ButtonColor: Color3? }
 local FAMILY_LOOK: { [string]: Look } = {
-	Verdant = { Card = Color3.fromRGB(38, 92, 40), Tile = "TileCommon", Button = "Primary" },
-	Emberkin = { Card = Color3.fromRGB(110, 46, 20), Tile = "TileMythic", Button = "Gold" },
+	Verdant = { Card = Color3.fromRGB(38, 92, 40), Button = "Primary" },
+	Emberkin = { Card = Color3.fromRGB(110, 46, 20), Button = "Gold" },
 	Crystalkin = {
 		Card = Color3.fromRGB(24, 58, 104),
-		Tile = "TileRare",
 		Button = "Danger",
 		ButtonColor = Color3.fromRGB(40, 190, 230),
 	},
@@ -38,8 +36,10 @@ function StarterSelect.new(ctx: any)
 		ZIndex = 10,
 	})
 	Theme.Skin(root, "LargeFrame")
-	Theme.Make("UISizeConstraint", { MaxSize = Vector2.new(820, 620) }, root)
-	Theme.Padding(root, 26, 32)
+	Theme.Make("UISizeConstraint", { MaxSize = Vector2.new(880, 640) }, root)
+	-- Inside the frame's vines (drawn near full size, like the mockup).
+	local rootPad = Theme.Padding(root, 44, 40)
+	rootPad.PaddingBottom = UDim.new(0, 40)
 	local list = Theme.List(root, 6, nil, Enum.HorizontalAlignment.Center)
 	list.VerticalAlignment = Enum.VerticalAlignment.Top
 
@@ -77,31 +77,43 @@ function StarterSelect.new(ctx: any)
 		local species = CreatureConfig.Species[speciesId]
 		local family = CreatureConfig.Families[species.Family]
 		local rarity = RarityConfig.Get(species.Rarity)
-		local look: Look = FAMILY_LOOK[species.Family]
-			or { Card = Theme.Colors.PanelRaised, Tile = "TileCommon", Button = "Primary" }
-		-- A coloured card with a glowing rim and the kit tile's flower corners.
-		local shell = Theme.Make("Frame", {
+		local look: Look = FAMILY_LOOK[species.Family] or { Card = Theme.Colors.PanelRaised, Button = "Primary" }
+		-- The kit's wooden vine card frame (as in the mockup) with the family's colour glowing
+		-- inside it. The shell holds the frame and the tint; the content stacks in its own
+		-- frame, so the list layout never moves them.
+		local shell = Theme.Make("ImageLabel", {
+			Image = "",
 			BackgroundColor3 = look.Card,
-			Size = UDim2.fromOffset(236, 0),
+			Size = UDim2.fromOffset(252, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = index,
 		}, cards)
 		Theme.Corner(shell, 12)
 		Theme.Stroke(shell, family.Color, 0, 3)
 		Theme.Gradient(shell, 1, 0.45)
-		-- The corners sit on the shell; the stacked content goes in its own frame, so the
-		-- list layout never moves the corners.
-		local tiled = Theme.KitCorners(shell, look.Tile, 30)
+		local framed = Theme.Skin(shell, "CardFrame", 0.6) ~= nil
+		if framed then
+			local tint = Theme.Make("Frame", {
+				Name = "Tint",
+				BackgroundColor3 = look.Card,
+				BackgroundTransparency = 0.15,
+				Position = UDim2.fromOffset(22, 22),
+				Size = UDim2.new(1, -44, 1, -44),
+				ZIndex = 0,
+			}, shell)
+			Theme.Corner(tint, 8)
+			Theme.Gradient(tint, 1, 0.35)
+		end
 		local card = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 		}, shell)
-		Theme.Padding(card, 10)
+		Theme.Padding(card, if framed then 28 else 10, if framed then 28 else 10)
 		Theme.List(card, 5, nil, Enum.HorizontalAlignment.Center)
 		local art = Theme.Make("Frame", {
 			BackgroundColor3 = look.Card,
-			BackgroundTransparency = if tiled then 0.15 else 0.4,
+			BackgroundTransparency = 0.6,
 			Size = UDim2.new(1, 0, 0, 120),
 		}, card)
 		Theme.Gradient(art, 1, 0.6)
