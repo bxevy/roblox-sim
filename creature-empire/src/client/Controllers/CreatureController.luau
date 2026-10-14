@@ -469,6 +469,9 @@ local function ownerRoot(entity: Entity): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
+local WADDLE_ROLL = 0.14 -- radians of side-to-side lean per step
+local WALK_LEAN = 0.07 -- radians of forward tip while walking
+
 local function decide(entity: Entity)
 	if entity.Wild then
 		if entity.State ~= "Idle" then
@@ -543,6 +546,7 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 	local hopHeight = if idle then idle.HopHeight else 0.5
 	local bob = 0
 	local tilt = 0
+	local roll = 0
 	local spin = 0
 
 	if entity.State == "Idle" then
@@ -630,6 +634,12 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 			local before = entity.HopPhase
 			entity.HopPhase += move / math.max(speed, 1) * 9
 			bob = math.abs(math.sin(entity.HopPhase)) * hopHeight
+			-- Walk cycle for models without their own animations: lean into each step
+			-- (left, right, left...) and tip forward a little, so they waddle along.
+			if not entity.Tracks then
+				roll = math.sin(entity.HopPhase) * WADDLE_ROLL
+				tilt = math.max(tilt, WALK_LEAN)
+			end
 			if detailed and math.floor(before / math.pi) ~= math.floor(entity.HopPhase / math.pi) then
 				local puff = entity.Model
 					and entity.Model.PrimaryPart
@@ -710,7 +720,7 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 	local y = floorY(entity) + entity.Height + bob
 	return CFrame.new(entity.Position.X, y, entity.Position.Z)
 		* CFrame.Angles(0, entity.Yaw + spin, 0)
-		* CFrame.Angles(-tilt, 0, 0)
+		* CFrame.Angles(-tilt, 0, roll)
 end
 
 -- Tracking anchors ------------------------------------------------------------------------
