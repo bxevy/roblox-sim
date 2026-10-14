@@ -116,6 +116,8 @@ AssetConfig.ModelAssets = {
 		PathSegment = 114265486516183,
 		-- Supplied by the game's creator: their spin wheel for the plaza.
 		SpinWheel = 130534185782423,
+		-- Supplied by the game's creator: their wishing well for the middle of the plaza.
+		FoundersCrystal = 115015422265124,
 		-- Supplied by the game's creator: their tree.
 		Tree = 136607943988536,
 	},

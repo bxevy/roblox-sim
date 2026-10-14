@@ -304,6 +304,55 @@ local function buildStations(plaza: Instance)
 end
 
 local PLAZA_APOTHEM = 35 -- studs from the centre to the middle of each side (where paths start)
+local CENTREPIECE_HEIGHT = 18 -- studs: a hand-made centrepiece is scaled to this height
+
+-- Swimmable water inside a hand-made well in the middle of the plaza. Imported meshes often
+-- collide as a solid lump, so the well's own parts stop colliding and an invisible ring
+-- wall keeps people out unless they jump over the rim into the water.
+-- A part named "Water" in the model marks the water exactly (its size and height);
+-- without one, the water fills the middle of the well up to about a fifth of its height.
+local function wellWater(parent: Instance, well: Model, size: Vector3)
+	local floor = PlazaConfig.FloorY
+	local marker = well:FindFirstChild("Water", true)
+	local radius: number
+	local top: number
+	if marker and marker:IsA("BasePart") then
+		radius = math.min(marker.Size.X, marker.Size.Z) / 2
+		top = marker.Position.Y + marker.Size.Y / 2
+		marker.Transparency = 1
+		marker.CanCollide = false
+		marker.CanQuery = false
+	else
+		radius = math.min(size.X, size.Z) * 0.36
+		top = floor + size.Y * 0.22
+	end
+	radius = math.max(radius, 2)
+	top = math.max(top, floor + 2)
+	for _, d in well:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CanCollide = false
+		end
+	end
+	-- The rim: a ring of invisible wall segments a little higher than the water.
+	local rimHeight = top - floor + 1
+	local segments = 24
+	local wall = 2 * math.pi * (radius + 0.5) / segments + 0.4
+	for i = 0, segments - 1 do
+		local angle = i / segments * math.pi * 2
+		local at =
+			Vector3.new(math.sin(angle) * (radius + 0.5), floor + rimHeight / 2, math.cos(angle) * (radius + 0.5))
+		local rim = Parts.Part(parent, {
+			Name = "WellRim",
+			Size = Vector3.new(wall, rimHeight, 1),
+			CFrame = CFrame.lookAt(at, Vector3.new(0, at.Y, 0)),
+			Transparency = 1,
+			CastShadow = false,
+		})
+		rim.CanQuery = false
+	end
+	local depth = top - floor
+	Workspace.Terrain:FillCylinder(CFrame.new(0, floor + depth / 2, 0), depth, radius, Enum.Material.Water)
+end
 
 -- A flat hexagon (0.5 thick, centred at height `y`) whose sides face the path directions:
 -- three overlapping slabs turned 60 degrees apart.
@@ -351,14 +400,15 @@ local function buildPlaza(folder: Folder)
 		hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
 	end
 
-	-- Founders' Crystal monument (or a hand-made one, about 22 studs tall)
+	-- Founders' Crystal monument, or a hand-made centrepiece (the creator's wishing well)
 	local crystalModel = CustomModels.Find("World", "FoundersCrystal")
 	local labelAnchor: BasePart
 	if crystalModel then
 		local placed = CustomModels.Place(crystalModel, plaza, CFrame.new(0, PlazaConfig.FloorY, 0), {
-			Fit = Vector3.new(math.huge, 22, math.huge),
+			Fit = Vector3.new(math.huge, CENTREPIECE_HEIGHT, math.huge),
 		})
 		local center, size = CustomModels.Bounds(placed)
+		wellWater(plaza, placed, size)
 		labelAnchor = Parts.Decor(plaza, {
 			Name = "FoundersCrystal",
 			Size = Vector3.new(1, 1, 1),
@@ -407,11 +457,6 @@ local function buildPlaza(folder: Folder)
 	local decal = spawn:FindFirstChildOfClass("Decal")
 	if decal then
 		decal:Destroy()
-	end
-
-	for i = 1, 24 do
-		local angle = i / 24 * math.pi * 2
-		wildPetal(plaza, Vector3.new(math.sin(angle) * 9, 3.4, math.cos(angle) * 9))
 	end
 
 	buildStations(plaza)
