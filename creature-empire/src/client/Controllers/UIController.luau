@@ -186,12 +186,13 @@ local function updateScale(scale: UIScale)
 		return
 	end
 	local size = camera.ViewportSize
-	-- 1.0 at 1280x720; phones go down to 0.72 so text stays readable; TVs a bit larger.
-	local s = math.min(size.X / 1280, size.Y / 720)
+	-- 1.0 at 1600x900, so big monitors don't blow the interface up; phones go down to
+	-- 0.62 so text stays readable; TVs a bit larger.
+	local s = math.min(size.X / 1600, size.Y / 900)
 	if GuiService:IsTenFootInterface() then
 		s *= 1.15
 	end
-	scale.Scale = math.clamp(s, 0.72, 1.35)
+	scale.Scale = math.clamp(s, 0.62, 1.05)
 end
 
 function UIController.Start(controllers: { [string]: any })

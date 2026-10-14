@@ -315,7 +315,7 @@ function Hud.new(ctx: any)
 	local touch = Theme.IsTouch()
 	-- Phones: a slightly smaller dock, centred a little high so it stays clear of the
 	-- jump button in the bottom-right corner.
-	local DOCK_SIZE = if touch then 62 else 72
+	local DOCK_SIZE = if touch then 58 else 64
 
 	local dock = Theme.Make("Frame", {
 		Name = "Menu",

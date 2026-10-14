@@ -202,8 +202,9 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			local current = gui:FindFirstChild("Skin") :: ImageLabel?
 			local kit = current and UiKit[current:GetAttribute("Piece") :: string]
 			if current and kit and kit.SliceCenter then
+				-- Corners in proportion to the frame, but never chunky: at most 40% of the art.
 				local fit = math.min(gui.AbsoluteSize.Y / kit.Size.Y, gui.AbsoluteSize.X / kit.Size.X * 2.5)
-				current.SliceScale = math.clamp(fit, 0.08, 1)
+				current.SliceScale = math.clamp(fit, 0.08, 0.4)
 			end
 		end
 		gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
