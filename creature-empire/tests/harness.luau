@@ -142,6 +142,7 @@ local function load(node)
 		NumberSequence = roblox.NumberSequence,
 		ColorSequence = roblox.ColorSequence,
 		NumberRange = roblox.NumberRange,
+		Rect = roblox.Rect,
 		warn = function(...)
 			print("[warn]", ...)
 		end,
