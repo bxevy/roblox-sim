@@ -139,13 +139,72 @@ end
 -- uploaded id, so everything falls back to the drawn wood look.
 local kitFailed: { [string]: boolean } = {}
 local kitStatus: { [string]: string } = {}
+-- Pieces shown through their Roblox thumbnail, because the direct image link wouldn't load
+-- (it happens in some Studio setups). The thumbnail is the picture fitted into a 420x420
+-- square, so the code crops back to the picture and scales its 9-slice numbers to match.
+local kitThumb: { [string]: boolean } = {}
+local THUMB = 420
 
 function Theme.KitImage(name: string): string?
 	local piece = UiKit[name]
 	if not piece or piece.Id == 0 or kitFailed[name] then
 		return nil
 	end
+	if kitThumb[name] then
+		return `rbxthumb://type=Asset&id={piece.Id}&w={THUMB}&h={THUMB}`
+	end
 	return `rbxassetid://{piece.Id}`
+end
+
+-- How many on-screen picture pixels one pixel of the original art is (1, or less for a
+-- thumbnail), and where the art sits inside the picture.
+local function kitGeometry(name: string): (number, Vector2)
+	local piece = UiKit[name]
+	if not kitThumb[name] then
+		return 1, Vector2.zero
+	end
+	local f = THUMB / math.max(piece.Size.X, piece.Size.Y)
+	local size = piece.Size * f
+	return f, Vector2.new(math.floor((THUMB - size.X) / 2), math.floor((THUMB - size.Y) / 2))
+end
+
+local function scaleRect(rect: Rect, f: number): Rect
+	return Rect.new(rect.Min * f, rect.Max * f)
+end
+
+-- Puts a kit piece on an image (or part of it: `part` is a rect in the original art, like
+-- an icon's symbol). Returns the factor to divide SliceScale by, or nil if unavailable.
+function Theme.KitApply(label: ImageLabel | ImageButton, name: string, part: Rect?): number?
+	local image = Theme.KitImage(name)
+	if not image then
+		return nil
+	end
+	local piece = UiKit[name]
+	local f, origin = kitGeometry(name)
+	local area = part or Rect.new(Vector2.zero, piece.Size)
+	local target = label :: any
+	target.Image = image
+	if f ~= 1 or part then
+		target.ImageRectOffset = origin + area.Min * f
+		target.ImageRectSize = (area.Max - area.Min) * f
+	else
+		target.ImageRectOffset = Vector2.zero
+		target.ImageRectSize = Vector2.zero
+	end
+	if piece.SliceCenter and not part then
+		target.ScaleType = Enum.ScaleType.Slice
+		target.SliceCenter = scaleRect(piece.SliceCenter, f)
+	else
+		target.ScaleType = Enum.ScaleType.Fit
+	end
+	target:SetAttribute("KitFactor", f)
+	return f
+end
+
+-- SliceScale for a kit piece drawn `wanted` times its original size.
+local function sliceScale(label: GuiObject, wanted: number): number
+	local f = label:GetAttribute("KitFactor")
+	return wanted / (if type(f) == "number" and f > 0 then f else 1)
 end
 
 -- Loads every uploaded kit picture once, before the interface is built (behind the loading
@@ -169,14 +228,16 @@ function Theme.PreloadKit(timeout: number?): { string }
 			pending += 1
 			total += 1
 			task.spawn(function()
-				local content = `rbxassetid://{piece.Id}`
-				local status = fetch(content)
+				local status = fetch(`rbxassetid://{piece.Id}`)
 				if status == Enum.AssetFetchStatus.Failure then
-					task.wait(1)
-					status = fetch(content)
-					if status == Enum.AssetFetchStatus.Failure then
+					-- The direct link is refused: try the picture's thumbnail instead.
+					local thumb = fetch(`rbxthumb://type=Asset&id={piece.Id}&w={THUMB}&h={THUMB}`)
+					if thumb == Enum.AssetFetchStatus.Failure then
 						kitFailed[name] = true
+					else
+						kitThumb[name] = true
 					end
+					status = thumb
 				end
 				kitStatus[name] = if status then status.Name else "no answer"
 				pending -= 1
@@ -195,7 +256,11 @@ function Theme.PreloadKit(timeout: number?): { string }
 		)
 	end
 	table.sort(failed)
-	print(`[UI kit] {total - #failed} of {total} pictures loaded.`)
+	local thumbs = 0
+	for _ in kitThumb do
+		thumbs += 1
+	end
+	print(`[UI kit] {total - #failed} of {total} pictures loaded ({thumbs} through their thumbnail).`)
 	return failed
 end
 
@@ -204,16 +269,11 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 	if not image then
 		return nil
 	end
-	local piece = UiKit[name]
 	-- Panels are ImageLabels: the picture is their own image, so it never takes a slot in
 	-- their UIListLayout / UIGridLayout (a child picture would be stacked like an item).
 	if gui:IsA("ImageLabel") then
 		local own = gui :: ImageLabel
-		own.Image = image
-		own.ScaleType = if piece.SliceCenter then Enum.ScaleType.Slice else Enum.ScaleType.Fit
-		if piece.SliceCenter then
-			own.SliceCenter = piece.SliceCenter
-		end
+		Theme.KitApply(own, name)
 		own:SetAttribute("Piece", name)
 		own.BackgroundTransparency = 1
 		-- The drawn trim and shading switch off (kept, since other code recolours them).
@@ -228,7 +288,7 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 				local kit = UiKit[own:GetAttribute("Piece") :: string]
 				if kit and kit.SliceCenter then
 					local fit = math.min(own.AbsoluteSize.Y / kit.Size.Y, own.AbsoluteSize.X / kit.Size.X * 2.5)
-					own.SliceScale = math.clamp(fit, 0.08, 0.4)
+					own.SliceScale = sliceScale(own, math.clamp(fit, 0.08, 0.4))
 				end
 			end
 			own:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -253,7 +313,7 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 			if current and kit and kit.SliceCenter then
 				-- Corners in proportion to the frame, but never chunky: at most 40% of the art.
 				local fit = math.min(gui.AbsoluteSize.Y / kit.Size.Y, gui.AbsoluteSize.X / kit.Size.X * 2.5)
-				current.SliceScale = math.clamp(fit, 0.08, 0.4)
+				current.SliceScale = sliceScale(current, math.clamp(fit, 0.08, 0.4))
 			end
 		end
 		gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
@@ -261,13 +321,7 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 	end
 	local s = skin :: ImageLabel
 	s:SetAttribute("Piece", name)
-	s.Image = image
-	if piece.SliceCenter then
-		s.ScaleType = Enum.ScaleType.Slice
-		s.SliceCenter = piece.SliceCenter
-	else
-		s.ScaleType = Enum.ScaleType.Fit
-	end
+	Theme.KitApply(s, name)
 	gui.BackgroundTransparency = 1
 	for _, child in gui:GetChildren() do
 		if child:IsA("UIStroke") or child:IsA("UIGradient") then
@@ -519,14 +573,12 @@ function Theme.KitBar(parent: Instance?, color: Color3, height: number): (GuiObj
 	local track = Theme.Make("ImageLabel", {
 		Name = "KitBar",
 		BackgroundTransparency = 1,
-		Image = image,
-		ScaleType = Enum.ScaleType.Slice,
-		SliceCenter = piece.SliceCenter,
 		Size = UDim2.new(1, 0, 0, height),
 	}, parent)
+	Theme.KitApply(track, "ProgressBar")
 	-- The groove inside the art: x 68..478, y 38..66 of 556x110.
 	local s = height / piece.Size.Y
-	track.SliceScale = s
+	track.SliceScale = sliceScale(track, s)
 	local groove = Theme.Make("Frame", {
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
@@ -557,11 +609,8 @@ function Theme.KitIcon(parent: Instance?, name: string, props: { [string]: any }
 	local icon = Theme.Make("ImageLabel", {
 		Name = "Icon",
 		BackgroundTransparency = 1,
-		Image = image,
-		ImageRectOffset = inner.Min,
-		ImageRectSize = inner.Max - inner.Min,
-		ScaleType = Enum.ScaleType.Fit,
 	}, parent)
+	Theme.KitApply(icon, name, inner)
 	Theme.Corner(icon, 999)
 	local extra: { [string]: any } = props or {}
 	for key, value in extra do

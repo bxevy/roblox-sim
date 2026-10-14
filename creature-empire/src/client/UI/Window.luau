@@ -75,14 +75,13 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		end
 		close.Text = ""
 		close.BackgroundTransparency = 1
-		Theme.Make("ImageLabel", {
+		local art = Theme.Make("ImageLabel", {
 			Name = "Art",
 			BackgroundTransparency = 1,
-			Image = closeArt,
-			ScaleType = Enum.ScaleType.Fit,
 			Size = UDim2.fromScale(1.15, 1.15),
 			Position = UDim2.fromScale(-0.075, -0.075),
 		}, close)
+		Theme.KitApply(art, "CloseButton")
 	end
 
 	local body = Theme.Make("ScrollingFrame", {

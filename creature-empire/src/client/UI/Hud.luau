@@ -292,7 +292,8 @@ function Hud.new(ctx: any)
 		Theme.Make("ImageLabel", {
 			Name = "Wheel",
 			BackgroundTransparency = 1,
-			Image = `rbxassetid://{wheelId}`,
+			-- The thumbnail link: it loads even where direct picture links are refused.
+			Image = `rbxthumb://type=Asset&id={wheelId}&w=150&h=150`,
 			ScaleType = Enum.ScaleType.Fit,
 			Size = UDim2.fromOffset(44, 44),
 			LayoutOrder = 1,
