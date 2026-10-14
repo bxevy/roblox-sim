@@ -389,8 +389,8 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 		or ability.Kind == "Collect"
 		or ability.Kind == "Mutate"
 		or CreatureService.AbilityHandlers[ability.Kind] ~= nil
-	if COMPANION_ABILITIES[ability.Kind] and data.Companion ~= creatureId then
-		return false, `Take {displayName(creature)} with you first (Creatures window → Take with me).`
+	if COMPANION_ABILITIES[ability.Kind] and not Team.Has(data, creatureId) then
+		return false, `Take {displayName(creature)} on your Active Team first (Creatures window → Equip to team).`
 	end
 	if (ability.RequiresAssignment or not anywhere) and not buildingId then
 		return false, `Assign {displayName(creature)} to a job first.`

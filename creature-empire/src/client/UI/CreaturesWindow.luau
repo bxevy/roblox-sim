@@ -29,7 +29,7 @@ end
 
 function CreaturesWindow.new(ctx: any)
 	local State = ctx.Controllers.State
-	local win = Window.new(ctx.Gui, "Creatures", "❦", Vector2.new(900, 600), ctx.Close)
+	local win = Window.new(ctx.Gui, "My Creatures", "❦", Vector2.new(940, 660), ctx.Close)
 	Theme.List(win.Body, 10)
 
 	local selected: string? = nil
@@ -86,7 +86,7 @@ function CreaturesWindow.new(ctx: any)
 
 		local column = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.new(1, -250, 0, 0),
+			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = 2,
 		}, parent)
@@ -222,25 +222,58 @@ function CreaturesWindow.new(ctx: any)
 				end
 			end)
 		end
-		-- Companion: follows you into the wild, helps befriend and gather, and resists heat.
+		-- Active Team: up to 3 follow you; the leader's skills count in the wild.
 		if not info.Expedition and not info.Stored then
-			local follow = Theme.Button(
-				jobCard,
-				if info.Companion then "Stop following" else "★ Take with me",
-				if info.Companion then "Secondary" else "Gold",
-				{ Size = UDim2.fromOffset(200, 36), TextSize = 15 }
-			)
-			follow.Activated:Connect(function()
-				local ok, result = ctx.Request("SetCompanion", if info.Companion then nil else info.Id)
-				if not ok then
-					ctx.Notify(result, "Error")
-				elseif not info.Companion then
-					ctx.Notify(
-						`{info.Name} will follow you. Companions help you befriend wild creatures and gather.`,
-						"Success"
+			local teamRow = Window.Row(jobCard, 40)
+			if info.Companion then
+				local unequip = Theme.Button(teamRow, "Unequip from team", "Secondary", {
+					Size = UDim2.fromOffset(190, 36),
+					TextSize = 15,
+				})
+				unequip.Activated:Connect(function()
+					local ok, result = ctx.Request("EquipCreature", info.Id, false)
+					if not ok then
+						ctx.Notify(result, "Error")
+					end
+				end)
+				if not info.Leader then
+					local lead = Theme.Button(
+						teamRow,
+						"★ Make leader",
+						"Gold",
+						{ Size = UDim2.fromOffset(160, 36), TextSize = 15 }
 					)
+					lead.Activated:Connect(function()
+						local ok, result = ctx.Request("SetCompanion", info.Id)
+						if not ok then
+							ctx.Notify(result, "Error")
+						end
+					end)
+				else
+					Theme.Chip(teamRow, "★ Team leader", Theme.Colors.Gold)
 				end
-			end)
+			else
+				local join = Theme.Button(
+					teamRow,
+					"★ Equip to team",
+					"Gold",
+					{ Size = UDim2.fromOffset(190, 36), TextSize = 15 }
+				)
+				join.Activated:Connect(function()
+					local ok, result = ctx.Request("EquipCreature", info.Id, true)
+					if not ok then
+						ctx.Notify(result, "Error")
+					else
+						ctx.Notify(`{info.Name} joined your Active Team and follows you.`, "Success")
+					end
+				end)
+			end
+			Theme.Text(
+				jobCard,
+				"Your Active Team (up to 3) follows you. The leader's family and skills help with heat, befriending and gathering.",
+				12,
+				{ TextColor3 = Theme.Colors.Muted }
+			)
 		end
 		if info.SpeedMultiplier then
 			Theme.Text(
@@ -510,97 +543,310 @@ function CreaturesWindow.new(ctx: any)
 		)
 	end
 
-	local function renderMine()
-		local creatures = State.Get("Creatures")
-		local list = creatures and creatures.List or {}
+	local SORTS = { "Rarity", "Level", "Newest", "Family" }
+	local sortMode = 1
+	local inspecting = false
+
+	local function rarityOrder(info: any): number
+		local species = CreatureConfig.Species[info.Species]
+		return RarityConfig.Get(species and species.Rarity or "Common").Order
+	end
+
+	local function sortedIds(list: { [string]: any }): { string }
 		local ids = {}
 		for id in list do
 			table.insert(ids, id)
 		end
-		-- Pets living on the plot first, then the backpack.
+		local mode = SORTS[sortMode]
 		table.sort(ids, function(a, b)
-			local sa, sb = list[a].Stored == true, list[b].Stored == true
-			if sa ~= sb then
-				return not sa
+			local x, y = list[a], list[b]
+			if mode == "Rarity" and rarityOrder(x) ~= rarityOrder(y) then
+				return rarityOrder(x) > rarityOrder(y)
+			elseif mode == "Level" and x.Level ~= y.Level then
+				return x.Level > y.Level
+			elseif mode == "Newest" and (x.ObtainedAt or 0) ~= (y.ObtainedAt or 0) then
+				return (x.ObtainedAt or 0) > (y.ObtainedAt or 0)
+			elseif mode == "Family" then
+				local fx = CreatureConfig.Species[x.Species].Family
+				local fy = CreatureConfig.Species[y.Species].Family
+				if fx ~= fy then
+					return fx < fy
+				end
 			end
-			return (list[a].ObtainedAt or 0) < (list[b].ObtainedAt or 0)
+			if x.Level ~= y.Level then
+				return x.Level > y.Level
+			end
+			return a < b
 		end)
-		if #ids == 0 then
+		return ids
+	end
+
+	-- A creature tile: rarity frame, level badge, portrait, name and rarity.
+	local function tile(parent: Instance, info: any, size: Vector2, order: number): TextButton
+		local species = CreatureConfig.Species[info.Species]
+		local rarity = RarityConfig.Get(species.Rarity)
+		local button = Theme.Make("TextButton", {
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = rarity.Color:Lerp(Theme.Colors.PanelSunken, 0.72),
+			Size = UDim2.fromOffset(size.X, size.Y),
+			LayoutOrder = order,
+		}, parent)
+		Theme.Corner(button, 12)
+		Theme.Stroke(button, rarity.Color, 0, 3)
+		Theme.Gradient(button, 1, 0.7)
+		local art = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromOffset(4, 16),
+			Size = UDim2.new(1, -8, 1, -54),
+		}, button)
+		Viewport.Creature(art, info.Species, nil, { Stage = info.Stage, Mutation = info.Mutation })
+		Theme.Text(button, `Lv. {info.Level}`, 13, {
+			FontFace = Theme.Bold,
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -6, 0, 3),
+			Size = UDim2.fromOffset(56, 16),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextStrokeTransparency = 0.3,
+		})
+		if info.Companion then
+			Theme.Text(button, "★", 16, {
+				FontFace = Theme.Heavy,
+				Position = UDim2.fromOffset(6, 1),
+				Size = UDim2.fromOffset(18, 18),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextColor3 = Theme.Colors.Gold,
+				TextStrokeTransparency = 0.3,
+			})
+		end
+		Theme.Text(button, info.Name, 14, {
+			FontFace = Theme.Bold,
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 4, 1, -20),
+			Size = UDim2.new(1, -8, 0, 16),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextWrapped = false,
+			TextScaled = true,
+			TextStrokeTransparency = 0.4,
+		})
+		local status = if info.Stored then "In backpack" elseif info.Expedition then "Exploring" else rarity.Label
+		Theme.Text(button, `<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> {status}`, 11, {
+			AnchorPoint = Vector2.new(0, 1),
+			Position = UDim2.new(0, 4, 1, -4),
+			Size = UDim2.new(1, -8, 0, 14),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextColor3 = Theme.Colors.Muted,
+		})
+		button.Activated:Connect(function()
+			selected = info.Id
+			inspecting = true
+			render()
+		end)
+		return button
+	end
+
+	local function renderInspect(list: { [string]: any })
+		local back = Theme.Button(content, "‹ Back to My Creatures", "Secondary", {
+			Size = UDim2.fromOffset(240, 36),
+			TextSize = 15,
+			LayoutOrder = 0,
+		})
+		back.Activated:Connect(function()
+			inspecting = false
+			render()
+		end)
+		detail(content, list[selected :: string])
+	end
+
+	local function renderMine()
+		local creatures = State.Get("Creatures")
+		local list = creatures and creatures.List or {}
+		if next(list) == nil then
 			Theme.Text(content, "You don't have any creatures yet.", 18)
 			return
 		end
-		if not selected or not list[selected] then
-			selected = ids[1]
+		if inspecting and selected and list[selected] then
+			renderInspect(list)
+			return
 		end
+		inspecting = false
+		local empire = State.Get("Empire") or {}
+		local team: { string } = creatures.Team or {}
+		local teamSize = creatures.TeamSize or 3
 
-		local layout = Theme.Make(
-			"Frame",
-			{ BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y },
-			content
+		-- Header counts
+		Theme.Text(
+			content,
+			`<b>Equipped:</b> {#team}/{teamSize}   ·   <b>Storage:</b> {empire.CreatureCount or 0}/{empire.CreatureCapacity or 0}   ·   <b>Habitats</b> {empire.HabitatCount or 0}/{empire.HabitatCapacity or 0}   <b>Backpack</b> {empire.BackpackCount or 0}/{empire.BackpackCapacity or 0}`,
+			15,
+			{ TextXAlignment = Enum.TextXAlignment.Center, LayoutOrder = 0 }
 		)
-		Theme.List(layout, 12, Enum.FillDirection.Horizontal)
 
-		local side = Theme.Make("Frame", {
+		local layout = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
-			Size = UDim2.fromOffset(238, 0),
+			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			LayoutOrder = 1,
-		}, layout)
-		Theme.List(side, 8)
-		local empire = State.Get("Empire") or {}
+		}, content)
+		Theme.List(layout, 12, Enum.FillDirection.Horizontal)
+
+		-- Active Team
+		local teamPanel = Theme.Panel(layout, {
+			Size = UDim2.fromOffset(372, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = 1,
+		})
+		Theme.Padding(teamPanel, 10)
+		Theme.List(teamPanel, 6, nil, Enum.HorizontalAlignment.Center)
+		Theme.Text(teamPanel, "Active Team", 20, {
+			FontFace = Theme.Title,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.3,
+		})
 		Theme.Text(
-			side,
-			`<b>Habitats</b> {empire.HabitatCount or 0} / {empire.HabitatCapacity or 0}   <b>Backpack</b> {empire.BackpackCount or 0} / {empire.BackpackCapacity or 0}`,
-			14,
-			{ TextColor3 = Theme.Colors.Muted }
+			teamPanel,
+			"Your equipped partner creatures follow you.",
+			12,
+			{ TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = Theme.Colors.Muted }
 		)
-		local backpackHeader = false
-		for _, id in ids do
-			local info = list[id]
-			if info.Stored and not backpackHeader then
-				backpackHeader = true
-				Theme.Text(side, "BACKPACK", 13, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted })
-			end
-			local species = CreatureConfig.Species[info.Species]
-			local rarity = RarityConfig.Get(species.Rarity)
-			local card = Theme.Button(
-				side,
-				"",
-				if id == selected then "Primary" else "Ghost",
-				{ Size = UDim2.new(1, 0, 0, 64), TextXAlignment = Enum.TextXAlignment.Left }
-			)
-			local holder = Theme.Make(
-				"Frame",
-				{ BackgroundTransparency = 1, Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(4, 4) },
-				card
-			)
-			Viewport.Creature(holder, info.Species, nil, { Stage = info.Stage, Mutation = info.Mutation })
-			local glyph = info.Mutation and MutationConfig.Mutations[info.Mutation]
-			Theme.Text(card, `<b>{info.Name}</b>  Lv {info.Level}{if glyph then "  " .. glyph.Glyph else ""}`, 16, {
-				Position = UDim2.fromOffset(66, 8),
-				Size = UDim2.new(1, -72, 0, 20),
-				AutomaticSize = Enum.AutomaticSize.None,
-			})
-			Theme.Text(
-				card,
-				`<font color="#{rarity.Color:ToHex()}">{rarity.Glyph}</font> {rarity.Label} · {if info.Stored
-					then "In backpack"
-					elseif info.Assignment then "Working"
-					else "Idle"}`,
-				13,
-				{
-					Position = UDim2.fromOffset(66, 32),
-					Size = UDim2.new(1, -72, 0, 18),
+		local cards = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 236),
+		}, teamPanel)
+		Theme.List(cards, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		for slot = 1, teamSize do
+			local id = team[slot]
+			local info = id and list[id]
+			if info then
+				local holder = Theme.Make("Frame", {
+					BackgroundTransparency = 1,
+					Size = UDim2.fromOffset(110, 236),
+					LayoutOrder = slot,
+				}, cards)
+				tile(holder, info, Vector2.new(110, 186), 1)
+				local inspect = Theme.Button(holder, "Inspect", "Primary", {
+					Position = UDim2.fromOffset(0, 192),
+					Size = UDim2.fromOffset(110, 40),
+					TextSize = 15,
+				})
+				inspect.Activated:Connect(function()
+					selected = id
+					inspecting = true
+					render()
+				end)
+			else
+				local empty = Theme.Make("Frame", {
+					BackgroundColor3 = Theme.Colors.PanelSunken,
+					BackgroundTransparency = 0.3,
+					Size = UDim2.fromOffset(110, 236),
+					LayoutOrder = slot,
+				}, cards)
+				Theme.Corner(empty, 12)
+				Theme.Stroke(empty, Theme.Colors.Border, 0.6, 2)
+				Theme.Text(empty, "Empty slot\n\nPick a creature and press Equip, or use Equip Best.", 13, {
+					Size = UDim2.fromScale(1, 1),
 					AutomaticSize = Enum.AutomaticSize.None,
+					TextXAlignment = Enum.TextXAlignment.Center,
+					TextYAlignment = Enum.TextYAlignment.Center,
 					TextColor3 = Theme.Colors.Muted,
-				}
-			)
-			card.Activated:Connect(function()
-				selected = id
-				render()
-			end)
+				})
+			end
 		end
-		detail(layout, list[selected :: string])
+
+		-- Collection
+		local collectionPanel = Theme.Panel(layout, {
+			Size = UDim2.new(1, -384, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = 2,
+		})
+		Theme.Padding(collectionPanel, 10)
+		Theme.List(collectionPanel, 6, nil, Enum.HorizontalAlignment.Center)
+		Theme.Text(collectionPanel, "Creature Collection", 20, {
+			FontFace = Theme.Title,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.3,
+		})
+		Theme.Text(
+			collectionPanel,
+			`All your creatures · sorted by {string.lower(SORTS[sortMode])} · tap one to inspect`,
+			12,
+			{ TextXAlignment = Enum.TextXAlignment.Center, TextColor3 = Theme.Colors.Muted }
+		)
+		local grid = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+		}, collectionPanel)
+		Theme.Make("UIGridLayout", {
+			CellSize = UDim2.fromOffset(96, 120),
+			CellPadding = UDim2.fromOffset(8, 8),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		}, grid)
+		for order, id in sortedIds(list) do
+			tile(grid, list[id], Vector2.new(96, 120), order)
+		end
+
+		-- Actions
+		local actions = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 56),
+			LayoutOrder = 2,
+		}, content)
+		Theme.List(actions, 12, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
+		local function action(text: string, sub: string, style: Theme.ButtonStyle, order: number, onClick: () -> ())
+			local button = Theme.Button(actions, `{text}\n<font size="12">{sub}</font>`, style, {
+				Size = UDim2.fromOffset(230, 54),
+				TextSize = 18,
+				RichText = true,
+				LayoutOrder = order,
+			})
+			button.Activated:Connect(onClick)
+		end
+		action("★ Equip Best", "Auto-equip your strongest", "Gold", 1, function()
+			local ok, result = ctx.Request("EquipBest")
+			if not ok then
+				ctx.Notify(result, "Error")
+			else
+				ctx.Notify(`Equipped your {result} strongest creature{if result == 1 then "" else "s"}.`, "Success")
+			end
+		end)
+		action("Fuse / Evolve", "Creatures ready to evolve", "Primary", 2, function()
+			local wallet = State.Get("Wallet")
+			for _, id in sortedIds(list) do
+				local info = list[id]
+				local check = wallet
+					and Evolution.Check(
+						wallet,
+						{
+							Species = info.Species,
+							Stage = info.Stage,
+							Level = info.Level,
+							JobCycles = info.JobCycles or {},
+							WorkCycles = info.WorkCycles,
+						} :: any
+					)
+				if check and check.Ready then
+					selected = id
+					inspecting = true
+					render()
+					return
+				end
+			end
+			ctx.Notify(
+				"No creature is ready to evolve yet. Level them up by working (see each creature's Evolution).",
+				"Info"
+			)
+		end)
+		action("Filter / Sort", `Now: {SORTS[sortMode]}`, "Secondary", 3, function()
+			sortMode = sortMode % #SORTS + 1
+			render()
+		end)
 	end
 
 	local function renderJournal()
@@ -717,7 +963,7 @@ function CreaturesWindow.new(ctx: any)
 				).Ready
 			table.insert(
 				parts,
-				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}:{info.Name}:{info.Mutation}:{info.Stored}`
+				`{id}:{info.Assignment}:{info.Level}:{info.Stage}:{info.AbilityReadyIn > 0}:{info.Task}:{ready}:{info.RestIn > 0}:{info.Companion}:{info.Leader}:{info.Name}:{info.Mutation}:{info.Stored}`
 			)
 		end
 		local buildings = State.Get("Buildings")
@@ -757,10 +1003,13 @@ function CreaturesWindow.new(ctx: any)
 	return {
 		Root = win.Root,
 		Open = function(arg: any?)
+			inspecting = false
 			if arg == "Journal" then
 				tab = "Journal"
 			elseif type(arg) == "string" then
+				-- From a portrait (creature bar, a building): straight to that creature.
 				selected = arg
+				inspecting = true
 				tab = "Mine"
 			end
 			render()

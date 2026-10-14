@@ -280,7 +280,7 @@ local function attack(player: Player, kind: string): (boolean, any)
 	local data = PlayerDataService.GetData(player)
 	local companion = data and data.Companion and data.Creatures[data.Companion]
 	if not data or not companion then
-		return false, "Choose a companion creature first (Creatures window → Take with me)."
+		return false, "Equip a creature to your Active Team first (Creatures window → Equip to team)."
 	end
 	local fight: Fight? = nil
 	local part = root(player)

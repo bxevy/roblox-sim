@@ -794,7 +794,7 @@ function Hud.new(ctx: any)
 					companionHint.Text =
 						`Fighting with {companion.Name} (Lv {companion.Level}). Water and crystal creatures hit harder; fire creatures barely scratch her.`
 				else
-					companionHint.Text = "You need a companion: open Creatures and choose “Take with me”."
+					companionHint.Text = "You need a team: open Creatures and press Equip to team (or Equip Best)."
 				end
 				local a = cds.Attack - now
 				local sp = cds.Special - now
