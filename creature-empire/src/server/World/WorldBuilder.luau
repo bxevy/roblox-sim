@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local PlotConfig = require(ReplicatedStorage.Shared.Config.PlotConfig)
 local Parts = require(script.Parent.Parts)
+local CustomModels = require(script.Parent.CustomModels)
 
 local WorldBuilder = {}
 
@@ -19,7 +20,21 @@ local STONE = Color3.fromRGB(160, 156, 150)
 
 local rng = Random.new(20261013) -- fixed seed: same world every server
 
+-- A hand-made Assets/World/<name> model at `position` (random turn, scaled), if one exists.
+local function customPiece(name: string, parent: Instance, position: Vector3, scale: number, turn: boolean): boolean
+	local template = CustomModels.Find("World", name)
+	if not template then
+		return false
+	end
+	local yaw = if turn then rng:NextNumber(0, math.pi * 2) else 0
+	CustomModels.Place(template, parent, CFrame.new(position) * CFrame.Angles(0, yaw, 0), { Scale = scale })
+	return true
+end
+
 local function tree(parent: Instance, position: Vector3, scale: number)
+	if customPiece("Tree", parent, position, scale, true) then
+		return
+	end
 	local trunkHeight = 7 * scale
 	Parts.Cylinder(parent, CFrame.new(position + Vector3.new(0, trunkHeight / 2, 0)), trunkHeight, 1.4 * scale, {
 		Color = Color3.fromRGB(110, 78, 52),
@@ -36,6 +51,9 @@ local function tree(parent: Instance, position: Vector3, scale: number)
 end
 
 local function rock(parent: Instance, position: Vector3, scale: number)
+	if customPiece("Rock", parent, position, scale, true) then
+		return
+	end
 	Parts.Part(parent, {
 		Size = Vector3.new(3, 2, 2.6) * scale,
 		CFrame = CFrame.new(position + Vector3.new(0, 0.6 * scale, 0))
@@ -59,6 +77,9 @@ local function wildPetal(parent: Instance, position: Vector3)
 end
 
 local function lamp(parent: Instance, position: Vector3)
+	if customPiece("Lamp", parent, position, 1, false) then
+		return
+	end
 	Parts.Cylinder(parent, CFrame.new(position + Vector3.new(0, 3.5, 0)), 7, 0.5, {
 		Color = Color3.fromRGB(60, 58, 64),
 		Material = Enum.Material.Metal,

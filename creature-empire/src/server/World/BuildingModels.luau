@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BuildingConfig = require(ReplicatedStorage.Shared.Config.BuildingConfig)
 local PlotConfig = require(ReplicatedStorage.Shared.Config.PlotConfig)
 local Parts = require(script.Parent.Parts)
+local CustomModels = require(script.Parent.CustomModels)
 
 local BuildingModels = {}
 
@@ -952,8 +953,32 @@ function BuildingModels.Build(typeId: string, level: number, cf: CFrame): Model
 		CastShadow = false,
 	})
 	model.PrimaryPart = base
+	local custom = CustomModels.Find("Buildings", typeId, level)
 	local builder = builders[typeId]
-	if builder then
+	if custom then
+		-- Hand-made art: fitted inside the footprint (a little margin), standing on the floor.
+		local placed = CustomModels.Place(custom, model, cf, { Fit = Vector3.new(w - 0.4, 0, d - 0.4) })
+		placed.Name = "Art"
+		-- Work spots: any attachments named WorkSpot1, WorkSpot2… in the model, otherwise
+		-- three spots along the front.
+		local found = 0
+		for _, d2 in placed:GetDescendants() do
+			if d2:IsA("Attachment") and string.match(d2.Name, "^WorkSpot%d+$") then
+				local world = d2.WorldPosition
+				d2.Parent = base
+				d2.WorldPosition = Vector3.new(world.X, base.Position.Y, world.Z)
+				found += 1
+			end
+		end
+		if found == 0 then
+			local ctx: Ctx = { Model = model, Base = base, CF = cf, W = w, D = d, Level = level }
+			workSpot(ctx, 1, 0, -d / 2 - 1.5)
+			workSpot(ctx, 2, -2.5, -d / 2 - 1.5)
+			workSpot(ctx, 3, 2.5, -d / 2 - 1.5)
+		end
+		local _, size = CustomModels.Bounds(placed)
+		Parts.Label(base, `{def.Name} · Lv {level}`, { Offset = Vector3.new(0, size.Y + 2, 0), MaxDistance = 60 })
+	elseif builder then
 		builder({ Model = model, Base = base, CF = cf, W = w, D = d, Level = level })
 	else
 		-- Unknown art: a labelled placeholder block so the building is still usable.

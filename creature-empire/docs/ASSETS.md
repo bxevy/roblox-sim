@@ -100,3 +100,42 @@ Any species can use a hand-made 3D model instead of the code-built one. The game
 3. Rebuild. The shop (K) now shows prices and buy buttons.
 
 While an id is `0`, the shop shows "Coming soon" and the server refuses that item. Don't add items that sell random rewards: the tests check that only boosts are sold.
+
+## Building and world models (replacing the code-built look)
+
+Every building and some world pieces can be swapped for your own models, made in Studio or imported (FBX → **Import 3D**). The game does the fitting for you.
+
+**Buildings** go in **ReplicatedStorage › Assets › Buildings**, named after the building type:
+
+| Name | Building | Space it's fitted into |
+| --- | --- | --- |
+| `EmpireCore` | Empire Core | 16 × 16 studs |
+| `MoonpetalFarm` | Moonpetal Farm | 16 × 16 studs |
+| `CrystalMine` | Crystal Mine | 16 × 16 studs |
+| `CrystalSmelter` | Crystal Smelter | 12 × 12 studs |
+| `EssenceCondenser` | Essence Condenser | 12 × 12 studs |
+| `ExpeditionPortal` | Expedition Portal | 16 × 16 studs |
+| `Hatchery` | Hatchery | 12 × 12 studs |
+| `EvolutionChamber` | Evolution Chamber | 16 × 16 studs |
+| `ResourceSilo` | Resource Silo | 12 × 12 studs |
+| `TradingPost` | Trading Post | 12 × 12 studs |
+| `Habitat` | Creature Habitat | 20 × 16 studs |
+| `ResearchStation` | Research Station | 16 × 16 studs |
+| `CourierPost` | Courier Post | 12 × 12 studs |
+
+- **Placement:** the model is resized to fit that space (a little smaller, for a margin) and stood on the plot floor, centred. Add a boolean attribute `KeepSize` = true to use your own size instead.
+- **Per-level looks:** add models named `TradingPost_2`, `TradingPost_3`, and so on. The highest one up to the building's level is used, and the plain name covers everything else.
+- **Front:** the front of a building faces the plot's entrance path. If yours faces the wrong way, add a number attribute `Facing` set to `90`, `180` or `-90`.
+- **Where creatures stand to work:** put Attachments named `WorkSpot1`, `WorkSpot2` and `WorkSpot3` in your model where they should stand. Without them, the creatures stand in a row in front of the building.
+- **Prompts and labels:** the game adds the "Manage" and "Collect" prompts and the name/level label itself. Don't include your own.
+
+**World pieces** go in **ReplicatedStorage › Assets › World**:
+
+| Name | Replaces | Notes |
+| --- | --- | --- |
+| `FenceSegment` | The plot fence (curb, posts and rails) | One section of fence built along its **X axis** (left to right). Copies are laid end to end around every plot, slightly stretched to fill each side exactly. About 6–8 studs long works well. |
+| `Tree` | The trees around the world | Placed with a random turn and the size variation of the originals (about 1.2–1.9×). |
+| `Rock` | The rocks around the plaza | Same as trees. |
+| `Lamp` | Lamp posts on the plaza and paths | Not resized. |
+
+**To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.

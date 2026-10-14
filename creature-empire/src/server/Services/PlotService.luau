@@ -17,6 +17,7 @@ local Core = script.Parent.Parent.Core
 local Net = require(Core.Net)
 local Log = require(Core.Log)
 local Parts = require(script.Parent.Parent.World.Parts)
+local CustomModels = require(script.Parent.Parent.World.CustomModels)
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 export type Plot = {
@@ -196,6 +197,23 @@ buildBounds = function(plot: Plot, expansions: { [string]: boolean })
 		local direction = (to - from).Unit
 		local mid = (from + to) / 2
 		local facing = CFrame.lookAt(Vector3.zero, direction).Rotation
+		-- A hand-made FenceSegment (built along its X axis) replaces the curb, posts and
+		-- rails: copies are laid end to end, stretched slightly so they fill the edge.
+		local segment = CustomModels.Find("World", "FenceSegment")
+		if segment then
+			local _, size = CustomModels.Bounds(segment)
+			local turned = math.abs(math.cos(math.rad((segment:GetAttribute("Facing") :: number?) or 0))) < 0.5
+			local segLength = math.max(if turned then size.Z else size.X, 0.5)
+			local count = math.max(math.floor(length / segLength + 0.5), 1)
+			local along = CFrame.fromMatrix(Vector3.zero, direction, Vector3.yAxis)
+			for i = 0, count - 1 do
+				local p = from + direction * (length * (i + 0.5) / count)
+				CustomModels.Place(segment, folder, origin * CFrame.new(p.X, 0, p.Z) * along, {
+					Scale = (length / count) / segLength,
+				})
+			end
+			return
+		end
 		Parts.Part(folder, {
 			Name = "Curb",
 			Size = Vector3.new(1, 1, length + 1),
