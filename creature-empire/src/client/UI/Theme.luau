@@ -148,24 +148,31 @@ function Theme.KitImage(name: string): string?
 end
 
 -- Loads every uploaded kit picture once, before the interface is built (behind the loading
--- screen). A picture that can't load (a Decal id instead of an Image id, or one still in
--- moderation) is skipped, so that piece keeps the drawn look instead of showing a blank.
+-- screen). Only a picture Roblox says it can't fetch, twice, is dropped (a Decal id instead
+-- of an Image id, or one still in moderation); that piece keeps the drawn look. A slow
+-- fetch (timed out, still loading) keeps the picture: it shows as soon as it arrives.
 function Theme.PreloadKit(timeout: number?)
 	local ContentProvider = game:GetService("ContentProvider")
+	local function fetch(content: string): Enum.AssetFetchStatus?
+		local final: Enum.AssetFetchStatus? = nil
+		pcall(function()
+			ContentProvider:PreloadAsync({ content }, function(_, status: Enum.AssetFetchStatus)
+				final = status
+			end)
+		end)
+		return final
+	end
 	local pending = 0
 	for name, piece in UiKit do
 		if piece.Id ~= 0 then
 			pending += 1
 			task.spawn(function()
-				local ok = pcall(function()
-					ContentProvider:PreloadAsync({ `rbxassetid://{piece.Id}` }, function(_, status)
-						if status ~= Enum.AssetFetchStatus.Success then
-							kitFailed[name] = true
-						end
-					end)
-				end)
-				if not ok then
-					kitFailed[name] = true
+				local content = `rbxassetid://{piece.Id}`
+				if fetch(content) == Enum.AssetFetchStatus.Failure then
+					task.wait(1)
+					if fetch(content) == Enum.AssetFetchStatus.Failure then
+						kitFailed[name] = true
+					end
 				end
 				pending -= 1
 			end)
