@@ -7,6 +7,7 @@
 -- for 9-slice pieces, so the vine corners keep their shape at any size.
 
 export type Piece = {
+	Name: string,
 	Id: number,
 	Size: Vector2,
 	SliceCenter: Rect?,
@@ -39,6 +40,7 @@ local IDS: { [string]: number } = {
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
 	return {
+		Name = "", -- filled below
 		Id = 0, -- filled from IDS below
 		Size = size,
 		SliceCenter = if slice then Rect.new(slice[1], slice[2], slice[3], slice[4]) else nil,
@@ -74,6 +76,9 @@ local UiKit = {
 	IconMore = piece(Vector2.new(166, 146), nil, { 41, 33, 125, 117 }),
 } :: { [string]: Piece }
 
+for name, entry in UiKit do
+	entry.Name = name
+end
 for name, id in IDS do
 	if UiKit[name] then
 		UiKit[name].Id = id

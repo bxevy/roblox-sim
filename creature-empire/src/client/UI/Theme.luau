@@ -207,8 +207,18 @@ end
 -- How big to draw a kit piece's corners on a gui of `size`. Wide strips (buttons, tabs,
 -- badges, banner) are drawn at exactly their height, so the icon painted in the end cap
 -- keeps its shape; frames keep their corners in proportion, but never chunky.
+local STRIPS: { [string]: boolean } = {
+	ButtonGreen = true,
+	ButtonOrange = true,
+	TabActive = true,
+	TabInactive = true,
+	BadgeGold = true,
+	BadgeEssence = true,
+	HeaderBanner = true,
+	ProgressBar = true,
+}
 local function kitFit(kit: UiKit.Piece, size: Vector2): number
-	if kit.Size.X >= kit.Size.Y * 2 then
+	if STRIPS[kit.Name] then
 		return math.max(size.Y / kit.Size.Y, 0.05)
 	end
 	return math.clamp(math.min(size.Y / kit.Size.Y, size.X / kit.Size.X * 2.5), 0.08, 0.4)

@@ -49,7 +49,14 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 	})
 	-- A plain "X": Builder Sans has no "✕" glyph, which showed as an empty box.
 	Theme.Skin(root, "LargeFrame")
-	Theme.Skin(header, "HeaderBanner")
+	local bannered = Theme.Skin(header, "HeaderBanner") ~= nil
+	if bannered then
+		-- On the kit banner the title sits in the middle, like the mockup's "Empire Shop".
+		titleLabel.Text = title
+		titleLabel.Position = UDim2.fromOffset(54, 0)
+		titleLabel.Size = UDim2.new(1, -108, 1, 0)
+		titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+	end
 	local close = Theme.Button(header, "X", "Ghost", {
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -106,7 +113,7 @@ function Window.new(parent: Instance, title: string, glyph: string, size: Vector
 		Title = titleLabel,
 		CloseButton = close,
 		SetTitle = function(text: string)
-			titleLabel.Text = glyph .. "  " .. text
+			titleLabel.Text = if bannered then text else glyph .. "  " .. text
 		end,
 	}
 end
@@ -122,7 +129,9 @@ end
 
 -- A titled section card inside a window body.
 function Window.Section(parent: Instance, title: string?, order: number?): Frame
-	local card = Theme.Make("Frame", {
+	-- An ImageLabel so the kit's vine card frame is its own picture (outside the layout).
+	local card = Theme.Make("ImageLabel", {
+		Image = "",
 		BackgroundColor3 = Theme.Colors.PanelRaised,
 		BackgroundTransparency = 0.35,
 		BorderSizePixel = 0,
@@ -131,7 +140,10 @@ function Window.Section(parent: Instance, title: string?, order: number?): Frame
 		LayoutOrder = order or 0,
 	}, parent)
 	Theme.Corner(card, 12)
-	Theme.Padding(card, 12)
+	-- Drawn outline when the kit picture isn't available.
+	Theme.Stroke(card, Theme.Colors.Border, 0.35, 2)
+	local framed = Theme.Skin(card, "CardFrame") ~= nil
+	Theme.Padding(card, if framed then 18 else 12)
 	Theme.List(card, 8)
 	if title then
 		Theme.Text(card, title, 15, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted, LayoutOrder = -1 })
