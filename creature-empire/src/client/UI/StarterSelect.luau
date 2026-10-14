@@ -17,11 +17,13 @@ local StarterSelect = {}
 type Look = { Card: Color3, Button: string, ButtonColor: Color3? }
 local FAMILY_LOOK: { [string]: Look } = {
 	Verdant = { Card = Color3.fromRGB(38, 92, 40), Button = "Primary" },
-	Emberkin = { Card = Color3.fromRGB(110, 46, 20), Button = "Gold" },
+	-- The kit's orange button is a dull brown-orange; the mockup's is bright, so these two
+	-- are drawn (glossy, with a light rim) in the family colour.
+	Emberkin = { Card = Color3.fromRGB(110, 46, 20), Button = "Danger", ButtonColor = Color3.fromRGB(245, 130, 25) },
 	Crystalkin = {
 		Card = Color3.fromRGB(24, 58, 104),
 		Button = "Danger",
-		ButtonColor = Color3.fromRGB(40, 190, 230),
+		ButtonColor = Color3.fromRGB(35, 185, 235),
 	},
 }
 
@@ -50,15 +52,15 @@ function StarterSelect.new(ctx: any)
 		LayoutOrder = 1,
 	}, root)
 	-- No banner picture: like the mockup, the title sits under the frame's top ornament.
-	Theme.Text(banner, "Welcome to your empire!", 28, {
+	local heading = Theme.Text(banner, "Welcome to your empire!", 32, {
 		FontFace = Theme.Title,
+		TextColor3 = Color3.fromRGB(255, 234, 176), -- warm cream, as in the mockup
 		Size = UDim2.fromScale(1, 1),
 		AutomaticSize = Enum.AutomaticSize.None,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
-		TextStrokeColor3 = Theme.Colors.TextShadow,
-		TextStrokeTransparency = 0.2,
 	})
+	Theme.Make("UIStroke", { Color = Color3.fromRGB(46, 24, 8), Thickness = 2.5 }, heading)
 	Theme.Text(root, "Choose a partner creature. You'll meet the other two soon.", 15, {
 		TextXAlignment = Enum.TextXAlignment.Center,
 		LayoutOrder = 2,
@@ -111,20 +113,21 @@ function StarterSelect.new(ctx: any)
 		}, shell)
 		Theme.Padding(card, if framed then 28 else 10, if framed then 28 else 10)
 		Theme.List(card, 5, nil, Enum.HorizontalAlignment.Center)
+		-- A glow in the family colour behind the creature.
 		local art = Theme.Make("Frame", {
-			BackgroundColor3 = look.Card,
-			BackgroundTransparency = 0.6,
-			Size = UDim2.new(1, 0, 0, 120),
+			BackgroundColor3 = family.Color,
+			BackgroundTransparency = 0.35,
+			Size = UDim2.new(1, 0, 0, 124),
 		}, card)
-		Theme.Gradient(art, 1, 0.6)
+		Theme.Gradient(art, 1, 0.35)
 		Theme.Corner(art, 10)
 		Viewport.Creature(art, speciesId, nil, { Spin = true })
-		Theme.Text(card, species.Name, 22, {
-			FontFace = Theme.Title,
+		local nameLabel = Theme.Text(card, species.Name, 25, {
+			FontFace = Theme.Heavy,
+			TextColor3 = Color3.new(1, 1, 1),
 			TextXAlignment = Enum.TextXAlignment.Center,
-			TextStrokeColor3 = Theme.Colors.TextShadow,
-			TextStrokeTransparency = 0.2,
 		})
+		Theme.Make("UIStroke", { Color = Color3.fromRGB(30, 16, 6), Thickness = 2 }, nameLabel)
 		local chips = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 22) }, card)
 		Theme.List(chips, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 		Theme.Chip(chips, family.Glyph .. " " .. family.Name, family.Color, { TextSize = 12 })
@@ -147,12 +150,29 @@ function StarterSelect.new(ctx: any)
 			TextColor3 = Theme.Colors.Muted,
 		})
 		local choose = Theme.Button(card, "Choose " .. species.Name, look.Button :: any, {
-			Size = UDim2.new(1, 0, 0, 40),
-			TextSize = 15,
+			Size = UDim2.new(1, 0, 0, 44),
+			TextSize = 17,
+			FontFace = Theme.Heavy,
 		})
 		if look.ButtonColor then
+			-- Glossy pill: bright colour, lighter top, a pale glowing rim.
 			choose:SetAttribute("BaseColor", look.ButtonColor)
 			choose.BackgroundColor3 = look.ButtonColor
+			local corner = choose:FindFirstChildOfClass("UICorner")
+			if corner then
+				corner.CornerRadius = UDim.new(0.5, 0)
+			end
+			local rim = choose:FindFirstChildOfClass("UIStroke")
+			if rim then
+				rim.Color = look.ButtonColor:Lerp(Color3.new(1, 1, 0.85), 0.6)
+				rim.Transparency = 0
+				rim.Thickness = 2.5
+			end
+			local shine = choose:FindFirstChildOfClass("UIGradient")
+			if shine then
+				shine.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(0.72, 0.72, 0.72))
+			end
+			choose.TextStrokeTransparency = 0.2
 		end
 		choose.Activated:Connect(function()
 			if busy then
