@@ -76,7 +76,7 @@ local function wildPetal(parent: Instance, position: Vector3)
 	})
 end
 
-local LAMP_HEIGHT = 8 -- studs: imported lamps are scaled to this unless they have KeepSize
+local LAMP_HEIGHT = 11 -- studs: imported lamps are scaled to this unless they have KeepSize
 
 local function lamp(parent: Instance, position: Vector3)
 	local template = CustomModels.Find("World", "Lamp")
