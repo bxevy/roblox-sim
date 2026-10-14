@@ -74,8 +74,10 @@ local function buildTerrain()
 	local terrain = Workspace.Terrain
 	terrain:FillBlock(CFrame.new(0, -6, 0), Vector3.new(1100, 12, 1100), Enum.Material.Grass)
 	terrain:SetMaterialColor(Enum.Material.Grass, GROUND)
+	-- No animated grass: its blades grow taller than the plot floors and paths, which made
+	-- every building, fence and creature look sunk into the ground.
 	pcall(function()
-		terrain.Decoration = true -- animated grass where supported
+		terrain.Decoration = false
 	end)
 	-- A ring of gentle hills around the edge of the world.
 	for i = 1, 28 do
