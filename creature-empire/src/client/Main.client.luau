@@ -43,6 +43,7 @@ UIController.Start({
 local ctx = UIController.Context()
 
 -- Interface ------------------------------------------------------------------------------
+require(UIFolder.Theme).PreloadKit() -- the creator's UI kit pictures, before anything is built
 require(UIFolder.Hud).new(ctx)
 UIController.Register("Creatures", require(UIFolder.CreaturesWindow).new(ctx))
 UIController.Register("Building", require(UIFolder.BuildingPanel).new(ctx))

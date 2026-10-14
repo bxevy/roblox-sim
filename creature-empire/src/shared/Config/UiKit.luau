@@ -12,9 +12,33 @@ export type Piece = {
 	SliceCenter: Rect?,
 }
 
+-- Uploaded by the game's creator.
+local IDS: { [string]: number } = {
+	LargeFrame = 71011017731034,
+	CardFrame = 128207985531955,
+	HeaderBanner = 89723654360611,
+	ProgressBar = 80471369628478,
+	ButtonGreen = 85363763162354,
+	ButtonOrange = 82100018667006,
+	TabActive = 90193938463422,
+	TabInactive = 101075524508759,
+	CloseButton = 103510426027879,
+	BadgeGold = 114436514393660,
+	BadgeEssence = 114048679966500,
+	TileCommon = 81007021942512,
+	TileRare = 85227747704426,
+	TileEpic = 76955082920070,
+	TileMythic = 70573979301002,
+	IconBuild = 94748300278139,
+	IconCreatures = 101744924517905,
+	IconMap = 77060885619894,
+	IconShop = 78339137500390,
+	IconMore = 71580186205315,
+}
+
 local function piece(size: Vector2, slice: { number }?): Piece
 	return {
-		Id = 0,
+		Id = 0, -- filled from IDS below
 		Size = size,
 		SliceCenter = if slice then Rect.new(slice[1], slice[2], slice[3], slice[4]) else nil,
 	}
@@ -47,5 +71,11 @@ local UiKit = {
 	IconShop = piece(Vector2.new(166, 146)),
 	IconMore = piece(Vector2.new(166, 146)),
 } :: { [string]: Piece }
+
+for name, id in IDS do
+	if UiKit[name] then
+		UiKit[name].Id = id
+	end
+end
 
 return UiKit

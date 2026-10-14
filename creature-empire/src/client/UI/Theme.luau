@@ -137,9 +137,49 @@ end
 -- The creator's UI kit (Config/UiKit): a picture behind a frame or button, 9-sliced so the
 -- vine corners keep their shape. Returns nil (and changes nothing) while the piece has no
 -- uploaded id, so everything falls back to the drawn wood look.
+local kitFailed: { [string]: boolean } = {}
+
 function Theme.KitImage(name: string): string?
 	local piece = UiKit[name]
-	return if piece and piece.Id ~= 0 then `rbxassetid://{piece.Id}` else nil
+	if not piece or piece.Id == 0 or kitFailed[name] then
+		return nil
+	end
+	return `rbxassetid://{piece.Id}`
+end
+
+-- Loads every uploaded kit picture once, before the interface is built (behind the loading
+-- screen). A picture that can't load (a Decal id instead of an Image id, or one still in
+-- moderation) is skipped, so that piece keeps the drawn look instead of showing a blank.
+function Theme.PreloadKit(timeout: number?)
+	local ContentProvider = game:GetService("ContentProvider")
+	local pending = 0
+	for name, piece in UiKit do
+		if piece.Id ~= 0 then
+			pending += 1
+			task.spawn(function()
+				local ok = pcall(function()
+					ContentProvider:PreloadAsync({ `rbxassetid://{piece.Id}` }, function(_, status)
+						if status ~= Enum.AssetFetchStatus.Success then
+							kitFailed[name] = true
+						end
+					end)
+				end)
+				if not ok then
+					kitFailed[name] = true
+				end
+				pending -= 1
+			end)
+		end
+	end
+	local deadline = os.clock() + (timeout or 8)
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	for name in kitFailed do
+		warn(
+			`[UI kit] {name} (id {UiKit[name].Id}) didn't load; using the drawn look. Is it an Image id (not a Decal id)?`
+		)
+	end
 end
 
 function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
