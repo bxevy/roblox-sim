@@ -89,6 +89,8 @@ AssetConfig.ModelAssets = {
 	Buildings = {
 		-- Supplied by the game's creator: their shop model.
 		TradingPost = 129682746612211,
+		-- Supplied by the game's creator: their hatchery nest.
+		Hatchery = 120291385949696,
 	},
 	World = {
 		-- Supplied by the game's creator: their fence section.
