@@ -19,6 +19,9 @@ local SpinWindow = {}
 
 local WHEEL = 300 -- pixels across
 local RAYS = 10 -- strips per segment (they fan out to fill it)
+-- The frame picture is this much wider than the face picture (both are cut from the same
+-- art, see art/ and docs/ASSETS.md), so it is drawn bigger to line up around the face.
+local FRAME_SCALE = 1.334
 
 local function percent(chance: number): string
 	local value = chance * 100
@@ -35,13 +38,15 @@ function SpinWindow.new(ctx: any)
 	local frameArt = AssetConfig.Images.SpinWheelFrame or ""
 	local holder = Theme.Make("Frame", {
 		BackgroundTransparency = 1,
-		Size = UDim2.fromOffset(WHEEL + 40, WHEEL + 40),
+		Size = if frameArt ~= ""
+			then UDim2.fromOffset(WHEEL * FRAME_SCALE, WHEEL * FRAME_SCALE)
+			else UDim2.fromOffset(WHEEL + 40, WHEEL + 40),
 		LayoutOrder = 1,
 	}, win.Body)
 	local wheel = Theme.Make("Frame", {
 		Name = "Wheel",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 6),
+		Position = UDim2.new(0.5, 0, 0.5, if frameArt ~= "" then 0 else 6),
 		Size = UDim2.fromOffset(WHEEL, WHEEL),
 		BackgroundColor3 = Color3.fromRGB(250, 200, 60),
 		BackgroundTransparency = if face ~= "" then 1 else 0,
@@ -115,11 +120,11 @@ function SpinWindow.new(ctx: any)
 		end
 	end
 	if frameArt ~= "" then
-		-- The creator's frame sits over the wheel and stays still.
+		-- The creator's frame (rim, vines, centre flower and pointer) stays still on top.
 		Theme.Make("ImageLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 6),
-			Size = UDim2.fromOffset(WHEEL + 40, WHEEL + 40),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = frameArt,
 			ScaleType = Enum.ScaleType.Fit,
@@ -139,6 +144,7 @@ function SpinWindow.new(ctx: any)
 		Theme.Gradient(hub, 1, 0.75)
 	end
 	Theme.Text(holder, "▼", 40, {
+		Visible = frameArt == "", -- the frame art has its own pointer
 		FontFace = Theme.Heavy,
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.fromScale(0.5, 0),
