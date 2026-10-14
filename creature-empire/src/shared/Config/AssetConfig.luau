@@ -90,4 +90,14 @@ AssetConfig.ModelAssets = {
 	World = {},
 } :: { [string]: { [string]: number } }
 
+-- Adjustments applied to loaded models (same as setting attributes on the model in Studio,
+-- without re-uploading): Facing (degrees), HeightOffset (studs), KeepSize (boolean).
+AssetConfig.ModelSettings = {
+	Creatures = {
+		Sproutling = { Facing = 180 },
+	},
+	Buildings = {},
+	World = {},
+} :: { [string]: { [string]: { [string]: any } } }
+
 return AssetConfig

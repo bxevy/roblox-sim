@@ -56,6 +56,10 @@ local function loadOne(category: string, name: string, assetId: number)
 		end
 	end
 	model.Name = name
+	local settings = AssetConfig.ModelSettings[category] and AssetConfig.ModelSettings[category][name]
+	for attribute, value in settings or {} do
+		model:SetAttribute(attribute, value)
+	end
 	model.Parent = folder
 	if model ~= container then
 		(container :: Instance):Destroy()
