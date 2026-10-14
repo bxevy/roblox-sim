@@ -136,6 +136,7 @@ function SettingsWindow.new(ctx: any)
 				{ "Skip quest", "skipquest" },
 				{ "Away 60 min", "offline", 60 },
 				{ "Grant Prismaw", "grant", "Prismaw" },
+				{ "Unlock all pets", "unlockall" },
 				{ "Verbose logs", "verbose" },
 				{ "Save now", "save" },
 				{ "Reset profile", "reset" },

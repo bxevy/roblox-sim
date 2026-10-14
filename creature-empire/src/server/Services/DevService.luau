@@ -17,6 +17,7 @@
 --   finishexpeditions   bring every active expedition home now (and end creature rest)
 --   levelup             +5 levels and +200 work cycles per job for every creature
 --   grant <speciesId>   add a creature
+--   unlockall           add one of every species you don't have yet (Black Dragon too)
 --   offline <minutes>   pretend you were away (sets LastOnline back; rejoin to apply)
 --   fillstorage         fill every production building's storage
 --   skipquest           complete the current tutorial step
@@ -150,6 +151,26 @@ commands.grant = function(player, speciesId)
 	end
 	CreatureService.Grant(player, speciesId, "Dev", false)
 	return true, "Granted " .. speciesId
+end
+
+commands.unlockall = function(player)
+	local data = PlayerDataService.GetData(player)
+	if not data then
+		return false, "Not loaded."
+	end
+	local count = 0
+	for _, speciesId in CreatureConfig.Order do
+		if not data.Collection[speciesId] then
+			-- Quiet: no reveal for each one.
+			if CreatureService.Grant(player, speciesId, "Dev", false, { Quiet = true }) then
+				count += 1
+			end
+		end
+	end
+	if count == 0 then
+		return true, "You already have every species."
+	end
+	return true, `Unlocked {count} species. Open Creatures to see them all.`
 end
 
 commands.offline = function(player, minutes)

@@ -108,7 +108,9 @@ end)
 -- Moments from the server ------------------------------------------------------------------
 Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: any)
 	if name == "CreatureObtained" then
-		if type(payload.Delay) == "number" then
+		if payload.Quiet then
+			return -- developer bulk grants skip the reveal
+		elseif type(payload.Delay) == "number" then
 			task.delay(math.clamp(payload.Delay, 0, 10), reveal.Show, payload) -- after the wheel stops
 		else
 			reveal.Show(payload)
