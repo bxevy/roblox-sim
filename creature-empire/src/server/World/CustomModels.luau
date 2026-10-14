@@ -44,6 +44,23 @@ end
 
 local announced: { [string]: boolean } = {}
 
+-- Everyday names also accepted for buildings (a model called "Shop" is the Trading Post).
+CustomModels.Aliases = {
+	TradingPost = { "Shop", "Store", "Market", "MarketStall", "Trading" },
+	ResourceSilo = { "Silo", "Storage" },
+	MoonpetalFarm = { "Farm", "PetalFarm" },
+	EmpireCore = { "Core" },
+	Habitat = { "CreatureHabitat", "House", "Home" },
+	ExpeditionPortal = { "Portal" },
+	ResearchStation = { "Research", "Lab", "Observatory" },
+	CourierPost = { "Courier", "Depot" },
+	CrystalMine = { "Mine" },
+	CrystalSmelter = { "Smelter", "Furnace" },
+	EssenceCondenser = { "Condenser" },
+	EvolutionChamber = { "Evolution" },
+	FenceSegment = { "Fence" },
+} :: { [string]: { string } }
+
 -- The template for `name` in Assets/<category>, preferring a per-level variant
 -- (<name>_<level>, then lower levels, then plain <name>). Names are matched ignoring
 -- capitals, spaces, dashes and underscores, so "fence segment" finds FenceSegment.
@@ -64,6 +81,15 @@ function CustomModels.Find(category: string, name: string, level: number?): Mode
 		end
 	end
 	table.insert(candidates, normalize(name))
+	local aliases: { string } = CustomModels.Aliases[name] or {}
+	for _, alias in aliases do
+		if level then
+			for l = level, 2, -1 do
+				table.insert(candidates, normalize(alias .. l))
+			end
+		end
+		table.insert(candidates, normalize(alias))
+	end
 	for _, key in candidates do
 		local item = byName[key]
 		local model = item and asModel(item)
@@ -90,6 +116,10 @@ function CustomModels.ReportUnknown(known: { [string]: { string } })
 		local valid = {}
 		for _, n in names do
 			valid[normalize(n)] = true
+			local aliases: { string } = CustomModels.Aliases[n] or {}
+			for _, alias in aliases do
+				valid[normalize(alias)] = true
+			end
 		end
 		for _, child in folder and folder:GetChildren() or {} do
 			local key = normalize((string.gsub(child.Name, "_?%d+$", "")))
