@@ -109,7 +109,10 @@ AssetConfig.ModelSettings = {
 		Sproutling = { Facing = 180 },
 	},
 	Buildings = {},
-	World = {},
+	World = {
+		-- Turned 90° left so the glowing mushrooms face the path.
+		Lamp = { Facing = 90 },
+	},
 } :: { [string]: { [string]: { [string]: any } } }
 
 return AssetConfig
