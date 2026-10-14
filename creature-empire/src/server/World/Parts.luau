@@ -114,7 +114,7 @@ end
 function Parts.SignText(board: BasePart, text: string)
 	local size = board.Size
 	-- The two largest faces carry the text.
-	local faces = if size.Z <= size.X and size.Z <= size.Y
+	local faces: { Enum.NormalId } = if size.Z <= size.X and size.Z <= size.Y
 		then { Enum.NormalId.Front, Enum.NormalId.Back }
 		elseif size.X <= size.Y then { Enum.NormalId.Left, Enum.NormalId.Right }
 		else { Enum.NormalId.Top, Enum.NormalId.Bottom }
