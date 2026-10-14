@@ -274,10 +274,17 @@ end
 
 -- The creator's Spin Wheel sheet (art/ui-spin): every piece at its real shape, placed at
 -- fixed spots (checked in a preview against the art), on a stage scaled to fit the screen.
-local STAGE = Vector2.new(780, 600) -- the panel picture (281x216) at this size
-local WHEEL_ART = 290
-local WHEEL_AT = Vector2.new(255, 290) -- wheel centre on the stage
-local RIGHT_X = 440 -- the right-hand column (odds, result, boosts)
+-- The frame is the big window frame from the starter sheet (662x451): the Spin Wheel
+-- sheet's own panel is only 281x216, so stretched to this size it looked blurry and faded.
+local STAGE = Vector2.new(900, 613)
+local K = STAGE.X / 662
+-- The frame's open middle, in the picture's pixels: x 75..586, y 78..377.
+local INNER = Rect.new(75 * K, 78 * K, 586 * K, 377 * K)
+local WHEEL_ART = 260
+local WHEEL_AT = Vector2.new(300, 292) -- wheel centre on the stage
+local RIGHT_X = 470 -- the right-hand column (odds, result, boosts)
+local RIGHT_W = 310
+local BUTTON_Y = 430
 
 -- The prize icons from the sheet, per prize.
 local PRIZE_ICON: { [string]: string } = {
@@ -316,7 +323,7 @@ local function paintedOddsMatch(): boolean
 end
 
 local function canUseArt(): boolean
-	for _, name in { "SpinPanel", "WheelFace", "SpinFreeButton", "WheelPointer" } do
+	for _, name in { "WheelFace", "SpinFreeButton", "WheelPointer" } do
 		if not Theme.KitImage(name) then
 			return false
 		end
@@ -369,6 +376,7 @@ local function text(parent: Instance, props: { [string]: any }): TextLabel
 		RichText = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 14,
+		Text = "",
 	}, parent)
 	for key, value in props do
 		(label :: any)[key] = value
@@ -403,26 +411,39 @@ local function buildArt(ctx: any): Parts
 		local g = if guiScale then guiScale.Scale else 1
 		if screen.X > 0 and screen.Y > 0 then
 			-- Room for the banner sticking out above the panel.
-			fit.Scale = math.min(1, screen.X * 0.94 / (STAGE.X * g), screen.Y * 0.84 / (STAGE.Y * g))
+			fit.Scale = math.min(1, screen.X * 0.94 / (STAGE.X * g), screen.Y * 0.86 / (STAGE.Y * g))
 		end
 	end
 	ctx.Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
 	task.defer(refit)
 
-	piece(stage, "SpinPanel", { Size = UDim2.fromScale(1, 1), ZIndex = 10 })
+	if Theme.KitImage("WindowFrame") then
+		-- Dark wood behind the frame's open middle, then the frame.
+		local wood = Theme.Make("Frame", {
+			BackgroundColor3 = Color3.fromRGB(56, 35, 21),
+			Position = UDim2.fromOffset(INNER.Min.X - 14, INNER.Min.Y - 14),
+			Size = UDim2.fromOffset(INNER.Width + 28, INNER.Height + 28),
+			ZIndex = 10,
+		}, stage)
+		Theme.Corner(wood, 12)
+		Theme.Gradient(wood, 1, 0.75)
+		piece(stage, "WindowFrame", { Size = UDim2.fromScale(1, 1), ZIndex = 11 })
+	else
+		piece(stage, "SpinPanel", { Size = UDim2.fromScale(1, 1), ZIndex = 10 })
+	end
 	-- The banner across the top edge (the uploaded picture has a hairline down its left
 	-- edge, so the first 2 pixels are left out).
 	local headerArt = Rect.new(2, 0, 310, 82)
 	piece(stage, "SpinHeader", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, -46),
+		Position = UDim2.new(0.5, 0, 0, -40),
 		Size = UDim2.fromOffset(430, math.floor(82 * 430 / 308)),
 		ZIndex = 15,
 	}, headerArt)
 	local close = pictureButton(stage, "SpinClose", {
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, 8, 0, -14),
+		Position = UDim2.new(1, 8, 0, -10),
 		Size = UDim2.fromOffset(70, 52),
 		ZIndex = 16,
 	})
@@ -435,30 +456,30 @@ local function buildArt(ctx: any): Parts
 		Position = UDim2.fromOffset(WHEEL_AT.X, WHEEL_AT.Y),
 		Size = UDim2.fromOffset(WHEEL_ART, WHEEL_ART),
 		BackgroundTransparency = 1,
-		ZIndex = 11,
+		ZIndex = 12,
 	}, stage)
-	piece(wheel, "WheelFace", { Size = UDim2.fromScale(1, 1), ZIndex = 11 })
+	piece(wheel, "WheelFace", { Size = UDim2.fromScale(1, 1), ZIndex = 12 })
 	if Theme.KitImage("WheelHub") then
 		piece(stage, "WheelHub", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(WHEEL_AT.X, WHEEL_AT.Y),
-			Size = UDim2.fromOffset(84, 84),
+			Size = UDim2.fromOffset(76, 76),
 			ZIndex = 13,
 		})
 	end
 	-- (the uploaded pointer has a hairline along its top: the first 2 rows are left out)
 	piece(stage, "WheelPointer", {
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(WHEEL_AT.X, WHEEL_AT.Y - WHEEL_ART / 2 - 34),
-		Size = UDim2.fromOffset(88, math.floor(52 * 88 / 68)),
+		Position = UDim2.fromOffset(WHEEL_AT.X, WHEEL_AT.Y - WHEEL_ART / 2 - 30),
+		Size = UDim2.fromOffset(80, math.floor(52 * 80 / 68)),
 		ZIndex = 13,
 	}, Rect.new(0, 2, 68, 54))
 
 	local free = pictureButton(stage, "SpinFreeButton", {
 		Name = "SpinFree",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(WHEEL_AT.X, 444),
-		Size = UDim2.fromOffset(260, math.floor(56 * 260 / 179)),
+		Position = UDim2.fromOffset(WHEEL_AT.X, BUTTON_Y),
+		Size = UDim2.fromOffset(240, math.floor(56 * 240 / 179)),
 	})
 	-- While the free spin is waiting, a dark tag over the button says how long.
 	local wait = text(free, {
@@ -478,17 +499,17 @@ local function buildArt(ctx: any): Parts
 	local buy = pictureButton(stage, "SpinRobuxButton", {
 		Name = "SpinRobux",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.fromOffset(RIGHT_X + 142, 444),
-		Size = UDim2.fromOffset(260, math.floor(56 * 260 / 182)),
+		Position = UDim2.fromOffset(RIGHT_X + RIGHT_W / 2, BUTTON_Y),
+		Size = UDim2.fromOffset(240, math.floor(56 * 240 / 182)),
 		Visible = false,
 	})
 
 	-- The odds: the creator's painted box while it's exact, otherwise written out.
-	local oddsTop = 78
+	local oddsTop = 112
 	if paintedOddsMatch() and Theme.KitImage("OddsBox") then
 		piece(stage, "OddsBox", {
 			Position = UDim2.fromOffset(RIGHT_X, oddsTop),
-			Size = UDim2.fromOffset(285, math.floor(206 * 285 / 293)),
+			Size = UDim2.fromOffset(RIGHT_W, math.floor(206 * RIGHT_W / 293)),
 			ZIndex = 12,
 		})
 	else
@@ -496,7 +517,7 @@ local function buildArt(ctx: any): Parts
 			BackgroundColor3 = Color3.fromRGB(45, 28, 16),
 			BackgroundTransparency = 0.2,
 			Position = UDim2.fromOffset(RIGHT_X, oddsTop),
-			Size = UDim2.fromOffset(285, 200),
+			Size = UDim2.fromOffset(RIGHT_W, 216),
 			ZIndex = 12,
 		}, stage)
 		Theme.Corner(list, 12)
@@ -517,29 +538,29 @@ local function buildArt(ctx: any): Parts
 	-- Result (with the prize's picture), running boosts, and the small print.
 	local resultIcon = Theme.Make("ImageLabel", {
 		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(RIGHT_X + 8, 296),
+		Position = UDim2.fromOffset(RIGHT_X + 8, 334),
 		Size = UDim2.fromOffset(48, 44),
 		ScaleType = Enum.ScaleType.Fit,
 		Visible = false,
 		ZIndex = 14,
 	}, stage)
 	local result = text(stage, {
-		Position = UDim2.fromOffset(RIGHT_X + 62, 294),
-		Size = UDim2.fromOffset(285 - 62, 48),
+		Position = UDim2.fromOffset(RIGHT_X + 62, 332),
+		Size = UDim2.fromOffset(RIGHT_W - 62, 48),
 		TextSize = 19,
 		FontFace = Theme.Heavy,
 		TextColor3 = Color3.fromRGB(255, 230, 150),
 	})
 	local boosts = text(stage, {
-		Position = UDim2.fromOffset(RIGHT_X + 8, 346),
-		Size = UDim2.fromOffset(277, 20),
+		Position = UDim2.fromOffset(RIGHT_X + 8, 382),
+		Size = UDim2.fromOffset(RIGHT_W - 8, 18),
 		TextSize = 14,
 		TextColor3 = Color3.fromRGB(255, 210, 90),
 	})
 	local note = text(stage, {
-		Position = UDim2.fromOffset(RIGHT_X + 8, 370),
-		Size = UDim2.fromOffset(277, 60),
-		TextSize = 13,
+		Position = UDim2.fromOffset(RIGHT_X + 8, 400),
+		Size = UDim2.fromOffset(RIGHT_W - 8, 30),
+		TextSize = 12,
 		TextYAlignment = Enum.TextYAlignment.Top,
 	})
 
