@@ -728,16 +728,39 @@ end
 -- the model: Facing (degrees to turn it so its face points the way the creature walks),
 -- KeepSize (true = don't resize; evolution still scales it), HeightOffset (studs to lift it).
 
+local wrappedParts: { [Instance]: Model } = {}
+
 function CreatureModels.FindCustom(speciesId: string, stage: number): Model?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local folder = assets and assets:FindFirstChild("Creatures")
 	if not folder then
 		return nil
 	end
+	-- Names match ignoring capitals, spaces, dashes and underscores; a lone MeshPart is
+	-- wrapped in a Model.
+	local function normalize(text: string): string
+		return string.lower((string.gsub(text, "[%s_%-]", "")))
+	end
+	local byName: { [string]: Instance } = {}
+	for _, child in folder:GetChildren() do
+		byName[normalize(child.Name)] = child
+	end
 	for s = stage, 1, -1 do
-		local name = if s == 1 then speciesId else `{speciesId}_{s}`
-		local model = folder:FindFirstChild(name)
-		if model and model:IsA("Model") then
+		local item = byName[normalize(if s == 1 then speciesId else speciesId .. s)]
+		if item and item:IsA("Model") then
+			return item
+		elseif item and item:IsA("BasePart") then
+			local model = wrappedParts[item]
+			if not model then
+				local made = Instance.new("Model")
+				made.Name = item.Name
+				for key, value in item:GetAttributes() do
+					made:SetAttribute(key, value)
+				end
+				item:Clone().Parent = made
+				wrappedParts[item] = made
+				model = made
+			end
 			return model
 		end
 	end

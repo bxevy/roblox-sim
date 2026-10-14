@@ -14,24 +14,100 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CustomModels = {}
 
+local function normalize(text: string): string
+	return string.lower((string.gsub(text, "[%s_%-]", "")))
+end
+
+-- Imported meshes sometimes arrive as a single MeshPart rather than a Model: wrap those
+-- (once) so everything else can treat them as models.
+local wrapped: { [Instance]: Model } = {}
+local function asModel(item: Instance): Model?
+	if item:IsA("Model") then
+		return item
+	end
+	if item:IsA("BasePart") then
+		local existing = wrapped[item]
+		if existing then
+			return existing
+		end
+		local model = Instance.new("Model")
+		model.Name = item.Name
+		for key, value in item:GetAttributes() do
+			model:SetAttribute(key, value)
+		end
+		item:Clone().Parent = model
+		wrapped[item] = model
+		return model
+	end
+	return nil
+end
+
+local announced: { [string]: boolean } = {}
+
 -- The template for `name` in Assets/<category>, preferring a per-level variant
--- (<name>_<level>, then lower levels, then plain <name>).
+-- (<name>_<level>, then lower levels, then plain <name>). Names are matched ignoring
+-- capitals, spaces, dashes and underscores, so "fence segment" finds FenceSegment.
 function CustomModels.Find(category: string, name: string, level: number?): Model?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local folder = assets and assets:FindFirstChild(category)
 	if not folder then
 		return nil
 	end
+	local byName: { [string]: Instance } = {}
+	for _, child in folder:GetChildren() do
+		byName[normalize(child.Name)] = child
+	end
+	local candidates = {}
 	if level then
 		for l = level, 2, -1 do
-			local variant = folder:FindFirstChild(`{name}_{l}`)
-			if variant and variant:IsA("Model") then
-				return variant
+			table.insert(candidates, normalize(name .. l))
+		end
+	end
+	table.insert(candidates, normalize(name))
+	for _, key in candidates do
+		local item = byName[key]
+		local model = item and asModel(item)
+		if model then
+			local tag = category .. "/" .. key
+			if not announced[tag] then
+				announced[tag] = true
+				print(`[CE][Assets] Using your model "{(item :: Instance).Name}" for {category} › {name}`)
+			end
+			return model
+		end
+	end
+	return nil
+end
+
+-- Startup check: names in the asset folders that match nothing the game looks for.
+function CustomModels.ReportUnknown(known: { [string]: { string } })
+	local assets = ReplicatedStorage:FindFirstChild("Assets")
+	if not assets then
+		return
+	end
+	for category, names in known do
+		local folder = assets:FindFirstChild(category)
+		local valid = {}
+		for _, n in names do
+			valid[normalize(n)] = true
+		end
+		for _, child in folder and folder:GetChildren() or {} do
+			local key = normalize((string.gsub(child.Name, "_?%d+$", "")))
+			if child:IsA("StringValue") then
+				continue -- folder READMEs
+			end
+			if not valid[key] then
+				warn(
+					`[CE][Assets] "{child.Name}" in Assets › {category} doesn't match anything. Use one of: {table.concat(
+						names,
+						", "
+					)}`
+				)
+			elseif not child:IsA("Model") and not child:IsA("BasePart") then
+				warn(`[CE][Assets] "{child.Name}" in Assets › {category} must be a Model (or a MeshPart).`)
 			end
 		end
 	end
-	local model = folder:FindFirstChild(name)
-	return if model and model:IsA("Model") then model else nil
 end
 
 -- World-aligned bounds of a model's parts: centre and size.

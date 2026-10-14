@@ -8,6 +8,9 @@ local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AssetConfig = require(ReplicatedStorage.Shared.Config.AssetConfig)
+local CreatureConfig = require(ReplicatedStorage.Shared.Config.CreatureConfig)
+local BuildingConfig = require(ReplicatedStorage.Shared.Config.BuildingConfig)
+local CustomModels = require(script.Parent.CustomModels)
 local Log = require(script.Parent.Parent.Core.Log)
 
 local AssetLoader = {}
@@ -86,6 +89,22 @@ function AssetLoader.Load()
 	while jobs > 0 and os.clock() < deadline do
 		task.wait()
 	end
+	-- Point out misnamed models in the Output window.
+	local species = {}
+	for id in CreatureConfig.Species do
+		table.insert(species, id)
+	end
+	table.sort(species)
+	local buildings = {}
+	for id in BuildingConfig do
+		table.insert(buildings, id)
+	end
+	table.sort(buildings)
+	CustomModels.ReportUnknown({
+		Creatures = species,
+		Buildings = buildings,
+		World = { "FenceSegment", "Tree", "Rock", "Lamp" },
+	})
 end
 
 return AssetLoader
