@@ -492,6 +492,67 @@ function Theme.Bar(parent: Instance?, color: Color3, height: number?): (Frame, (
 	return back, setValue
 end
 
+-- A progress bar on the kit's wooden track (vine ends), falling back to the drawn bar.
+function Theme.KitBar(parent: Instance?, color: Color3, height: number): (GuiObject, (number) -> ())
+	local image = Theme.KitImage("ProgressBar")
+	if not image then
+		return Theme.Bar(parent, color, math.floor(height / 3))
+	end
+	local piece = UiKit.ProgressBar
+	local track = Theme.Make("ImageLabel", {
+		Name = "KitBar",
+		BackgroundTransparency = 1,
+		Image = image,
+		ScaleType = Enum.ScaleType.Slice,
+		SliceCenter = piece.SliceCenter,
+		Size = UDim2.new(1, 0, 0, height),
+	}, parent)
+	-- The groove inside the art: x 68..478, y 38..66 of 556x110.
+	local s = height / piece.Size.Y
+	track.SliceScale = s
+	local groove = Theme.Make("Frame", {
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Position = UDim2.fromOffset(68 * s, 38 * s),
+		Size = UDim2.new(1, -(68 + 78) * s, 0, 28 * s),
+	}, track)
+	Theme.Corner(groove, 99)
+	local fill = Theme.Make("Frame", {
+		BackgroundColor3 = color,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(0, 1),
+	}, groove)
+	Theme.Corner(fill, 99)
+	Theme.Gradient(fill, 1, 0.7)
+	local function setValue(alpha: number)
+		fill.Size = UDim2.fromScale(math.clamp(alpha, 0, 1), 1)
+	end
+	return track, setValue
+end
+
+-- Just the symbol of a kit menu icon (round, without its vine ring), or nil.
+function Theme.KitIcon(parent: Instance?, name: string, props: { [string]: any }?): ImageLabel?
+	local image = Theme.KitImage(name)
+	local inner = UiKit[name] and UiKit[name].Inner
+	if not image or not inner then
+		return nil
+	end
+	local icon = Theme.Make("ImageLabel", {
+		Name = "Icon",
+		BackgroundTransparency = 1,
+		Image = image,
+		ImageRectOffset = inner.Min,
+		ImageRectSize = inner.Max - inner.Min,
+		ScaleType = Enum.ScaleType.Fit,
+	}, parent)
+	Theme.Corner(icon, 999)
+	local extra: { [string]: any } = props or {}
+	for key, value in extra do
+		(icon :: any)[key] = value
+	end
+	return icon
+end
+
 -- Pops an element in (scale + fade). Respects reduced motion.
 function Theme.PopIn(frame: GuiObject)
 	local scale = frame:FindFirstChild("PopScale") :: UIScale?

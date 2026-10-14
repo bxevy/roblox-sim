@@ -19,6 +19,7 @@ local Spin = require(Shared.Util.Spin)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local Format = require(Shared.Util.Format)
+local AssetConfig = require(Shared.Config.AssetConfig)
 local Theme = require(script.Parent.Theme)
 local Viewport = require(script.Parent.Viewport)
 
@@ -142,8 +143,8 @@ function Hud.new(ctx: any)
 	-- do next, kept together in one place.
 	local leftColumn = Theme.Make("Frame", {
 		Name = "LeftColumn",
-		Position = UDim2.fromOffset(12, 8),
-		Size = UDim2.fromOffset(270, 0),
+		Position = UDim2.fromOffset(10, 10),
+		Size = UDim2.fromOffset(250, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
@@ -162,12 +163,18 @@ function Hud.new(ctx: any)
 		AutomaticSize = Enum.AutomaticSize.Y,
 		LayoutOrder = 1,
 	})
-	Theme.Padding(empire, 10, 14)
-	Theme.List(empire, 6)
-	local empireTitle = Theme.Text(empire, "Empire · Tier 1", 18, { FontFace = Theme.Heavy })
-	local empireNext = Theme.Text(empire, "", 14, { TextColor3 = Theme.Colors.Muted })
-	local _, setEmpireBar = Theme.Bar(empire, Theme.Colors.Gold, 6)
-	local saveStatus = Theme.Text(empire, "", 13, { TextColor3 = Theme.Colors.Warning, Visible = false })
+	Theme.Padding(empire, 14, 18)
+	Theme.List(empire, 3)
+	local empireTitle = Theme.Text(empire, "Empire - Tier 1", 20, {
+		FontFace = Theme.Title,
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.3,
+		LayoutOrder = 1,
+	})
+	local empireNext = Theme.Text(empire, "", 13, { LayoutOrder = 2 })
+	local empireBar, setEmpireBar = Theme.KitBar(empire, Theme.Colors.Gold, 22)
+	empireBar.LayoutOrder = 3
+	local saveStatus = Theme.Text(empire, "", 12, { TextColor3 = Theme.Colors.Muted, Visible = false, LayoutOrder = 4 })
 
 	local function refreshEmpire()
 		local buildings = State.Get("Buildings")
@@ -176,7 +183,7 @@ function Hud.new(ctx: any)
 		if not core then
 			return
 		end
-		empireTitle.Text = `Empire · Tier {core.Level}`
+		empireTitle.Text = `Empire - Tier {core.Level}`
 		local cost = core.NextCost and core.NextCost.Gold
 		if cost then
 			local gold = w and w.Currencies.Gold or 0
@@ -191,7 +198,7 @@ function Hud.new(ctx: any)
 	State.OnChanged("Wallet", refreshEmpire)
 	State.OnStatus(function(status)
 		saveStatus.Visible = status == "Unsaved"
-		saveStatus.Text = "Studio test: progress is not saved"
+		saveStatus.Text = "Studio test: progress is not saved."
 	end)
 
 	------------------------------------------------------------------ Quest tracker (left)
@@ -202,7 +209,7 @@ function Hud.new(ctx: any)
 		Visible = false,
 		LayoutOrder = 2,
 	})
-	Theme.Padding(tracker, 12, 14)
+	Theme.Padding(tracker, 14, 18)
 	Theme.List(tracker, 6)
 	local questHeader =
 		Theme.Text(tracker, "", 13, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Primary, LayoutOrder = 1 })
@@ -272,10 +279,40 @@ function Hud.new(ctx: any)
 		LayoutOrder = 3,
 		Visible = false,
 	})
-	Theme.Padding(spinCard, 8, 14)
-	Theme.List(spinCard, 2)
-	local spinLine = Theme.Text(spinCard, "", 15, { FontFace = Theme.Bold })
-	local boostLine = Theme.Text(spinCard, "", 14, { TextColor3 = Theme.Colors.Gold })
+	Theme.Padding(spinCard, 12, 16)
+	local spinRow = Theme.Make("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+	}, spinCard)
+	Theme.List(spinRow, 10, Enum.FillDirection.Horizontal).VerticalAlignment = Enum.VerticalAlignment.Center
+	local wheelId = AssetConfig.CreatorImages.SpinWheelFace
+	local hasWheel = wheelId ~= nil and wheelId ~= 0
+	if hasWheel then
+		Theme.Make("ImageLabel", {
+			Name = "Wheel",
+			BackgroundTransparency = 1,
+			Image = `rbxassetid://{wheelId}`,
+			ScaleType = Enum.ScaleType.Fit,
+			Size = UDim2.fromOffset(44, 44),
+			LayoutOrder = 1,
+		}, spinRow)
+	end
+	local spinText = Theme.Make("Frame", {
+		BackgroundTransparency = 1,
+		Size = UDim2.new(1, if hasWheel then -54 else 0, 0, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = 2,
+	}, spinRow)
+	Theme.List(spinText, 1)
+	local spinLine = Theme.Text(spinText, "", 18, {
+		FontFace = Theme.Heavy,
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.3,
+		LayoutOrder = 1,
+	})
+	local spinHint = Theme.Text(spinText, "", 13, { LayoutOrder = 2 })
+	local boostLine = Theme.Text(spinText, "", 13, { TextColor3 = Theme.Colors.Gold, LayoutOrder = 3 })
 	local spinHit = Theme.Make("TextButton", {
 		Text = "",
 		BackgroundTransparency = 1,
@@ -292,9 +329,9 @@ function Hud.new(ctx: any)
 		end
 		local now = Workspace:GetServerTimeNow()
 		local wait = Spin.FreeIn(spin.NextFreeAt or 0, now)
-		spinLine.Text = if wait <= 0
-			then `<font color="#{Theme.Colors.Gold:ToHex()}">● Free spin ready!</font> Spin the wheel in the plaza.`
-			else `<font color="#{Theme.Colors.Muted:ToHex()}">● Next free spin in {Format.Duration(wait)}</font>`
+		spinLine.Text = if wait <= 0 then "Free spin ready!" else "Next free spin"
+		spinLine.TextColor3 = if wait <= 0 then Theme.Colors.Gold else Theme.Colors.Text
+		spinHint.Text = if wait <= 0 then "Spin the wheel in the plaza." else `in {Format.Duration(wait)}`
 		local lines = {}
 		for id, untilTime in spin.Boosts or {} do
 			local boost = SpinConfig.Boosts[id]
@@ -321,22 +358,23 @@ function Hud.new(ctx: any)
 	local touch = Theme.IsTouch()
 	-- Phones: a slightly smaller dock, centred a little high so it stays clear of the
 	-- jump button in the bottom-right corner.
-	local DOCK_SIZE = if touch then 58 else 64
+	local DOCK_SIZE = if touch then 64 else 74
+	local DOCK_HEIGHT = if touch then 60 else 70
 
 	local dock = Theme.Make("Frame", {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.42, 0),
+		Position = UDim2.new(1, -10, 0.46, 0),
 		Size = UDim2.fromOffset(DOCK_SIZE, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
-	Theme.List(dock, 8, nil, Enum.HorizontalAlignment.Right)
+	Theme.List(dock, 6, nil, Enum.HorizontalAlignment.Right)
 
 	local drawer = Theme.Panel(gui, {
 		Name = "MoreMenu",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -(DOCK_SIZE + 22), 0.42, 0),
+		Position = UDim2.new(1, -(DOCK_SIZE + 20), 0.46, 0),
 		Size = UDim2.fromOffset(190, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Visible = false,
@@ -349,47 +387,35 @@ function Hud.new(ctx: any)
 		return if keyboard then `  <font size="13" color="#dec496">[{key}]</font>` else ""
 	end
 
-	-- A big square button: glyph on top, name underneath, shortcut key in the corner.
+	-- A wooden tile (the kit's vine frame): icon on top, name underneath, shortcut key in
+	-- the corner.
 	local function dockButton(glyph: string, label: string, key: string?, order: number): TextButton
 		local button = Theme.Button(dock, "", "Secondary", {
 			Name = label,
-			Size = UDim2.fromOffset(DOCK_SIZE, DOCK_SIZE),
+			Size = UDim2.fromOffset(DOCK_SIZE, DOCK_HEIGHT),
 			LayoutOrder = order,
 		})
-		-- The kit's round icon (Build, Creatures, Map, Shop, More) replaces the drawn glyph.
-		local icon = Theme.KitImage("Icon" .. label)
-		if icon then
-			for _, child in button:GetChildren() do
-				if
-					child.Name == "Skin"
-					or child.Name == "SkinLabel"
-					or child:IsA("UIStroke")
-					or child:IsA("UIGradient")
-				then
-					child:Destroy()
-				end
-			end
-			button.BackgroundTransparency = 1
-			Theme.Make("ImageLabel", {
-				Name = "Icon",
-				BackgroundTransparency = 1,
-				Image = icon,
-				ScaleType = Enum.ScaleType.Fit,
-				Position = UDim2.fromScale(-0.08, -0.1),
-				Size = UDim2.fromScale(1.16, 1.05),
-			}, button)
-		else
-			Theme.Text(button, glyph, if touch then 24 else 28, {
+		Theme.Skin(button, "CardFrame")
+		local iconSize = DOCK_HEIGHT - 30
+		local icon = Theme.KitIcon(button, "Icon" .. label, {
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 0, 7),
+			Size = UDim2.fromOffset(iconSize, iconSize),
+			ZIndex = 2,
+		})
+		if not icon then
+			Theme.Text(button, glyph, if touch then 22 else 26, {
 				FontFace = Theme.Heavy,
-				Position = UDim2.fromOffset(0, 5),
-				Size = UDim2.new(1, 0, 0.55, 0),
+				Position = UDim2.fromOffset(0, 6),
+				Size = UDim2.new(1, 0, 0, iconSize),
 				AutomaticSize = Enum.AutomaticSize.None,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
+				ZIndex = 2,
 			})
 		end
-		Theme.Text(button, label, 13, {
-			ZIndex = 2,
+		Theme.Text(button, label, if touch then 12 else 13, {
+			ZIndex = 3,
 			TextStrokeColor3 = Theme.Colors.TextShadow,
 			TextStrokeTransparency = 0.2,
 			FontFace = Theme.Bold,
@@ -405,8 +431,9 @@ function Hud.new(ctx: any)
 				FontFace = Theme.Bold,
 				TextColor3 = Theme.Colors.Muted,
 				AnchorPoint = Vector2.new(1, 0),
-				Position = UDim2.new(1, -6, 0, 4),
+				Position = UDim2.new(1, -7, 0, 6),
 				Size = UDim2.fromOffset(14, 12),
+				ZIndex = 3,
 				AutomaticSize = Enum.AutomaticSize.None,
 				TextXAlignment = Enum.TextXAlignment.Right,
 			})
@@ -461,17 +488,18 @@ function Hud.new(ctx: any)
 	local travelBar = Theme.Make("Frame", {
 		Name = "QuickTravel",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -12, 0, 8),
-		Size = UDim2.fromOffset(0, 44),
+		Position = UDim2.new(1, -10, 0, 10),
+		Size = UDim2.fromOffset(0, 46),
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundTransparency = 1,
 	}, gui)
 	Theme.List(travelBar, 8, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Right)
 	local function travelButton(label: string, destination: string, style: Theme.ButtonStyle, order: number)
 		local button = Theme.Button(travelBar, label, style, {
-			Size = UDim2.fromOffset(if touch then 104 else 96, 44),
+			Size = UDim2.fromOffset(if touch then 112 else 118, 46),
 			LayoutOrder = order,
-			TextSize = 17,
+			TextSize = 18,
+			FontFace = Theme.Heavy,
 		})
 		button.Activated:Connect(function()
 			local ok, result = ctx.Request("Travel", destination)

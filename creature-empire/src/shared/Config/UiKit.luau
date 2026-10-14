@@ -10,6 +10,7 @@ export type Piece = {
 	Id: number,
 	Size: Vector2,
 	SliceCenter: Rect?,
+	Inner: Rect?, -- menu icons: just the symbol inside the round frame (x0, y0, x1, y1)
 }
 
 -- Uploaded by the game's creator.
@@ -36,11 +37,12 @@ local IDS: { [string]: number } = {
 	IconMore = 71580186205315,
 }
 
-local function piece(size: Vector2, slice: { number }?): Piece
+local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
 	return {
 		Id = 0, -- filled from IDS below
 		Size = size,
 		SliceCenter = if slice then Rect.new(slice[1], slice[2], slice[3], slice[4]) else nil,
+		Inner = if inner then Rect.new(inner[1], inner[2], inner[3], inner[4]) else nil,
 	}
 end
 
@@ -64,12 +66,12 @@ local UiKit = {
 	-- Wallet badges (coin / flower on the left, the number is drawn by the game)
 	BadgeGold = piece(Vector2.new(280, 108), { 116, 28, 208, 80 }),
 	BadgeEssence = piece(Vector2.new(270, 116), { 120, 30, 212, 86 }),
-	-- Menu icons
-	IconBuild = piece(Vector2.new(160, 146)),
-	IconCreatures = piece(Vector2.new(152, 146)),
-	IconMap = piece(Vector2.new(158, 146)),
-	IconShop = piece(Vector2.new(166, 146)),
-	IconMore = piece(Vector2.new(166, 146)),
+	-- Menu icons (Inner: the symbol on its dark disc, without the vine ring)
+	IconBuild = piece(Vector2.new(160, 146), nil, { 38, 33, 122, 117 }),
+	IconCreatures = piece(Vector2.new(152, 146), nil, { 34, 33, 118, 117 }),
+	IconMap = piece(Vector2.new(158, 146), nil, { 37, 33, 121, 117 }),
+	IconShop = piece(Vector2.new(166, 146), nil, { 41, 33, 125, 117 }),
+	IconMore = piece(Vector2.new(166, 146), nil, { 41, 33, 125, 117 }),
 } :: { [string]: Piece }
 
 for name, id in IDS do
