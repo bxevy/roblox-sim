@@ -303,26 +303,41 @@ local function buildStations(plaza: Instance)
 	end
 end
 
+local PLAZA_APOTHEM = 35 -- studs from the centre to the middle of each side (where paths start)
+
+-- A flat hexagon (0.5 thick, centred at height `y`) whose sides face the path directions:
+-- three overlapping slabs turned 60 degrees apart.
+local function hexagon(
+	parent: Instance,
+	name: string,
+	apothem: number,
+	y: number,
+	color: Color3,
+	material: Enum.Material
+)
+	local side = 2 * apothem / math.sqrt(3)
+	for i = 0, 2 do
+		local angle = i / PlotConfig.PlotCount * math.pi * 2
+		local direction = Vector3.new(math.sin(angle), 0, math.cos(angle))
+		Parts.Part(parent, {
+			Name = name,
+			Size = Vector3.new(side, 0.5, 2 * apothem),
+			CFrame = CFrame.lookAt(Vector3.new(0, y, 0), Vector3.new(0, y, 0) + direction),
+			Color = color,
+			Material = material,
+		})
+	end
+end
+
 local function buildPlaza(folder: Folder)
 	local plaza = Instance.new("Folder")
 	plaza.Name = "Plaza"
 	plaza.Parent = folder
 
-	-- A square platform: a cobblestone border around slate paving.
-	Parts.Part(plaza, {
-		Name = "PlazaBorder",
-		Size = Vector3.new(70, 0.5, 70),
-		CFrame = CFrame.new(0, 0.25, 0),
-		Color = STONE,
-		Material = Enum.Material.Cobblestone,
-	})
-	Parts.Part(plaza, {
-		Name = "PlazaFloor",
-		Size = Vector3.new(66, 0.5, 66),
-		CFrame = CFrame.new(0, 0.3, 0),
-		Color = Color3.fromRGB(176, 170, 160),
-		Material = Enum.Material.Slate,
-	})
+	-- A hexagon with one flat side facing each of the six paths, so every path starts
+	-- square-on at the middle of a side: a cobblestone border around slate paving.
+	hexagon(plaza, "PlazaBorder", PLAZA_APOTHEM, 0.25, STONE, Enum.Material.Cobblestone)
+	hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
 	-- Founders' Crystal monument
 	Parts.Cylinder(plaza, CFrame.new(0, 1.5, 0), 2, 16, { Color = STONE, Material = Enum.Material.Marble })
 	Parts.Cylinder(
@@ -380,7 +395,7 @@ local function buildPaths(folder: Folder)
 	for i = 0, PlotConfig.PlotCount - 1 do
 		local angle = i / PlotConfig.PlotCount * math.pi * 2
 		local direction = Vector3.new(math.sin(angle), 0, math.cos(angle))
-		local from, to = 34, PlotConfig.RingRadius
+		local from, to = PLAZA_APOTHEM, PlotConfig.RingRadius -- from the middle of a plaza side
 		local length = to - from
 		local mid = direction * (from + length / 2)
 		local side = Vector3.new(-direction.Z, 0, direction.X)
