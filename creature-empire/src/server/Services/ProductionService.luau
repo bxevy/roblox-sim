@@ -29,6 +29,7 @@ local CARRY_INTERVAL = 5 -- couriers deliver in batches so the wallet isn't re-s
 type Runtime = {
 	Rates: { [string]: Production.BuildingRate },
 	Couriers: Production.CourierRate,
+	Boost: Production.Buff?, -- a purchased production boost (all buildings)
 	CarryBudget: number, -- units couriers may still carry (fractional, carried in batches)
 	CarryTimer: number,
 	CourierBlocked: boolean, -- the silo was full on the last delivery
@@ -49,7 +50,7 @@ local globalBuffs: { [string]: Production.Buff } = {}
 
 -- Each building's own buffs plus the active server-wide ones.
 local function combinedBuffs(data: any, runtime: Runtime): { [string]: { Production.Buff } }
-	if next(globalBuffs) == nil then
+	if next(globalBuffs) == nil and runtime.Boost == nil then
 		return runtime.Buffs
 	end
 	local combined: { [string]: { Production.Buff } } = {}
@@ -57,6 +58,9 @@ local function combinedBuffs(data: any, runtime: Runtime): { [string]: { Product
 		local list = table.clone(runtime.Buffs[buildingId] or {})
 		for _, buff in globalBuffs do
 			table.insert(list, buff)
+		end
+		if runtime.Boost then
+			table.insert(list, runtime.Boost)
 		end
 		combined[buildingId] = list
 	end
@@ -90,6 +94,9 @@ local function recompute(player: Player, runtime: Runtime, withoutGlobal: boolea
 	end
 	-- Offline catch-up must not use server-wide event buffs (joining during Golden Hour
 	-- would otherwise boost the whole absence).
+	if runtime.Boost and runtime.Boost.Expires <= now then
+		runtime.Boost = nil
+	end
 	local buffs = if withoutGlobal then runtime.Buffs else combinedBuffs(data, runtime)
 	runtime.Rates = Production.Rates(data, buffs)
 	runtime.Couriers = Production.Couriers(data, buffs)
@@ -298,7 +305,7 @@ local function tick(player: Player, runtime: Runtime)
 	local dt = math.min(now - runtime.LastTick, 10) -- a long server hitch never grants a burst
 	runtime.LastTick = now
 
-	local hasExpiredBuff = false
+	local hasExpiredBuff = runtime.Boost ~= nil and runtime.Boost.Expires <= now
 	for _, buff in globalBuffs do
 		if buff.Expires <= now then
 			hasExpiredBuff = true
@@ -435,6 +442,20 @@ function ProductionService.SetGlobalBuff(
 	end
 end
 
+-- A purchased production boost for one player, `seconds` from now (0 removes it).
+function ProductionService.SetPlayerBoost(player: Player, stat: string, value: number, seconds: number)
+	local runtime = getRuntime(player)
+	if not runtime then
+		return
+	end
+	tick(player, runtime)
+	runtime.Boost = if seconds > 0
+		then { Stat = stat, Category = "Boost", Value = value, Expires = os.clock() + seconds }
+		else nil
+	recompute(player, runtime)
+	StateService.Push(player, "Buildings", "Creatures")
+end
+
 -- Active buff count of one category on a building (cheers use it to cap stacking).
 function ProductionService.CountBuffs(player: Player, buildingId: string, category: string): number
 	local runtime = getRuntime(player)
@@ -498,6 +519,10 @@ function ProductionService.GetBuffs(
 	if runtime and runtime.Rates[buildingId] then
 		for _, buff in globalBuffs do
 			table.insert(list, { Stat = buff.Stat, Value = buff.Value, Remaining = math.max(buff.Expires - now, 0) })
+		end
+		local boost = runtime.Boost
+		if boost and boost.Expires > now then
+			table.insert(list, { Stat = boost.Stat, Value = boost.Value, Remaining = boost.Expires - now })
 		end
 	end
 	return list

@@ -4,7 +4,7 @@ A creature-collecting simulator and empire-building tycoon for Roblox, written i
 
 You start with a small plot, one partner creature and a single Moonpetal Farm. Creatures walk to their jobs and work there. You collect the harvest, sell it, and grow the farm into a glowing empire.
 
-This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)** **Phase 4 (research, synergies, courier automation, mutations and Ascension)** and **Phase 5 (multiplayer: trading, collaborators, cheering, world events and leaderboards)**. The [roadmap](docs/ROADMAP.md) lists what Phase 6 adds and exactly what is unfinished.
+This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core simulator: hatching, evolution, a second production chain and land expansion)** **Phase 3 (the first explorable region: Emberfall Basin, wild creatures, expeditions and a guardian fight)** **Phase 4 (research, synergies, courier automation, mutations and Ascension)** **Phase 5 (multiplayer: trading, collaborators, cheering, world events and leaderboards)** and **Phase 6 (polish and release: pathfinding, imported art, optional shop, renaming and the full roster)**. The [roadmap](docs/ROADMAP.md) lists ideas for later updates and exactly what is unfinished.
 
 | Doc                                       | What's in it                                                       |
 | ----------------------------------------- | ------------------------------------------------------------------ |
@@ -122,6 +122,19 @@ This folder contains **Phase 1 (the playable foundation)**, **Phase 2 (the core 
   - **Fold:** expeditions come back sooner.
   - **Veil:** no heat build-up.
 - **Schema v5.**
+
+## Added in Phase 6 (release)
+
+- **Creatures walk around buildings** instead of through them.
+- **Your own 3D creatures.** Drop a model (for example an imported FBX) into `ReplicatedStorage › Assets › Creatures` and it replaces that species everywhere. Rigged models play Idle, Walk and Work animations. See `docs/ASSETS.md`.
+- **Rename your creatures.** Names go through Roblox text filtering.
+- **Optional shop (K).** A cosmetic Supporter pass and a 30-minute production boost. Nothing random is ever sold. Items stay "Coming soon" until you add your own ids in `MonetizationConfig`.
+- **All 32 species are obtainable.** The last three:
+  - **Thundermaw:** a rare Caldera Rim find.
+  - **Nocturnox:** a rare Ember Rift find; its Dark Gift triples the mutation chance of your next hatch.
+  - **Abyssquid:** a rare Tunnels find; it dives for treasure.
+- **Solid ground.** The plaza, plots and Emberfall floor are flat, so nothing sinks into the grass.
+- **Schema v6.**
 
 ## Run it
 

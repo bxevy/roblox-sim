@@ -21,6 +21,11 @@ local RarityConfig = require(Shared.Config.RarityConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local Remotes = require(Shared.Remotes)
 local Format = require(Shared.Util.Format)
+local AssetConfig = require(Shared.Config.AssetConfig)
+local Grid = require(Shared.Util.Grid)
+local Path = require(Shared.Util.Path)
+local PlotConfig = require(Shared.Config.PlotConfig)
+local BuildingConfig = require(Shared.Config.BuildingConfig)
 local CreatureModels = require(script.Parent.Parent.Visuals.CreatureModels)
 local StateController = require(script.Parent.StateController)
 local EffectsController = require(script.Parent.EffectsController)
@@ -60,7 +65,12 @@ type Entity = {
 	Visible: boolean,
 	LastStepSound: number,
 	Ground: { X: number, Z: number, Y: number, At: number }?, -- last ground probe
+	Waypoints: { Vector3 }?, -- path around buildings to Target (nil = walk straight)
+	PathFor: Vector3?, -- the Target the waypoints lead to
+	PathVersion: number,
 	SmoothY: number?, -- ground height eased between probes (no popping on steps)
+	Tracks: { [string]: AnimationTrack }?, -- rigged custom models: Idle / Walk / Work
+	AnimState: string?,
 }
 
 local CreatureController = {}
@@ -124,6 +134,103 @@ local function workSpot(entity: Entity, buildingId: string): (Vector3?, Vector3?
 		return attachment.WorldPosition, center
 	end
 	return center + model.PrimaryPart.CFrame.LookVector * -(model.PrimaryPart.Size.Z / 2 + 2), center
+end
+
+-- Pathfinding -------------------------------------------------------------------------------
+-- Each plot's building cells come from the building models' grid attributes. Paths are
+-- worked out on that grid (Shared/Util/Path) only for creatures near the camera.
+
+type PlotGrid = { Version: number, Cells: { [string]: string }, Dirty: boolean }
+local plotGrids: { [Instance]: PlotGrid } = {}
+
+local function gridFor(plot: Folder): PlotGrid
+	local existing = plotGrids[plot]
+	local g: PlotGrid
+	if existing then
+		g = existing
+	else
+		local fresh: PlotGrid = { Version = 0, Cells = {}, Dirty = true }
+		g = fresh
+		plotGrids[plot] = fresh
+		local folder = plot:FindFirstChild("Buildings")
+		if folder then
+			local function dirty()
+				fresh.Dirty = true
+			end
+			folder.ChildAdded:Connect(dirty)
+			folder.ChildRemoved:Connect(dirty)
+		end
+	end
+	if g.Dirty then
+		g.Dirty = false
+		g.Version += 1
+		local records = {}
+		local footprints = {}
+		local buildings = plot:FindFirstChild("Buildings")
+		local models: { Instance } = if buildings then buildings:GetChildren() else {}
+		for _, model in models do
+			local typeId = model:GetAttribute("BuildingType") :: string?
+			local x, z = model:GetAttribute("CellX") :: number?, model:GetAttribute("CellZ") :: number?
+			local def = typeId and BuildingConfig[typeId]
+			if def and x and z then
+				records[model.Name] = { Type = typeId, X = x, Z = z, Rot = (model:GetAttribute("Rot") :: number?) or 0 }
+				footprints[typeId :: string] = def.Footprint
+			end
+		end
+		g.Cells = Grid.Occupancy(records, footprints)
+	end
+	return g
+end
+
+local function toCell(plot: Folder, world: Vector3): Path.Cell
+	local localPos = plotOrigin(plot):PointToObjectSpace(world)
+	local x, z = Grid.CellAt(localPos.X, localPos.Z)
+	return { X = x, Z = z }
+end
+
+local function cellCenter(plot: Folder, cell: Path.Cell): Vector3
+	local size = PlotConfig.CellSize
+	return plotOrigin(plot):PointToWorldSpace(Vector3.new((cell.X + 0.5) * size, 0, (cell.Z + 0.5) * size))
+end
+
+local function planPath(entity: Entity, target: Vector3)
+	local plot = entity.Plot
+	if not plot then
+		return
+	end
+	local grid = gridFor(plot)
+	local start, goal = toCell(plot, entity.Position), toCell(plot, target)
+	local cells = grid.Cells
+	-- The buildings the creature starts in and walks to don't block it (habitat, workplace).
+	local exempt = {
+		[cells[start.X .. "," .. start.Z] or ""] = true,
+		[cells[goal.X .. "," .. goal.Z] or ""] = true,
+		path = true,
+	}
+	local function blocked(x: number, z: number): boolean
+		if x < -5 or z < -3 or x > PlotConfig.GridX + 4 or z > PlotConfig.GridZ + 4 then
+			return true
+		end
+		local owner = cells[x .. "," .. z]
+		return owner ~= nil and not exempt[owner]
+	end
+	entity.PathFor = target
+	entity.PathVersion = grid.Version
+	if start.X == goal.X and start.Z == goal.Z then
+		entity.Waypoints = nil
+		return
+	end
+	local found = Path.Find(start, goal, blocked, 1500)
+	if not found then
+		entity.Waypoints = nil -- no way round: walk straight (old behaviour)
+		return
+	end
+	local simplified = Path.Simplify(found, blocked)
+	local points = {}
+	for i = 2, #simplified - 1 do
+		table.insert(points, cellCenter(plot, simplified[i]))
+	end
+	entity.Waypoints = points
 end
 
 local function baseFloorY(entity: Entity): number
@@ -237,6 +344,84 @@ local function ensureModel(entity: Entity)
 	end
 	text.Parent = label
 	label.Parent = model
+
+	-- Rigged custom models play their animations (model attributes IdleAnimation /
+	-- WalkAnimation / WorkAnimation, or AssetConfig.Animations[species]).
+	entity.Tracks = nil
+	entity.AnimState = nil
+	if model:GetAttribute("Rigged") == true then
+		local holder: Instance? = model:FindFirstChildWhichIsA("Humanoid", true)
+			or model:FindFirstChildWhichIsA("AnimationController", true)
+		if holder then
+			local animator = holder:FindFirstChildOfClass("Animator")
+			if not animator then
+				local made = Instance.new("Animator")
+				made.Parent = holder
+				animator = made
+			end
+			local configured: any = AssetConfig.Animations[entity.Species] or {}
+			local tracks: { [string]: AnimationTrack } = {}
+			for _, kind in { "Idle", "Walk", "Work" } do
+				local id = (model:GetAttribute(kind .. "Animation") :: string?) or configured[kind]
+				if type(id) == "string" and id ~= "" then
+					local animation = Instance.new("Animation")
+					animation.AnimationId = id
+					local loaded, track = pcall(function()
+						return (animator :: Animator):LoadAnimation(animation)
+					end)
+					if loaded and track then
+						track.Looped = true
+						tracks[kind] = track
+					end
+				end
+			end
+			if next(tracks) then
+				entity.Tracks = tracks
+			end
+		end
+	end
+
+	-- Supporter cosmetic: a golden sparkle on the owner's companion.
+	local ownerId = entity.Anchor:GetAttribute("OwnerUserId") :: number?
+	local owner = if ownerId then Players:GetPlayerByUserId(ownerId) else nil
+	if owner and owner:GetAttribute("Supporter") == true and entity.Anchor:GetAttribute("Companion") == true then
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Name = "SupporterSparkle"
+		sparkle.Texture = AssetConfig.Particles.Default
+		sparkle.Color = ColorSequence.new(Color3.fromRGB(255, 215, 90))
+		sparkle.LightEmission = 1
+		sparkle.Size = NumberSequence.new(0.3, 0)
+		sparkle.Lifetime = NumberRange.new(0.6, 1.2)
+		sparkle.Rate = 10
+		sparkle.Speed = NumberRange.new(0.5, 1.5)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Parent = model.PrimaryPart
+	end
+end
+
+-- Plays the right animation for what the creature is doing (rigged custom models only).
+local function animate(entity: Entity)
+	local tracks = entity.Tracks
+	if not tracks then
+		return
+	end
+	local want = if entity.State == "Working"
+		then "Work"
+		elseif entity.Target ~= nil and entity.Action == nil then "Walk"
+		else "Idle"
+	if not tracks[want] then
+		want = "Idle"
+	end
+	if entity.AnimState ~= want then
+		for kind, track in tracks do
+			if kind == want then
+				track:Play(0.2)
+			else
+				track:Stop(0.2)
+			end
+		end
+		entity.AnimState = want
+	end
 end
 
 local function dropModel(entity: Entity)
@@ -394,12 +579,33 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 		end
 	end
 
-	-- Walking toward a target (wander, job or return)
+	-- Walking toward a target (wander, job or return), around buildings when close by.
 	if entity.Target and entity.State ~= "Working" then
-		local flatTarget = Vector3.new(entity.Target.X, entity.Position.Y, entity.Target.Z)
+		local target = entity.Target :: Vector3
+		if entity.Plot and entity.State ~= "Following" and detailed then
+			local grid = gridFor(entity.Plot)
+			if entity.PathFor ~= target or entity.PathVersion ~= grid.Version then
+				planPath(entity, target)
+			end
+		elseif entity.PathFor ~= target then
+			entity.Waypoints = nil
+			entity.PathFor = target
+		end
+		local waypoints = entity.Waypoints
+		if waypoints and #waypoints > 0 then
+			local next = waypoints[1]
+			if
+				(Vector3.new(next.X, 0, next.Z) - Vector3.new(entity.Position.X, 0, entity.Position.Z)).Magnitude < 0.6
+			then
+				table.remove(waypoints, 1)
+			end
+		end
+		local aim = if waypoints and #waypoints > 0 then waypoints[1] else target
+		local flatTarget = Vector3.new(aim.X, entity.Position.Y, aim.Z)
 		local delta = flatTarget - entity.Position
 		local distance = delta.Magnitude
-		if distance < 0.3 then
+		local finalLeg = not (waypoints and #waypoints > 0)
+		if distance < 0.3 and finalLeg then
 			entity.Position = flatTarget
 			if entity.State ~= "MovingToJob" then
 				entity.Target = nil
@@ -519,6 +725,7 @@ local function newEntity(anchor: Instance, speciesId: string, plot: Folder?): En
 		Home = nil,
 		GroundY = nil,
 		Target = nil,
+		PathVersion = 0,
 		FaceTarget = nil,
 		Pause = rng:NextNumber(0.5, 2),
 		Action = nil,
@@ -560,7 +767,13 @@ local function addEntity(plot: Folder, anchor: Instance)
 	entities[entity.Id] = entity
 
 	anchor.AttributeChanged:Connect(function(attribute)
-		if attribute == "Stage" or attribute == "Name" or attribute == "Level" or attribute == "Mutation" then
+		if
+			attribute == "Stage"
+			or attribute == "Name"
+			or attribute == "Level"
+			or attribute == "Mutation"
+			or attribute == "Companion"
+		then
 			entity.Stage = (anchor:GetAttribute("Stage") :: number?) or 1
 			dropModel(entity) -- rebuilt next frame with the new look/label
 		end
@@ -716,6 +929,7 @@ function CreatureController.Start()
 					local cf = step(entity, dt * interval, near)
 					if entity.Model and entity.Model.PrimaryPart then
 						entity.Model.PrimaryPart.CFrame = cf
+						animate(entity)
 					end
 				end
 				if near ~= entity.Visible then

@@ -268,6 +268,15 @@ function PlotService.IsNear(player: Player, position: Vector3, range: number?): 
 	return (root.Position - position).Magnitude <= (range or PlotConfig.InteractRange)
 end
 
+-- Redraws the owner's sign (Supporters get a golden star).
+function PlotService.RefreshSign(player: Player)
+	local plot = byPlayer[player]
+	if plot then
+		local star = if player:GetAttribute("Supporter") == true then "★ " else ""
+		setSignText(plot.Sign, star .. player.DisplayName .. "'s Empire")
+	end
+end
+
 -- Fires after a plot has been claimed and its folders are ready.
 local claimedCallbacks: { (Player, Plot) -> () } = {}
 function PlotService.OnClaimed(callback: (Player, Plot) -> ())

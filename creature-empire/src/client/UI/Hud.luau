@@ -239,7 +239,7 @@ function Hud.new(ctx: any)
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
-	Theme.List(menu, 8, nil, Enum.HorizontalAlignment.Right)
+	Theme.List(menu, 6, nil, Enum.HorizontalAlignment.Right)
 	local keyboard = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 	local function menuButton(glyph: string, label: string, key: string, windowName: string, order: number)
 		local button = Theme.Button(
@@ -247,7 +247,7 @@ function Hud.new(ctx: any)
 			`{glyph}  {label}` .. (if keyboard then `  <font size="13" color="#9aa6c4">[{key}]</font>` else ""),
 			"Secondary",
 			{
-				Size = UDim2.fromOffset(150, 44),
+				Size = UDim2.fromOffset(150, 40),
 				LayoutOrder = order,
 				RichText = true,
 				TextXAlignment = Enum.TextXAlignment.Left,
@@ -266,7 +266,8 @@ function Hud.new(ctx: any)
 	menuButton("✈", "Map", "M", "Map", 5)
 	menuButton("☺", "Players", "U", "Players", 6)
 	menuButton("♛", "Rankings", "L", "Leaderboards", 7)
-	menuButton("⚙", "Settings", "P", "Settings", 8)
+	menuButton("⚡", "Shop", "K", "Shop", 8)
+	menuButton("⚙", "Settings", "P", "Settings", 9)
 
 	------------------------------------------------------------------ Creature bar (bottom)
 	local bar = Theme.Make("Frame", {

@@ -236,6 +236,8 @@ export type PlayerData = {
 	Collaborators: { [string]: boolean }, -- user ids (as strings) allowed to help on this plot
 	WorldEvents: { [string]: number }, -- event id -> times completed (Grand Bloom wins)
 	Season: { Week: number, Gold: number }, -- gold earned this week (weekly leaderboard)
+	MutationCharm: number, -- Nocturnox's Dark Gift: mutation chance multiplier for the next hatch (0 = none)
+	BoostUntil: number, -- os.time a purchased production boost lasts until (0 = none)
 	Receipts: { [string]: number },
 	Pity: { [string]: number }, -- egg id -> hatches since the last Rare-or-better
 	Expansions: { [string]: boolean }, -- purchased expansion zone ids

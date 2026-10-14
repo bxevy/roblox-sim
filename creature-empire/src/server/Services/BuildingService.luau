@@ -116,6 +116,10 @@ local function spawnModel(player: Player, record: Types.BuildingRecord)
 	model:SetAttribute("BuildingId", record.Id)
 	model:SetAttribute("BuildingType", record.Type)
 	model:SetAttribute("Level", record.Level)
+	-- Grid placement (clients path creatures around buildings with it).
+	model:SetAttribute("CellX", record.X)
+	model:SetAttribute("CellZ", record.Z)
+	model:SetAttribute("Rot", record.Rot)
 	model:SetAttribute("OwnerUserId", player.UserId)
 	model.Parent = folder
 end

@@ -90,3 +90,13 @@ Any species can use a hand-made 3D model instead of the code-built one. The game
 - An optional number attribute **`HeightOffset`** lifts the model if it sinks into the ground.
 
 **Ownership:** uploaded meshes belong to the account that imported them. Publish the game from the same account (or from a group that owns the meshes), or they won't load in the live game.
+
+**Rigged models and animations:** a model with a `Humanoid` or `AnimationController` keeps its joints. Only its root part is welded to the game's invisible Root. Give it animations with string attributes on the model: `IdleAnimation`, `WalkAnimation` and `WorkAnimation`, each set to `rbxassetid://…`. You can also put them in `AssetConfig.Animations[speciesId] = { Idle = …, Walk = …, Work = … }`. Upload the animations from the same account or group that owns the game.
+
+## Monetization ids → `src/shared/Config/MonetizationConfig.luau`
+
+1. On the Creator Dashboard, open your experience and go to **Monetization**. Create a **Pass** for *Supporter* and a **Developer Product** for *Production Boost · 30 min*.
+2. Paste their ids into `Passes.Supporter.Id` and `Products.Boost30.Id`.
+3. Rebuild. The shop (K) now shows prices and buy buttons.
+
+While an id is `0`, the shop shows "Coming soon" and the server refuses that item. Don't add items that sell random rewards: the tests check that only boosts are sold.

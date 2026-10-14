@@ -106,6 +106,19 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
   - [ ] Studio without API access: the board shows the "needs DataStore access" message and nothing errors.
 - [ ] Load a Phase 4 save: it migrates to v5.
 
+### Phase 6: release features
+- [ ] Pathfinding: place a building between the habitat and a farm. The assigned creature walks around it, not through it. Move the building away and the route updates.
+- [ ] Rename a creature: the new name shows on its tag, in the Creatures window and in trades. A blocked word is refused with a message, and a blank name restores the species name.
+- [ ] Shop (K):
+  - [ ] With ids at 0, both items show "Coming soon".
+  - [ ] With test ids configured, buying the boost adds +25% speed (shown in building panels) and survives a rejoin.
+  - [ ] Buying again stacks the boost up to 2 hours.
+  - [ ] The Supporter pass shows ★ on the plot sign and a sparkle on your companion.
+- [ ] Receipts: in Studio, buy the product, then stop the server before it saves. On the next join, Roblox retries the purchase and it's granted exactly once.
+- [ ] Imported model: a model in Assets › Creatures replaces the species on plots, in portraits and in reveals, and stands on the ground. `Facing` and `HeightOffset` work. A rigged model with animation ids plays Idle, Walk and Work.
+- [ ] Thundermaw, Nocturnox and Abyssquid: *Developer → Grant* each one. Their abilities work, and Dark Gift makes the next hatch's mutation odds ×3, then resets.
+- [ ] Load a Phase 5 save: it migrates to v6.
+
 ### Production and storage
 - [ ] When storage is full, production stops, the creature shows "Waiting: storage is full", and no XP is gained.
 - [ ] When the silo is full, collecting leaves the remainder in the farm with a clear message.
@@ -131,7 +144,7 @@ Run these in Studio with **Enable Studio Access to API Services** turned on unle
 - [ ] `Sell("Moonpetal", -5)`, `Sell("Gold", 10)` and `UseAbility` on another player's creature id are all refused.
 
 ### Input and accessibility
-- [ ] Keyboard shortcuts C / B / J / P / G / M / U / L toggle windows and don't fire while typing in chat.
+- [ ] Keyboard shortcuts C / B / J / P / G / M / U / L / K toggle windows and don't fire while typing in chat.
 - [ ] Gamepad: D-pad opens windows, B closes, selection highlight is visible, and placement works with Y / A / B.
 - [ ] Touch (device emulator, phone sizes): HUD readable, windows fit, tap-to-place works.
 - [ ] Settings: volumes apply, VFX Off removes particles and motion, Reduced Motion stops bobbing and popping, Fast reveals skips the build-up.

@@ -9,6 +9,7 @@
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local TextService = game:GetService("TextService")
 
 local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
@@ -33,7 +34,8 @@ local EconomyService = require(script.Parent.EconomyService)
 local PlotService = require(script.Parent.PlotService)
 local ProductionService = require(script.Parent.ProductionService)
 
-local IMPLEMENTED_ABILITIES = { InstantHarvest = true, SpeedBurst = true, GoldFind = true, Collect = true }
+local IMPLEMENTED_ABILITIES =
+	{ InstantHarvest = true, SpeedBurst = true, GoldFind = true, Collect = true, Mutate = true }
 
 local CreatureService = {}
 
@@ -105,7 +107,12 @@ function CreatureService.Grant(
 		AbilityReadyAt = 0,
 	}
 	if MutationConfig.RollSources[source] then
-		record.Mutation = Mutation.Roll(speciesId, record.Id .. ":" .. source, CreatureService.MutationMultiplier(data))
+		local multiplier = CreatureService.MutationMultiplier(data)
+		if source == "Egg" and data.MutationCharm > 0 then
+			multiplier *= data.MutationCharm -- Dark Gift, used up by this hatch
+			data.MutationCharm = 0
+		end
+		record.Mutation = Mutation.Roll(speciesId, record.Id .. ":" .. source, multiplier)
 	end
 	data.Creatures[record.Id] = record
 	local entry = data.Collection[speciesId]
@@ -313,6 +320,7 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 	local buildingId = creature.Assignment
 	local anywhere = ability.Kind == "GoldFind"
 		or ability.Kind == "Collect"
+		or ability.Kind == "Mutate"
 		or CreatureService.AbilityHandlers[ability.Kind] ~= nil
 	if COMPANION_ABILITIES[ability.Kind] and data.Companion ~= creatureId then
 		return false, `Take {displayName(creature)} with you first (Creatures window → Take with me).`
@@ -370,6 +378,12 @@ local function useAbility(player: Player, creatureId: string): (boolean, any)
 			return false, "Nothing is waiting at your buildings (or your silo is full)."
 		end
 		message = `{ability.Name}! {displayName(creature)} carried {carried} items to your silo.`
+	elseif ability.Kind == "Mutate" then
+		if data.MutationCharm > 0 then
+			return false, "Your next hatch is already blessed."
+		end
+		data.MutationCharm = math.clamp(ability.Power, 1, 5)
+		message = `{ability.Name}! Your next hatch has {math.floor(ability.Power)}× the usual mutation chance.`
 	elseif CreatureService.AbilityHandlers[ability.Kind] then
 		local ok, result =
 			CreatureService.AbilityHandlers[ability.Kind](player, creature, ability.Power * strength, duration)
@@ -456,6 +470,38 @@ local function creaturesState(player: Player, profile: PlayerDataService.Profile
 	return { List = list, StarterChosen = data.StarterChosen }
 end
 
+-- Nicknames go through Roblox text filtering; an empty name restores the species name.
+local function rename(player: Player, creatureId: string, name: string): (boolean, any)
+	local data = PlayerDataService.GetData(player) :: Types.PlayerData
+	local creature = data.Creatures[creatureId]
+	if not creature then
+		return false, "That creature isn't yours."
+	end
+	local trimmed = string.gsub(string.gsub(name, "^%s+", ""), "%s+$", "")
+	if trimmed == "" then
+		creature.Nickname = nil
+	else
+		if utf8.len(trimmed) == nil or (utf8.len(trimmed) :: number) > 20 then
+			return false, "Names can be up to 20 characters."
+		end
+		local ok, filtered = pcall(function()
+			local result = TextService:FilterStringAsync(trimmed, player.UserId)
+			return result:GetNonChatStringForBroadcastAsync()
+		end)
+		if not ok or type(filtered) ~= "string" then
+			return false, "Names can't be checked right now. Try again in a moment."
+		end
+		if string.find(filtered, "#", 1, true) then
+			return false, "That name isn't allowed. Try another one."
+		end
+		creature.Nickname = filtered
+	end
+	PlayerDataService.MarkDirty(player)
+	updateAnchor(player, creature)
+	StateService.Push(player, "Creatures")
+	return true, displayName(creature)
+end
+
 function CreatureService.Start()
 	StateService.Register("Creatures", creaturesState)
 	StateService.Register("Collection", function(_player, profile)
@@ -486,6 +532,7 @@ function CreatureService.Start()
 	Net.Handle("AssignCreature", { Rate = { 6, 2 }, Args = { Check.Id, Check.OptionalId } }, assign)
 	Net.Handle("UseAbility", { Rate = { 4, 1 }, Args = { Check.Id } }, useAbility)
 	Net.Handle("SetCompanion", { Rate = { 4, 1 }, Args = { Check.OptionalId } }, setCompanion)
+	Net.Handle("RenameCreature", { Rate = { 3, 0.2 }, Args = { Check.Id, Check.String } }, rename)
 end
 
 return CreatureService

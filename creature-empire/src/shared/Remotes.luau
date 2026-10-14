@@ -32,6 +32,7 @@ local FUNCTIONS = {
 	"Gather", -- (nodeId)
 	"Befriend", -- (wildId)
 	"SetCompanion", -- (creatureId?) nil = no companion
+	"RenameCreature", -- (creatureId, name) "" restores the species name
 	"Craft", -- (recipeId)
 	"LaunchExpedition", -- (destinationId, { creatureIds }, approach, { supplyIds })
 	"ClaimExpedition", -- (expeditionId)

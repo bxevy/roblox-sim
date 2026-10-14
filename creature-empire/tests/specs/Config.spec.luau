@@ -45,6 +45,7 @@ local PHASE1_ABILITIES = {
 	InstantHarvest = true,
 	SpeedBurst = true,
 	GoldFind = true,
+	Mutate = true,
 	Collect = true,
 	Shield = true,
 	Debuff = true,

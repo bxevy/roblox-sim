@@ -120,12 +120,29 @@ Phases 1 and 2 are built. Each later phase must leave the game runnable and keep
 - Leaderboards need a published game (or Studio API access).
 - Thundermaw, Nocturnox and Abyssquid, and the PowerOperator, Breeder and RelicInvestigator jobs, are Phase 6. Cross-server friends and party invites are not included.
 
-## Phase 6: polish and release
+## Phase 6: polish and release ✔ built
 
-1. Import the assets from [ASSETS.md](ASSETS.md). Play `AssetConfig.Animations` when a species has rigged animations.
-2. Pathfinding for creatures (PathfindingService with the straight-line fallback), only for creatures near a player.
-3. Optional monetization (`MonetizationService`):
-   - Product ids in config, `ProcessReceipt` with an idempotent grant recorded in `PlayerData.Receipts` before returning `PurchaseGranted`.
-   - Game pass checks through MarketplaceService.
-   - Cosmetics and convenience only.
-4. Exploit pass, DataStore failure drills, a 6-player performance test, and the release checklist in [TESTING.md](TESTING.md).
+- **Pathfinding.** Creatures near the camera walk around buildings using A* over each plot's building grid (`Shared/Util/Path`: 8 directions, no corner cutting, then the path is smoothed into straight lines). Building models carry their grid cells as attributes. If there's no way round, the creature walks straight as before.
+- **Imported art.**
+  - **Models:** any model in `ReplicatedStorage/Assets/Creatures` is resized, rooted and grounded automatically (see [ASSETS.md](ASSETS.md)).
+  - **Rigged models:** models with a Humanoid or AnimationController keep their joints and play Idle, Walk and Work animations, taken from model attributes or `AssetConfig.Animations`.
+  - **Ground:** the play area and Emberfall's floor are flat parts, so nothing sinks into terrain.
+- **Monetization** (`MonetizationService`, `MonetizationConfig`). There's a Supporter game pass (cosmetic: a ★ on the plot sign and a sparkle on your companion) and a 30-minute production boost (+25%, in the capped `Boost` category, stacking up to 2 hours).
+  - **Receipts:** each purchase is recorded in `PlayerData.Receipts` and saved before `PurchaseGranted` is returned, so a purchase is never granted twice or lost.
+  - **Ids:** every id is 0 until you create the items, and while it's 0 the shop shows "Coming soon".
+- **Renaming.** Creatures can be renamed through `TextService` filtering, and a blank name restores the species name.
+- **Full roster.**
+  - **Thundermaw:** a rare Caldera Rim find.
+  - **Nocturnox:** a rare Ember Rift find. Its Dark Gift triples the mutation chance of your next hatch.
+  - **Abyssquid:** a rare Tunnels find. Treasure Dive finds gold.
+  - All 32 species are now obtainable. Schema v6.
+
+**Before release:** run the full manual checklist and the release checklist in [TESTING.md](TESTING.md) on desktop, phone emulator and gamepad, with 2–6 players. Configure product ids only after creating them on the Creator Dashboard.
+
+### Still not built (ideas for future updates)
+
+- New biomes beyond Emberfall: Sunken Archive, Storm Peaks and others (`BiomeConfig`, Phase 7).
+- Power, breeding and relic jobs and their buildings (PowerOperator, Breeder, RelicInvestigator are kept as Phase 7 jobs).
+- Conveyors, sorting machines and the Mutation Lab.
+- Cross-server friends, party invites and seasonal events.
+- Real sound and music assets (every sound slot is listed in ASSETS.md).

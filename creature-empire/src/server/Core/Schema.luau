@@ -23,7 +23,7 @@ local SocialConfig = require(Shared.Config.SocialConfig)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 5
+Schema.CURRENT_VERSION = 6
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -96,6 +96,8 @@ function Schema.Default(now: number): Types.PlayerData
 		Collaborators = {},
 		WorldEvents = {},
 		Season = { Week = 0, Gold = 0 },
+		MutationCharm = 0,
+		BoostUntil = 0,
 		Receipts = {},
 		Pity = {},
 		Expansions = {},
@@ -159,6 +161,11 @@ Schema.Migrations = {
 		data.Collaborators = if type(data.Collaborators) == "table" then data.Collaborators else {}
 		data.WorldEvents = if type(data.WorldEvents) == "table" then data.WorldEvents else {}
 		data.Season = if type(data.Season) == "table" then data.Season else { Week = 0, Gold = 0 }
+	end,
+	-- v5 -> v6 (release): Dark Gift charm and purchased production boosts.
+	[5] = function(data: { [string]: any })
+		data.MutationCharm = if type(data.MutationCharm) == "number" then data.MutationCharm else 0
+		data.BoostUntil = if type(data.BoostUntil) == "number" then data.BoostUntil else 0
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
@@ -487,6 +494,8 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 	end
 	data.Season.Week = cleanInteger(data.Season.Week, 0, 1e7, 0)
 	data.Season.Gold = cleanAmount(data.Season.Gold)
+	data.MutationCharm = if isFiniteNumber(data.MutationCharm) then math.clamp(data.MutationCharm, 0, 5) else 0
+	data.BoostUntil = if isFiniteNumber(data.BoostUntil) then math.clamp(data.BoostUntil, 0, now + 30 * 86400) else 0
 
 	-- Research: known nodes only, and only with their prerequisites.
 	if type(data.Research) ~= "table" then

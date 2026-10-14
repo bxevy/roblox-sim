@@ -776,10 +776,19 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 		model:ScaleTo(model:GetScale() * stageScale)
 	end
 	local center, box = worldBounds(model)
-	-- Replace any existing root with our own: anchored, invisible, at the model's centre.
-	for _, d in model:GetDescendants() do
-		if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then
-			d:Destroy()
+	-- A rigged model (AnimationController or Humanoid with joints) keeps its joints so it
+	-- can play animations; only its own root part is welded to ours. Anything else is
+	-- welded part by part.
+	local rigged = model:FindFirstChildWhichIsA("AnimationController", true) ~= nil
+		or model:FindFirstChildWhichIsA("Humanoid", true) ~= nil
+	local rigRoot: BasePart? = if rigged
+		then (model:FindFirstChild("HumanoidRootPart", true) :: BasePart?) or model.PrimaryPart
+		else nil
+	if not rigged then
+		for _, d in model:GetDescendants() do
+			if d:IsA("WeldConstraint") or d:IsA("Weld") or d:IsA("Motor6D") then
+				d:Destroy()
+			end
 		end
 	end
 	local facing = math.rad((model:GetAttribute("Facing") :: number?) or 0)
@@ -800,8 +809,18 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 			d.CanTouch = false
 			d.Massless = true
 			d.CastShadow = false
-			weld(root, d)
+			if not rigged or d == rigRoot then
+				weld(root, d)
+			end
 		end
+	end
+	if rigged then
+		local humanoid = model:FindFirstChildWhichIsA("Humanoid", true)
+		if humanoid then
+			humanoid.PlatformStand = true -- we move it; no walking physics
+			humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		end
+		model:SetAttribute("Rigged", true)
 	end
 	root.Parent = model
 	model.PrimaryPart = root

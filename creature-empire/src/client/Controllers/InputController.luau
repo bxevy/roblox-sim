@@ -9,6 +9,7 @@
 --   M                 World map
 --   U                 Players (visit, trade, collaborators)
 --   L                 Leaderboards
+--   K                 Shop
 --   B (gamepad)       close the open window
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -26,6 +27,7 @@ function InputController.Start(ui: any, placement: any)
 		[Enum.KeyCode.M] = "Map",
 		[Enum.KeyCode.U] = "Players",
 		[Enum.KeyCode.L] = "Leaderboards",
+		[Enum.KeyCode.K] = "Shop",
 		[Enum.KeyCode.DPadUp] = "Creatures",
 		[Enum.KeyCode.DPadLeft] = "Build",
 		[Enum.KeyCode.DPadRight] = "Quests",

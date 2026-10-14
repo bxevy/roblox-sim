@@ -108,7 +108,44 @@ function CreaturesWindow.new(ctx: any)
 			Size = UDim2.new(1, -164, 1, 0),
 		}, top)
 		Theme.List(identity, 6)
-		Theme.Text(identity, info.Name, 26, { FontFace = Theme.Heavy })
+		local nameRow = Window.Row(identity, 34)
+		Theme.Text(nameRow, info.Name, 24, {
+			FontFace = Theme.Heavy,
+			Size = UDim2.new(1, -110, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			TextWrapped = false,
+		})
+		local renameButton =
+			Theme.Button(nameRow, "✎ Rename", "Ghost", { Size = UDim2.fromOffset(100, 30), TextSize = 13 })
+		renameButton.Activated:Connect(function()
+			renameButton.Visible = false
+			local box = Theme.Make("TextBox", {
+				Size = UDim2.fromOffset(160, 30),
+				BackgroundColor3 = Theme.Colors.PanelSunken,
+				TextColor3 = Theme.Colors.Text,
+				FontFace = Theme.Font,
+				TextSize = 14,
+				PlaceholderText = "New name (blank = reset)",
+				Text = "",
+				ClearTextOnFocus = false,
+			}, nameRow)
+			Theme.Corner(box, 6)
+			box:CaptureFocus()
+			box.FocusLost:Connect(function(enterPressed)
+				if not enterPressed then
+					box:Destroy()
+					renameButton.Visible = true
+					return
+				end
+				local text = string.sub(box.Text, 1, 40)
+				box:Destroy()
+				renameButton.Visible = true
+				local ok, result = ctx.Request("RenameCreature", info.Id, text)
+				ctx.Notify(if ok then `Renamed to {result}.` else result, if ok then "Success" else "Error")
+			end)
+		end)
 		local chips = Window.Row(identity, 24)
 		Theme.Chip(chips, RarityConfig.Label(species.Rarity), rarity.Color)
 		Theme.Chip(chips, family.Glyph .. " " .. family.Name, family.Color)
