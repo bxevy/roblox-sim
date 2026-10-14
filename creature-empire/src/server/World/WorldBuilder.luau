@@ -91,16 +91,60 @@ end
 
 local LAMP_HEIGHT = 11 -- studs: imported lamps are scaled to this unless they have KeepSize
 
+local LAMP_GLOW = Color3.fromRGB(255, 215, 150)
+
+-- A wooden arm from the top of a lamp post out to `reach` studs along `look`, with a
+-- lantern hanging from its end, so people walk under the light.
+local function hangingLantern(parent: Instance, post: Vector3, topY: number, look: Vector3, reach: number)
+	local armY = topY - 0.8
+	local from = Vector3.new(post.X, armY, post.Z)
+	local to = from + look * reach
+	Parts.Decor(parent, {
+		Name = "LampArm",
+		Size = Vector3.new(0.5, 0.5, reach + 0.25),
+		CFrame = CFrame.lookAt((from + to) / 2, to),
+		Color = Color3.fromRGB(110, 78, 52),
+		Material = Enum.Material.Wood,
+	})
+	Parts.Decor(parent, {
+		Name = "LampChain",
+		Size = Vector3.new(0.12, 1.2, 0.12),
+		CFrame = CFrame.new(to - Vector3.new(0, 0.6, 0)),
+		Color = Color3.fromRGB(60, 58, 64),
+		Material = Enum.Material.Metal,
+	})
+	Parts.Decor(parent, {
+		Name = "LanternCap",
+		Size = Vector3.new(1.3, 0.3, 1.3),
+		CFrame = CFrame.new(to - Vector3.new(0, 1.3, 0)),
+		Color = Color3.fromRGB(60, 58, 64),
+		Material = Enum.Material.Metal,
+	})
+	local bulb = Parts.Ball(parent, to - Vector3.new(0, 2.1, 0), 1.2, {
+		Name = "LanternGlow",
+		Color = Color3.fromRGB(255, 225, 160),
+		Material = Enum.Material.Neon,
+	})
+	bulb.CastShadow = false
+	Parts.Light(bulb, LAMP_GLOW, 18, 1.2)
+end
+
 -- `facing` is the flat direction the lamp's front points (toward the walkway it lights).
-local function lamp(parent: Instance, position: Vector3, facing: Vector3)
+-- With `reach`, an imported lamp gets an arm and lantern hanging that far out over the walkway.
+local function lamp(parent: Instance, position: Vector3, facing: Vector3, reach: number?)
 	local template = CustomModels.Find("World", "Lamp")
 	if template then
 		local look = Vector3.new(facing.X, 0, facing.Z).Unit
 		local model = CustomModels.Place(template, parent, CFrame.lookAt(position, position + look), {
 			Fit = Vector3.new(math.huge, LAMP_HEIGHT, math.huge),
 		})
-		-- Imported meshes carry no light, so add a glow near the top to keep paths lit at night.
 		local center, size = CustomModels.Bounds(model)
+		local topY = center.Y + size.Y / 2
+		if reach then
+			hangingLantern(model, position, topY, look, reach)
+			return
+		end
+		-- Imported meshes carry no light, so add a glow near the top to keep the plaza lit at night.
 		local glow = Parts.Decor(model, {
 			Name = "LampGlow",
 			Size = Vector3.new(0.2, 0.2, 0.2),
@@ -108,7 +152,7 @@ local function lamp(parent: Instance, position: Vector3, facing: Vector3)
 			Transparency = 1,
 			CastShadow = false,
 		})
-		Parts.Light(glow, Color3.fromRGB(255, 215, 150), 16, 1)
+		Parts.Light(glow, LAMP_GLOW, 16, 1)
 		return
 	end
 	Parts.Cylinder(parent, CFrame.new(position + Vector3.new(0, 3.5, 0)), 7, 0.5, {
@@ -267,8 +311,8 @@ local function buildPaths(folder: Folder)
 			Material = Enum.Material.Pavement,
 		})
 		local side = Vector3.new(-direction.Z, 0, direction.X)
-		-- At the path edge (it is 8 studs wide) so the lantern hangs out over it.
-		lamp(paths, direction * (from + length * 0.6) + side * 4.6, -side)
+		-- Just off the path edge (it is 8 studs wide), with the lantern hanging over its middle.
+		lamp(paths, direction * (from + length * 0.6) + side * 4.8, -side, 4.8)
 	end
 end
 
