@@ -149,6 +149,12 @@ function Hud.new(ctx: any)
 	}, gui)
 	Theme.List(leftColumn, 8)
 
+	-- Hidden while a new player is still choosing their starter.
+	State.OnChanged("Creatures", function(creatures)
+		leftColumn.Visible = creatures.StarterChosen ~= nil
+	end)
+	leftColumn.Visible = false
+
 	------------------------------------------------------------------ Empire (top left)
 	local empire = Theme.Panel(leftColumn, {
 		Name = "Empire",

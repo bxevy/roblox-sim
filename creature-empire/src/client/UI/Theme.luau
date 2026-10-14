@@ -188,6 +188,38 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 		return nil
 	end
 	local piece = UiKit[name]
+	-- Panels are ImageLabels: the picture is their own image, so it never takes a slot in
+	-- their UIListLayout / UIGridLayout (a child picture would be stacked like an item).
+	if gui:IsA("ImageLabel") then
+		local own = gui :: ImageLabel
+		own.Image = image
+		own.ScaleType = if piece.SliceCenter then Enum.ScaleType.Slice else Enum.ScaleType.Fit
+		if piece.SliceCenter then
+			own.SliceCenter = piece.SliceCenter
+		end
+		own:SetAttribute("Piece", name)
+		own.BackgroundTransparency = 1
+		-- The drawn trim and shading switch off (kept, since other code recolours them).
+		for _, child in own:GetChildren() do
+			if child:IsA("UIStroke") or child:IsA("UIGradient") then
+				(child :: any).Enabled = false
+			end
+		end
+		if not own:GetAttribute("SkinScaled") then
+			own:SetAttribute("SkinScaled", true)
+			local function rescale()
+				local kit = UiKit[own:GetAttribute("Piece") :: string]
+				if kit and kit.SliceCenter then
+					local fit = math.min(own.AbsoluteSize.Y / kit.Size.Y, own.AbsoluteSize.X / kit.Size.X * 2.5)
+					own.SliceScale = math.clamp(fit, 0.08, 0.4)
+				end
+			end
+			own:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
+			task.defer(rescale)
+		end
+		return own
+	end
+	-- Buttons and plain frames without a layout: the picture is a child behind the rest.
 	local skin = gui:FindFirstChild("Skin") :: ImageLabel?
 	if not skin then
 		local new = Instance.new("ImageLabel")
@@ -222,17 +254,20 @@ function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
 	gui.BackgroundTransparency = 1
 	for _, child in gui:GetChildren() do
 		if child:IsA("UIStroke") or child:IsA("UIGradient") then
-			child:Destroy()
+			(child :: any).Enabled = false
 		end
 	end
 	return s
 end
 
+-- A panel is an ImageLabel (it looks and lays out exactly like a Frame) so a kit picture
+-- can be its own image. Typed as Frame for the callers.
 function Theme.Panel(parent: Instance?, props: { [string]: any }?): Frame
-	local frame = Theme.Make("Frame", {
+	local frame = Theme.Make("ImageLabel", {
 		BackgroundColor3 = Theme.Colors.Panel,
 		BackgroundTransparency = 0.08,
 		BorderSizePixel = 0,
+		Image = "",
 	})
 	for key, value in props or {} :: { [string]: any } do
 		(frame :: any)[key] = value
@@ -267,6 +302,11 @@ local function skinButton(button: TextButton, style: string)
 		if old then
 			old:Destroy() -- a style without kit art (Danger): back to the drawn look
 			button.BackgroundTransparency = 0
+			for _, child in button:GetChildren() do
+				if child:IsA("UIStroke") or child:IsA("UIGradient") then
+					(child :: any).Enabled = true
+				end
+			end
 		end
 		if label then
 			label:Destroy()
