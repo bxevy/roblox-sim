@@ -43,7 +43,16 @@ UIController.Start({
 local ctx = UIController.Context()
 
 -- Interface ------------------------------------------------------------------------------
-require(UIFolder.Theme).PreloadKit() -- the creator's UI kit pictures, before anything is built
+local kitFailed = require(UIFolder.Theme).PreloadKit() -- the creator's UI kit pictures, first
+if #kitFailed > 0 and game:GetService("RunService"):IsStudio() then
+	-- Studio only: say so on screen, so a missing kit isn't a mystery.
+	task.delay(3, function()
+		ctx.Notify(
+			`UI kit: {#kitFailed} picture(s) didn't load ({table.concat(kitFailed, ", ")}). See Output.`,
+			"Error"
+		)
+	end)
+end
 require(UIFolder.Hud).new(ctx)
 UIController.Register("Creatures", require(UIFolder.CreaturesWindow).new(ctx))
 UIController.Register("Building", require(UIFolder.BuildingPanel).new(ctx))

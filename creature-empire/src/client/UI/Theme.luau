@@ -151,7 +151,7 @@ end
 -- screen). Only a picture Roblox says it can't fetch, twice, is dropped (a Decal id instead
 -- of an Image id, or one still in moderation); that piece keeps the drawn look. A slow
 -- fetch (timed out, still loading) keeps the picture: it shows as soon as it arrives.
-function Theme.PreloadKit(timeout: number?)
+function Theme.PreloadKit(timeout: number?): { string }
 	local ContentProvider = game:GetService("ContentProvider")
 	local function fetch(content: string): Enum.AssetFetchStatus?
 		local final: Enum.AssetFetchStatus? = nil
@@ -162,10 +162,11 @@ function Theme.PreloadKit(timeout: number?)
 		end)
 		return final
 	end
-	local pending = 0
+	local pending, total = 0, 0
 	for name, piece in UiKit do
 		if piece.Id ~= 0 then
 			pending += 1
+			total += 1
 			task.spawn(function()
 				local content = `rbxassetid://{piece.Id}`
 				if fetch(content) == Enum.AssetFetchStatus.Failure then
@@ -182,11 +183,16 @@ function Theme.PreloadKit(timeout: number?)
 	while pending > 0 and os.clock() < deadline do
 		task.wait(0.1)
 	end
+	local failed = {}
 	for name in kitFailed do
+		table.insert(failed, name)
 		warn(
-			`[UI kit] {name} (id {UiKit[name].Id}) didn't load; using the drawn look. Is it an Image id (not a Decal id)?`
+			`[UI kit] {name} (id {UiKit[name].Id}) didn't load; using the drawn look. Is it an Image id (not a Decal id), and approved?`
 		)
 	end
+	table.sort(failed)
+	print(`[UI kit] {total - #failed} of {total} pictures loaded.`)
+	return failed
 end
 
 function Theme.Skin(gui: GuiObject, name: string): ImageLabel?
