@@ -70,12 +70,23 @@ local function lamp(parent: Instance, position: Vector3)
 	Parts.Light(bulb, Color3.fromRGB(255, 215, 150), 16, 1)
 end
 
+local PLAY_AREA = 640 -- studs: the flat part-built ground around the plaza and plots
+
 local function buildTerrain()
 	local terrain = Workspace.Terrain
-	-- Clear anything already above ground level around the plaza, paths and plots (for
-	-- example terrain made with Studio's Terrain Editor), so it can't bury them.
-	terrain:FillBlock(CFrame.new(0, 40, 0), Vector3.new(600, 80, 600), Enum.Material.Air)
 	terrain:FillBlock(CFrame.new(0, -6, 0), Vector3.new(1100, 12, 1100), Enum.Material.Grass)
+	-- Terrain is stored in 4-stud voxels, so its surface can show up above y = 0 and cover
+	-- the plot floors (0.5). The play area is a flat Part instead (exact height), and the
+	-- terrain under it is removed; terrain stays for the meadows and hills around it.
+	terrain:FillBlock(CFrame.new(0, -9, 0), Vector3.new(PLAY_AREA, 22, PLAY_AREA), Enum.Material.Air)
+	local ground = Parts.Part(Workspace, {
+		Name = "Ground",
+		Size = Vector3.new(PLAY_AREA, 4, PLAY_AREA),
+		CFrame = CFrame.new(0, -2, 0),
+		Color = GROUND,
+		Material = Enum.Material.Grass,
+	})
+	ground.CastShadow = false
 	terrain:SetMaterialColor(Enum.Material.Grass, GROUND)
 	-- No animated grass: its blades grow taller than the plot floors and paths, which made
 	-- every building, fence and creature look sunk into the ground.

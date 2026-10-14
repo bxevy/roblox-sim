@@ -95,6 +95,9 @@ local function terrain(region: RegionConfig.Region)
 		t:FillBall(c + Vector3.new(math.cos(a) * r, 10, math.sin(a) * r), rng:NextNumber(45, 58), Enum.Material.Rock)
 	end
 	t:SetMaterialColor(Enum.Material.Rock, Color3.fromRGB(70, 56, 52))
+	-- The basin floor is a flat Part (terrain voxels can poke above y = 0 and bury the
+	-- lava, bridges and nodes). Remove the terrain under it, but keep the cliffs above.
+	t:FillBlock(CFrame.new(c + Vector3.new(0, -10, 0)), Vector3.new(520, 24, 520), Enum.Material.Air)
 end
 
 -- Invisible walls just inside the cliffs, so nobody climbs out or walks off the plate.
@@ -506,6 +509,14 @@ function EmberfallBuilder.Build()
 	nodeFolder.Parent = folder
 
 	terrain(region)
+	local floor = Parts.Part(folder, {
+		Name = "BasinFloor",
+		Size = Vector3.new(600, 4, 600),
+		CFrame = CFrame.new(region.Center + Vector3.new(0, -2, 0)),
+		Color = BASALT,
+		Material = Enum.Material.Basalt,
+	})
+	floor.CastShadow = false
 	bounds(folder, region)
 	lava(folder, region)
 	pools(folder, region)
