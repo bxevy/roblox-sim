@@ -62,8 +62,7 @@ function PlazaConfig.CFrame(id: string): CFrame
 	end
 	local station = PlazaConfig.Stations[id]
 	local angle = math.rad(station.Angle)
-	local position =
-		Vector3.new(math.sin(angle) * station.Radius, PlazaConfig.FloorY, math.cos(angle) * station.Radius)
+	local position = Vector3.new(math.sin(angle) * station.Radius, PlazaConfig.FloorY, math.cos(angle) * station.Radius)
 	return CFrame.lookAt(position, Vector3.new(0, position.Y, 0))
 end
 

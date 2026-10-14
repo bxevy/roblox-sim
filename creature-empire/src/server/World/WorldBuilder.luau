@@ -308,14 +308,21 @@ local function buildPlaza(folder: Folder)
 	plaza.Name = "Plaza"
 	plaza.Parent = folder
 
-	Parts.Cylinder(plaza, CFrame.new(0, 0.25, 0), 0.5, 70, { Color = STONE, Material = Enum.Material.Cobblestone })
-	Parts.Cylinder(
-		plaza,
-		CFrame.new(0, 0.3, 0),
-		0.5,
-		66,
-		{ Color = Color3.fromRGB(176, 170, 160), Material = Enum.Material.Slate }
-	)
+	-- A square platform: a cobblestone border around slate paving.
+	Parts.Part(plaza, {
+		Name = "PlazaBorder",
+		Size = Vector3.new(70, 0.5, 70),
+		CFrame = CFrame.new(0, 0.25, 0),
+		Color = STONE,
+		Material = Enum.Material.Cobblestone,
+	})
+	Parts.Part(plaza, {
+		Name = "PlazaFloor",
+		Size = Vector3.new(66, 0.5, 66),
+		CFrame = CFrame.new(0, 0.3, 0),
+		Color = Color3.fromRGB(176, 170, 160),
+		Material = Enum.Material.Slate,
+	})
 	-- Founders' Crystal monument
 	Parts.Cylinder(plaza, CFrame.new(0, 1.5, 0), 2, 16, { Color = STONE, Material = Enum.Material.Marble })
 	Parts.Cylinder(
