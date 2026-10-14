@@ -90,7 +90,10 @@ AssetConfig.ModelAssets = {
 		-- Supplied by the game's creator: their shop model.
 		TradingPost = 129682746612211,
 	},
-	World = {},
+	World = {
+		-- Supplied by the game's creator: their fence section.
+		FenceSegment = 103118385802066,
+	},
 } :: { [string]: { [string]: number } }
 
 -- Adjustments applied to loaded models (same as setting attributes on the model in Studio,

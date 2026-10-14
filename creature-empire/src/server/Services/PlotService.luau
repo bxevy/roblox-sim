@@ -18,6 +18,7 @@ local Net = require(Core.Net)
 local Log = require(Core.Log)
 local Parts = require(script.Parent.Parent.World.Parts)
 local CustomModels = require(script.Parent.Parent.World.CustomModels)
+local CUSTOM_FENCE_HEIGHT = 4.5 -- studs: hand-made fence sections are scaled to this height
 local PlayerDataService = require(script.Parent.PlayerDataService)
 
 export type Plot = {
@@ -203,13 +204,18 @@ buildBounds = function(plot: Plot, expansions: { [string]: boolean })
 		if segment then
 			local _, size = CustomModels.Bounds(segment)
 			local turned = math.abs(math.cos(math.rad((segment:GetAttribute("Facing") :: number?) or 0))) < 0.5
-			local segLength = math.max(if turned then size.Z else size.X, 0.5)
+			-- Imported models come in at any size: scale to a normal fence height first
+			-- (unless KeepSize), then work out how many sections fill the edge.
+			local baseScale = if segment:GetAttribute("KeepSize") == true or size.Y <= 0
+				then 1
+				else CUSTOM_FENCE_HEIGHT / size.Y
+			local segLength = math.max((if turned then size.Z else size.X) * baseScale, 0.5)
 			local count = math.max(math.floor(length / segLength + 0.5), 1)
 			local along = CFrame.fromMatrix(Vector3.zero, direction, Vector3.yAxis)
 			for i = 0, count - 1 do
 				local p = from + direction * (length * (i + 0.5) / count)
 				CustomModels.Place(segment, folder, origin * CFrame.new(p.X, 0, p.Z) * along, {
-					Scale = (length / count) / segLength,
+					Scale = baseScale * (length / count) / segLength,
 				})
 			end
 			return
