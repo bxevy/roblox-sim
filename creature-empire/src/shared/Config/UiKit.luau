@@ -52,6 +52,24 @@ local IDS: { [string]: number } = {
 	PortraitSproutling = 81048497216059,
 	PortraitCindercub = 72919480696239,
 	PortraitPebblit = 81826648297332,
+	-- Spin Wheel sheet (art/ui-spin)
+	SpinPanel = 102847727495518,
+	SpinHeader = 88177704359846,
+	SpinClose = 130229593738844,
+	WheelFace = 106388577070766,
+	WheelHub = 103077080816198,
+	WheelPointer = 131718537231235,
+	SpinFreeButton = 92228782280509,
+	SpinRobuxButton = 128803419383597,
+	OddsBox = 109226136282444,
+	IconGold500 = 97222724994602,
+	IconGold1000 = 93932138140162,
+	IconGold2500 = 102837292709393,
+	IconGold5000 = 122363477537619,
+	IconCoins2x = 73757438204472,
+	IconEssence = 75244608322405,
+	IconLuck = 124772987573261,
+	IconDragon = 133349929132347,
 }
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
@@ -106,6 +124,24 @@ local UiKit = {
 	PortraitSproutling = piece(Vector2.new(228, 208)),
 	PortraitCindercub = piece(Vector2.new(250, 210)),
 	PortraitPebblit = piece(Vector2.new(250, 210)),
+	-- Spin Wheel sheet, sizes as uploaded.
+	SpinPanel = piece(Vector2.new(281, 216)),
+	SpinHeader = piece(Vector2.new(310, 82)),
+	SpinClose = piece(Vector2.new(64, 48)),
+	WheelFace = piece(Vector2.new(212, 213)),
+	WheelHub = piece(Vector2.new(68, 68)),
+	WheelPointer = piece(Vector2.new(68, 54)),
+	SpinFreeButton = piece(Vector2.new(179, 56)),
+	SpinRobuxButton = piece(Vector2.new(182, 56)),
+	OddsBox = piece(Vector2.new(293, 206)),
+	IconGold500 = piece(Vector2.new(46, 34)),
+	IconGold1000 = piece(Vector2.new(48, 39)),
+	IconGold2500 = piece(Vector2.new(56, 42)),
+	IconGold5000 = piece(Vector2.new(68, 48)),
+	IconCoins2x = piece(Vector2.new(55, 42)),
+	IconEssence = piece(Vector2.new(54, 59)),
+	IconLuck = piece(Vector2.new(49, 55)),
+	IconDragon = piece(Vector2.new(67, 65)),
 } :: { [string]: Piece }
 
 for name, entry in UiKit do
