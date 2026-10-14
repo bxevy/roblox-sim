@@ -91,6 +91,8 @@ AssetConfig.ModelAssets = {
 		TradingPost = 129682746612211,
 		-- Supplied by the game's creator: their hatchery nest.
 		Hatchery = 120291385949696,
+		-- Supplied by the game's creator: their moonpetal farm.
+		MoonpetalFarm = 134956325741614,
 	},
 	World = {
 		-- Supplied by the game's creator: their fence section.
