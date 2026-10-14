@@ -267,7 +267,8 @@ local function buildPaths(folder: Folder)
 			Material = Enum.Material.Pavement,
 		})
 		local side = Vector3.new(-direction.Z, 0, direction.X)
-		lamp(paths, direction * (from + length * 0.6) + side * 6, -side) -- face the path
+		-- At the path edge (it is 8 studs wide) so the lantern hangs out over it.
+		lamp(paths, direction * (from + length * 0.6) + side * 4.6, -side)
 	end
 end
 
