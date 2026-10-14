@@ -59,6 +59,8 @@ type Entity = {
 	Owned: boolean,
 	Visible: boolean,
 	LastStepSound: number,
+	Ground: { X: number, Z: number, Y: number, At: number }?, -- last ground probe
+	SmoothY: number?, -- ground height eased between probes (no popping on steps)
 }
 
 local CreatureController = {}
@@ -124,11 +126,61 @@ local function workSpot(entity: Entity, buildingId: string): (Vector3?, Vector3?
 	return center + model.PrimaryPart.CFrame.LookVector * -(model.PrimaryPart.Size.Z / 2 + 2), center
 end
 
-local function floorY(entity: Entity): number
+local function baseFloorY(entity: Entity): number
 	if entity.GroundY then
 		return entity.GroundY
 	end
 	return if entity.Plot then plotOrigin(entity.Plot).Position.Y else 0
+end
+
+-- Raycast for the real surface under a creature (habitat floors, paths, building bases,
+-- terrain), ignoring creatures and characters. Only surfaces near the expected floor
+-- count, so creatures walk across floors but never hop onto roofs.
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Exclude
+groundParams.IgnoreWater = true
+local groundParamsAt = 0
+local GROUND_UP = 2.5 -- highest step above the expected floor a creature stands on
+local GROUND_DOWN = 4 -- lowest dip below it (terrain hollows)
+
+local function probeGround(entity: Entity, base: number): number
+	local now = os.clock()
+	if now - groundParamsAt > 1 then
+		groundParamsAt = now
+		local ignore: { Instance } = { modelsFolder }
+		for _, player in Players:GetPlayers() do
+			if player.Character then
+				table.insert(ignore, player.Character)
+			end
+		end
+		groundParams.FilterDescendantsInstances = ignore
+	end
+	local origin = Vector3.new(entity.Position.X, base + GROUND_UP + 0.5, entity.Position.Z)
+	local hit = Workspace:Raycast(origin, Vector3.new(0, -(GROUND_UP + GROUND_DOWN + 0.5), 0), groundParams)
+	return if hit then hit.Position.Y else base
+end
+
+local function floorY(entity: Entity): number
+	local base = baseFloorY(entity)
+	local probe = entity.Ground
+	local now = os.clock()
+	if
+		not probe
+		or math.abs(probe.X - entity.Position.X) + math.abs(probe.Z - entity.Position.Z) > 0.6
+		or now - probe.At > 0.5
+	then
+		probe = { X = entity.Position.X, Z = entity.Position.Z, Y = probeGround(entity, base), At = now }
+		entity.Ground = probe
+	end
+	local target = (probe :: any).Y
+	local current = entity.SmoothY or target
+	-- Ease toward the probed height (steps up and down smoothly).
+	current += (target - current) * 0.35
+	if math.abs(target - current) < 0.01 then
+		current = target
+	end
+	entity.SmoothY = current
+	return current
 end
 
 local function ensureModel(entity: Entity)
@@ -552,7 +604,7 @@ local function onAbilityFx(payload: any)
 	local family = CreatureConfig.Families[payload.Family]
 	local color = family and family.Color or Color3.new(1, 1, 1)
 	local position = entity.Model.PrimaryPart.Position
-	EffectsController.Ring(Vector3.new(position.X, floorY(entity) + 0.2, position.Z), color, 10)
+	EffectsController.Ring(Vector3.new(position.X, baseFloorY(entity) + 0.2, position.Z), color, 10)
 	EffectsController.Burst(position, color, 30, { Speed = 12, Acceleration = Vector3.new(0, 4, 0) })
 	if payload.BuildingId and entity.Plot then
 		local model = buildingModel(entity.Plot, payload.BuildingId)
@@ -647,7 +699,7 @@ function CreatureController.Start()
 				end
 				continue
 			end
-			local distance = (Vector3.new(entity.Position.X, floorY(entity), entity.Position.Z) - camPos).Magnitude
+			local distance = (Vector3.new(entity.Position.X, baseFloorY(entity), entity.Position.Z) - camPos).Magnitude
 			if distance > FAR then
 				-- Far away: keep the logic cheap and drop the model.
 				if entity.Model then

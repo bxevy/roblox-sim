@@ -810,8 +810,8 @@ local function prepareCustom(source: Model, height: number, stageScale: number, 
 	model:PivotTo(CFrame.new())
 	model.Name = source.Name
 	local lift = (model:GetAttribute("HeightOffset") :: number?) or 0
-	-- A small gap like the built-in creatures have, so feet rest on raised floors (habitat).
-	model:SetAttribute("Height", box.Y / 2 + height * 0.12 + lift + (if floating then height * 0.3 else 0))
+	-- Root is at the model's centre, so its feet are half its height below Root.
+	model:SetAttribute("Height", box.Y / 2 + lift + (if floating then height * 0.3 else 0))
 	model:SetAttribute("Floating", floating)
 	return model
 end
