@@ -76,8 +76,24 @@ local function wildPetal(parent: Instance, position: Vector3)
 	})
 end
 
+local LAMP_HEIGHT = 8 -- studs: imported lamps are scaled to this unless they have KeepSize
+
 local function lamp(parent: Instance, position: Vector3)
-	if customPiece("Lamp", parent, position, 1, false) then
+	local template = CustomModels.Find("World", "Lamp")
+	if template then
+		local model = CustomModels.Place(template, parent, CFrame.new(position), {
+			Fit = Vector3.new(math.huge, LAMP_HEIGHT, math.huge),
+		})
+		-- Imported meshes carry no light, so add a glow near the top to keep paths lit at night.
+		local center, size = CustomModels.Bounds(model)
+		local glow = Parts.Decor(model, {
+			Name = "LampGlow",
+			Size = Vector3.new(0.2, 0.2, 0.2),
+			CFrame = CFrame.new(center + Vector3.new(0, size.Y * 0.4, 0)),
+			Transparency = 1,
+			CastShadow = false,
+		})
+		Parts.Light(glow, Color3.fromRGB(255, 215, 150), 16, 1)
 		return
 	end
 	Parts.Cylinder(parent, CFrame.new(position + Vector3.new(0, 3.5, 0)), 7, 0.5, {
