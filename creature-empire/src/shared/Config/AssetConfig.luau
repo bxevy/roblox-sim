@@ -141,7 +141,7 @@ AssetConfig.ModelSettings = {
 		Habitat = { Scale = 1.25 }, -- a little bigger than its plot space
 	},
 	World = {
-		PlazaFloor = { HeightOffset = 3 }, -- studs higher than its walking surface lines up
+		PlazaFloor = { HeightOffset = 1 }, -- studs higher than its walking surface lines up
 		-- Turned 90° left so the glowing mushrooms face the path.
 		Lamp = { Facing = 90 },
 	},
