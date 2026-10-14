@@ -3,6 +3,11 @@
 -- (sell and craft), the Hatchery nest and the Spin Wheel stand around the Founders'
 -- Crystal, between the paths to the plots. The server builds them here and checks
 -- players are close by before selling, crafting, hatching or spinning.
+--
+-- Moving them in Studio: Workspace › PlazaLayout holds one marker part per station
+-- (TradingPost, Hatchery, SpinWheel). Move or turn a marker and the station is built
+-- there, standing on the marker's bottom, its front facing the marker's Front face.
+-- Without a marker, the Angle/Radius below are used.
 
 local PlazaConfig = {}
 
@@ -30,16 +35,40 @@ PlazaConfig.Range = 24
 -- Building types that live in the plaza and never on a plot.
 PlazaConfig.BuildingTypes = { TradingPost = true, Hatchery = true } :: { [string]: boolean }
 
-function PlazaConfig.Position(id: string): Vector3
-	local station = PlazaConfig.Stations[id]
-	local angle = math.rad(station.Angle)
-	return Vector3.new(math.sin(angle) * station.Radius, PlazaConfig.FloorY, math.cos(angle) * station.Radius)
+-- The Studio marker for a station, if the place has one.
+local function marker(id: string): BasePart?
+	local ok, found = pcall(function()
+		local folder = game:GetService("Workspace"):FindFirstChild("PlazaLayout")
+		return folder and folder:FindFirstChild(id)
+	end)
+	if ok and found and found:IsA("BasePart") then
+		return found
+	end
+	return nil
 end
 
--- Centre of the station on the floor, its front (-Z) facing the crystal.
+-- Centre of the station on the floor, its front (-Z) facing the crystal (or wherever its
+-- marker's Front face points).
 function PlazaConfig.CFrame(id: string): CFrame
-	local position = PlazaConfig.Position(id)
+	local part = marker(id)
+	if part then
+		local bottom = part.Position - part.CFrame.UpVector * part.Size.Y / 2
+		local look = part.CFrame.LookVector
+		local flat = Vector3.new(look.X, 0, look.Z)
+		if flat.Magnitude < 1e-3 then
+			flat = Vector3.new(0, 0, -1)
+		end
+		return CFrame.lookAt(bottom, bottom + flat.Unit)
+	end
+	local station = PlazaConfig.Stations[id]
+	local angle = math.rad(station.Angle)
+	local position =
+		Vector3.new(math.sin(angle) * station.Radius, PlazaConfig.FloorY, math.cos(angle) * station.Radius)
 	return CFrame.lookAt(position, Vector3.new(0, position.Y, 0))
+end
+
+function PlazaConfig.Position(id: string): Vector3
+	return PlazaConfig.CFrame(id).Position
 end
 
 return PlazaConfig

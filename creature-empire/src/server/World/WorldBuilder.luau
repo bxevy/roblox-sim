@@ -260,6 +260,20 @@ local function buildStations(plaza: Instance)
 	local folder = Instance.new("Folder")
 	folder.Name = "Stations"
 	folder.Parent = plaza
+	-- Studio layout markers (PlazaConfig) stay in place but can't be seen or touched.
+	local layout = Workspace:FindFirstChild("PlazaLayout")
+	for _, part in layout and layout:GetDescendants() or {} do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.Transparency = 1
+			part.CanCollide = false
+			part.CanQuery = false
+			part.CanTouch = false
+			part.CastShadow = false
+		elseif part:IsA("SurfaceGui") or part:IsA("BillboardGui") then
+			part.Enabled = false
+		end
+	end
 	for id, station in PlazaConfig.Stations do
 		local cf = PlazaConfig.CFrame(id)
 		local model: Model

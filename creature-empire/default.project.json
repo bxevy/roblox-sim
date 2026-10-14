@@ -42,6 +42,444 @@
     "Workspace": {
       "$properties": {
         "StreamingEnabled": false
+      },
+      "PlazaLayout": {
+        "$className": "Folder",
+        "TradingPost": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 0.35,
+            "Size": {
+              "Vector3": [
+                12,
+                1,
+                12
+              ]
+            },
+            "Color": {
+              "Color3": [
+                0.95,
+                0.75,
+                0.25
+              ]
+            },
+            "Material": {
+              "Enum": 288
+            },
+            "CFrame": {
+              "CFrame": {
+                "position": [
+                  14.1068,
+                  1.05,
+                  19.4164
+                ],
+                "orientation": [
+                  [
+                    0.809017,
+                    0,
+                    0.587785
+                  ],
+                  [
+                    0.0,
+                    1,
+                    -0.0
+                  ],
+                  [
+                    -0.587785,
+                    0,
+                    0.809017
+                  ]
+                ]
+              }
+            }
+          },
+          "FrontLabel": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": {
+                "Enum": 5
+              },
+              "SizingMode": {
+                "Enum": 1
+              },
+              "PixelsPerStud": 20,
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "FRONT",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          },
+          "NameLabel": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Size": {
+                "UDim2": [
+                  [
+                    0,
+                    220
+                  ],
+                  [
+                    0,
+                    40
+                  ]
+                ]
+              },
+              "StudsOffset": {
+                "Vector3": [
+                  0,
+                  4,
+                  0
+                ]
+              },
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "TradingPost marker (move me)",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          }
+        },
+        "Hatchery": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 0.35,
+            "Size": {
+              "Vector3": [
+                12,
+                1,
+                12
+              ]
+            },
+            "Color": {
+              "Color3": [
+                0.55,
+                0.85,
+                0.45
+              ]
+            },
+            "Material": {
+              "Enum": 288
+            },
+            "CFrame": {
+              "CFrame": {
+                "position": [
+                  24.0,
+                  1.05,
+                  0.0
+                ],
+                "orientation": [
+                  [
+                    0.0,
+                    0,
+                    1.0
+                  ],
+                  [
+                    0.0,
+                    1,
+                    -0.0
+                  ],
+                  [
+                    -1.0,
+                    0,
+                    0.0
+                  ]
+                ]
+              }
+            }
+          },
+          "FrontLabel": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": {
+                "Enum": 5
+              },
+              "SizingMode": {
+                "Enum": 1
+              },
+              "PixelsPerStud": 20,
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "FRONT",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          },
+          "NameLabel": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Size": {
+                "UDim2": [
+                  [
+                    0,
+                    220
+                  ],
+                  [
+                    0,
+                    40
+                  ]
+                ]
+              },
+              "StudsOffset": {
+                "Vector3": [
+                  0,
+                  4,
+                  0
+                ]
+              },
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "Hatchery marker (move me)",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          }
+        },
+        "SpinWheel": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "CanCollide": false,
+            "Transparency": 0.35,
+            "Size": {
+              "Vector3": [
+                14,
+                1,
+                6
+              ]
+            },
+            "Color": {
+              "Color3": [
+                0.85,
+                0.45,
+                0.95
+              ]
+            },
+            "Material": {
+              "Enum": 288
+            },
+            "CFrame": {
+              "CFrame": {
+                "position": [
+                  -14.1068,
+                  1.05,
+                  19.4164
+                ],
+                "orientation": [
+                  [
+                    0.809017,
+                    0,
+                    -0.587785
+                  ],
+                  [
+                    -0.0,
+                    1,
+                    -0.0
+                  ],
+                  [
+                    0.587785,
+                    0,
+                    0.809017
+                  ]
+                ]
+              }
+            }
+          },
+          "FrontLabel": {
+            "$className": "SurfaceGui",
+            "$properties": {
+              "Face": {
+                "Enum": 5
+              },
+              "SizingMode": {
+                "Enum": 1
+              },
+              "PixelsPerStud": 20,
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "FRONT",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          },
+          "NameLabel": {
+            "$className": "BillboardGui",
+            "$properties": {
+              "Size": {
+                "UDim2": [
+                  [
+                    0,
+                    220
+                  ],
+                  [
+                    0,
+                    40
+                  ]
+                ]
+              },
+              "StudsOffset": {
+                "Vector3": [
+                  0,
+                  4,
+                  0
+                ]
+              },
+              "AlwaysOnTop": true
+            },
+            "Text": {
+              "$className": "TextLabel",
+              "$properties": {
+                "Size": {
+                  "UDim2": [
+                    [
+                      1,
+                      0
+                    ],
+                    [
+                      1,
+                      0
+                    ]
+                  ]
+                },
+                "BackgroundTransparency": 1,
+                "Text": "SpinWheel marker (move me)",
+                "TextScaled": true,
+                "TextColor3": {
+                  "Color3": [
+                    1,
+                    1,
+                    1
+                  ]
+                },
+                "TextStrokeTransparency": 0
+              }
+            }
+          }
+        }
       }
     }
   }

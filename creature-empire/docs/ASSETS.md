@@ -142,6 +142,8 @@ Every building and some world pieces can be swapped for your own models, made in
 | `Lamp` | Lamp posts on the plaza and paths | Scaled to 11 studs tall (unless `KeepSize`); a warm light is added near the top. |
 | `SpinWheel` | The Spin Wheel in the plaza | Stands on the plaza floor, scaled to 16 studs tall, its front facing the Founders' Crystal. The game adds the Spin prompt, the name label and the free-spin timer above it. |
 
+**Moving the plaza stations:** the Trading Post, Hatchery and Spin Wheel are built when the game starts, so in edit mode you move their glowing markers instead: **Workspace › PlazaLayout › TradingPost / Hatchery / SpinWheel**. Drag or rotate a marker; the station is built standing on the marker, its front facing the marker's **FRONT** side. The markers are hidden while playing, and selling, hatching and spinning work around the new spot. A new place file from Rojo resets the markers, so send the new positions (each marker's Position and Orientation) to have them kept in `default.project.json`.
+
 **To try one:** put the model in the folder and press Play. Studio models keep their exact look; only the size and position are adjusted. **To keep it:** right-click the model, choose **Save to File…**, and put the `.rbxm` in `creature-empire/assets/Buildings/` or `assets/World/` so every build includes it.
 
 ## Big models: load them by asset id
