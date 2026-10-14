@@ -106,6 +106,8 @@ AssetConfig.ModelAssets = {
 		Hatchery = 120291385949696,
 		-- Supplied by the game's creator: their moonpetal farm.
 		MoonpetalFarm = 134956325741614,
+		-- Supplied by the game's creator: their creature house.
+		Habitat = 73260987585057,
 	},
 	World = {
 		-- Supplied by the game's creator: their fence section.
@@ -124,7 +126,8 @@ AssetConfig.ModelAssets = {
 } :: { [string]: { [string]: number } }
 
 -- Adjustments applied to loaded models (same as setting attributes on the model in Studio,
--- without re-uploading): Facing (degrees), HeightOffset (studs), KeepSize (boolean).
+-- without re-uploading): Facing (degrees), HeightOffset (studs), KeepSize (boolean),
+-- Scale (size multiplier after fitting, e.g. 1.25 = 25% bigger).
 AssetConfig.ModelSettings = {
 	Creatures = {
 		Sproutling = { Facing = 180 },
@@ -132,7 +135,9 @@ AssetConfig.ModelSettings = {
 		Cindercub = { Facing = 180 },
 		Pebblit = { Facing = 180 },
 	},
-	Buildings = {},
+	Buildings = {
+		Habitat = { Scale = 1.25 }, -- a little bigger than its plot space
+	},
 	World = {
 		-- Turned 90° left so the glowing mushrooms face the path.
 		Lamp = { Facing = 90 },

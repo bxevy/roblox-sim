@@ -204,6 +204,11 @@ function CustomModels.Place(template: Model, parent: Instance, cf: CFrame, optio
 		end
 	end
 	factor *= opts.Scale or 1
+	-- A "Scale" attribute on the model makes it that much bigger or smaller after fitting.
+	local extra = model:GetAttribute("Scale")
+	if type(extra) == "number" and extra > 0 then
+		factor *= extra
+	end
 	if math.abs(factor - 1) > 1e-3 and factor > 0 then
 		model:ScaleTo(model:GetScale() * factor)
 	end
