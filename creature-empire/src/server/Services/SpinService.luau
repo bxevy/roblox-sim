@@ -8,6 +8,7 @@
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local PolicyService = game:GetService("PolicyService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage.Shared
@@ -41,13 +42,22 @@ local function checkPolicy(player: Player)
 	if not player.Parent then
 		return
 	end
-	paidAllowed[player] = ok and info ~= nil and info.ArePaidRandomItemsRestricted == false
+	if not ok and RunService:IsStudio() then
+		-- Studio test without policy info: show the button so it can be tried.
+		paidAllowed[player] = true
+	else
+		paidAllowed[player] = ok and info ~= nil and info.ArePaidRandomItemsRestricted == false
+	end
 	StateService.Push(player, "Spin")
 end
 
--- Shown and sold only when the product exists and the player's region allows it.
+-- Shown only where the player's region allows paid random items, and only once the
+-- product exists (in Studio it shows before that, to see and try the button).
 local function canBuy(player: Player): boolean
-	return MonetizationConfig.PaidSpin.Id ~= 0 and paidAllowed[player] == true
+	if paidAllowed[player] ~= true then
+		return false
+	end
+	return MonetizationConfig.PaidSpin.Id ~= 0 or RunService:IsStudio()
 end
 
 local function grant(player: Player, prize: SpinConfig.Prize): boolean
@@ -140,6 +150,10 @@ end
 local function buySpin(player: Player): (boolean, any)
 	if not canBuy(player) then
 		return false, "Extra spins aren't available."
+	end
+	if MonetizationConfig.PaidSpin.Id == 0 then
+		return false,
+			"Studio: the Robux spin isn't set up yet. Create a 199 Robux Developer Product and put its id in MonetizationConfig.PaidSpin."
 	end
 	MarketplaceService:PromptProductPurchase(player, MonetizationConfig.PaidSpin.Id)
 	return true, nil
