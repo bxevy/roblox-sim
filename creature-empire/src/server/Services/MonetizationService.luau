@@ -22,6 +22,7 @@ local PlotService = require(script.Parent.PlotService)
 local EconomyService = require(script.Parent.EconomyService)
 local CreatureService = require(script.Parent.CreatureService)
 local SpinConfig = require(Shared.Config.SpinConfig)
+local SpinService = require(script.Parent.SpinService)
 
 local MonetizationService = {}
 
@@ -162,6 +163,22 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 			unsaved[purchaseId] = nil
 		end
 		return Enum.ProductPurchaseDecision.PurchaseGranted -- already granted (a retry)
+	end
+	-- An extra Spin Wheel spin: the wheel shows the prize, so no thank-you message.
+	local paidSpin = MonetizationConfig.PaidSpin
+	if paidSpin.Id ~= 0 and receipt.ProductId == paidSpin.Id then
+		if not SpinService.PaidSpin(player) then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		data.Receipts[purchaseId] = os.time()
+		pruneReceipts(data)
+		PlayerDataService.MarkDirty(player)
+		if not PlayerDataService.SaveNow(player) then
+			unsaved[purchaseId] = true
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		Log.Info("Shop", "Granted", { user = player.UserId, product = "PaidSpin", purchase = purchaseId })
+		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	local key, product = productById(receipt.ProductId)
 	if not product then

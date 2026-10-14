@@ -1,7 +1,8 @@
 --!strict
--- Robux purchases (the Empire Shop). Nothing random is ever sold: no eggs, spins or
--- mystery boxes. Currency packs and boosts are things you can also earn by playing; the
--- Meadow Sprout is the one shop-exclusive creature (in the Starter Bundle).
+-- Robux purchases (the Empire Shop). Currency packs and boosts are things you can also earn
+-- by playing; the Meadow Sprout is the one shop-exclusive creature (in the Starter Bundle).
+-- The one random purchase is an extra Spin Wheel spin (PaidSpin, below), sold only next to
+-- the wheel's exact odds and never to players where paid random items are restricted.
 --
 -- Ids are 0 until you create the pass or developer product on the Creator Dashboard
 -- (Monetization) and paste its id here. While an id is 0 the shop shows "Coming soon" and
@@ -122,6 +123,11 @@ MonetizationConfig.Products = {
 		Seconds = 15 * 60,
 	},
 } :: { [string]: Product }
+
+-- An extra Spin Wheel spin for Robux (a developer product; not listed in the shop). Same
+-- prizes and odds as the free spin, which it doesn't touch. Offered only where Roblox's
+-- PolicyService allows paid random items (ArePaidRandomItemsRestricted is false).
+MonetizationConfig.PaidSpin = { Id = 0, Price = 199 }
 
 -- Farm Speed: +100% work speed in the capped Boost bonus category, stacking up to MaxSeconds.
 MonetizationConfig.Boost = { Stat = "WorkSpeed", Value = 1.0, MaxSeconds = 2 * 60 * 60 }

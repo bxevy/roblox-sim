@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared.Remotes)
 local SpinConfig = require(Shared.Config.SpinConfig)
 local AssetConfig = require(Shared.Config.AssetConfig)
 local Spin = require(Shared.Util.Spin)
@@ -187,6 +188,14 @@ function SpinWindow.new(ctx: any)
 		TextSize = 22,
 		LayoutOrder = 2,
 	})
+	-- An extra spin for Robux: shown only where Roblox allows paid random items (the server
+	-- says so in the Spin state), always right above the exact odds.
+	local buy = Theme.Button(win.Body, "Spin for 199 Robux", "Primary", {
+		Size = UDim2.fromOffset(260, 46),
+		TextSize = 19,
+		LayoutOrder = 2,
+		Visible = false,
+	})
 	local result = Theme.Text(win.Body, "", 18, {
 		FontFace = Theme.Heavy,
 		TextXAlignment = Enum.TextXAlignment.Center,
@@ -200,9 +209,9 @@ function SpinWindow.new(ctx: any)
 
 	------------------------------------------------------------------ Odds
 	local odds = Window.Section(win.Body, "PRIZES AND EXACT ODDS", 5)
-	Theme.Text(
+	local oddsNote = Theme.Text(
 		odds,
-		`One free spin every {math.floor(SpinConfig.FreeEvery / 60)} minutes. Spins are always free and never sold.`,
+		`One free spin every {math.floor(SpinConfig.FreeEvery / 60)} minutes.`,
 		14,
 		{ TextColor3 = Theme.Colors.Muted }
 	)
@@ -225,6 +234,7 @@ function SpinWindow.new(ctx: any)
 
 	------------------------------------------------------------------ Behaviour
 	local spinning = false
+	local play: (number) -> ()
 
 	local function refresh()
 		local spin = State.Get("Spin")
@@ -249,6 +259,16 @@ function SpinWindow.new(ctx: any)
 		end
 		boosts.Text = table.concat(lines, "   ")
 		boosts.Visible = #lines > 0
+		local canBuy = spin ~= nil and spin.CanBuy == true
+		buy.Visible = canBuy
+		if canBuy then
+			buy.Text = `Spin for {spin.Price or 199} Robux`
+			Theme.SetEnabled(buy, not spinning)
+		end
+		local every = `One free spin every {math.floor(SpinConfig.FreeEvery / 60)} minutes.`
+		oddsNote.Text = if canBuy
+			then every .. " Extra spins bought with Robux use exactly the same prizes and odds."
+			else every
 	end
 
 	button.Activated:Connect(function()
@@ -266,7 +286,36 @@ function SpinWindow.new(ctx: any)
 			refresh()
 			return
 		end
-		local index = data.Index :: number
+		play(data.Index :: number)
+	end)
+
+	-- A bought spin: the prize is already granted; turn the wheel to it.
+	Remotes.Events.GameEvent.OnClientEvent:Connect(function(name: string, payload: any)
+		if name ~= "SpinResult" or type(payload) ~= "table" or not SpinConfig.Prizes[payload.Index] then
+			return
+		end
+		if not ctx.IsOpen("Spin") then
+			ctx.Open("Spin")
+		end
+		spinning = true
+		Theme.SetEnabled(button, false)
+		Theme.SetEnabled(buy, false)
+		result.Text = ""
+		play(payload.Index)
+	end)
+
+	buy.Activated:Connect(function()
+		if spinning or buy:GetAttribute("Disabled") then
+			return
+		end
+		local ok, message = ctx.Request("BuySpin")
+		if not ok then
+			ctx.Notify(message, "Error")
+		end
+	end)
+
+	-- Turns the wheel to a prize the server already picked and granted.
+	function play(index: number)
 		local prize = SpinConfig.Prizes[index]
 		-- Turn so the prize's slice stops under the pointer, after a few full turns.
 		local middle = (index - 0.5) * slice + SpinConfig.WheelOffset
@@ -291,7 +340,7 @@ function SpinWindow.new(ctx: any)
 			ctx.Controllers.Audio.Play(if prize.Kind == "Creature" then "QuestComplete" else "Collect")
 			refresh()
 		end)
-	end)
+	end
 
 	State.OnChanged("Spin", refresh)
 	task.spawn(function()

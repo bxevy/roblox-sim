@@ -28,6 +28,7 @@ local FUNCTIONS = {
 	"BuyExpansion", -- (zoneId)
 	"HatchEgg", -- (eggId) -> (ok, { CreatureId, Species, Pity })
 	"Spin", -- () -> (ok, { Index, Prize }) the free Spin Wheel spin
+	"BuySpin", -- () prompts the Robux spin (where allowed); the result comes as GameEvent "SpinResult"
 	"Evolve", -- (creatureId)
 	"Travel", -- (regionId | "Home")
 	"Gather", -- (nodeId)
