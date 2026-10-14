@@ -3,6 +3,7 @@
 -- timer, running boosts and every prize with its exact odds. The server picks the prize;
 -- this window only turns the wheel to it.
 
+local ContentProvider = game:GetService("ContentProvider")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -28,14 +29,30 @@ local function percent(chance: number): string
 	return if value < 1 then string.format("%.1f%%", value) else string.format("%.0f%%", value)
 end
 
+-- Shows an uploaded picture. Image ids load directly; a Decal id doesn't, so if it fails
+-- to load, fall back to the asset's thumbnail (which works for both).
+local function showImage(label: ImageLabel, id: number)
+	local content = `rbxassetid://{id}`
+	label.Image = content
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ content }, function(_, status)
+			if status ~= Enum.AssetFetchStatus.Success and label.Parent then
+				label.Image = `rbxthumb://type=Asset&id={id}&w=420&h=420`
+			end
+		end)
+	end)
+end
+
 function SpinWindow.new(ctx: any)
 	local State = ctx.Controllers.State
 	local win = Window.new(ctx.Gui, "Spin Wheel", "●", Vector2.new(540, 680), ctx.Close)
 	Theme.List(win.Body, 10, nil, Enum.HorizontalAlignment.Center)
 
 	------------------------------------------------------------------ The wheel
-	local face = AssetConfig.Images.SpinWheelFace or ""
-	local frameArt = AssetConfig.Images.SpinWheelFrame or ""
+	local faceId = AssetConfig.CreatorImages.SpinWheelFace
+	local frameId = AssetConfig.CreatorImages.SpinWheelFrame
+	local face = if faceId then `rbxassetid://{faceId}` else ""
+	local frameArt = if frameId then `rbxassetid://{frameId}` else ""
 	local holder = Theme.Make("Frame", {
 		BackgroundTransparency = 1,
 		Size = if frameArt ~= ""
@@ -57,13 +74,15 @@ function SpinWindow.new(ctx: any)
 	local slice = 360 / count
 	if face ~= "" then
 		-- The creator's wheel picture turns as one piece.
-		Theme.Make("ImageLabel", {
-			BackgroundTransparency = 1,
-			Size = UDim2.fromScale(1, 1),
-			Image = face,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 2,
-		}, wheel)
+		showImage(
+			Theme.Make("ImageLabel", {
+				BackgroundTransparency = 1,
+				Size = UDim2.fromScale(1, 1),
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 2,
+			}, wheel),
+			faceId :: number
+		)
 	else
 		Theme.Stroke(wheel, Color3.fromRGB(110, 70, 30), 0, 5)
 		-- A ray is a strip the height of the wheel, turned around the wheel's centre; only
@@ -121,15 +140,17 @@ function SpinWindow.new(ctx: any)
 	end
 	if frameArt ~= "" then
 		-- The creator's frame (rim, vines, centre flower and pointer) stays still on top.
-		Theme.Make("ImageLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = frameArt,
-			ScaleType = Enum.ScaleType.Fit,
-			ZIndex = 5,
-		}, holder)
+		showImage(
+			Theme.Make("ImageLabel", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				ScaleType = Enum.ScaleType.Fit,
+				ZIndex = 5,
+			}, holder),
+			frameId :: number
+		)
 	else
 		-- Hub stays still while the wheel turns.
 		local hub = Theme.Make("Frame", {

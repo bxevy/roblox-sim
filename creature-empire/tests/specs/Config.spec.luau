@@ -207,6 +207,10 @@ describe("Assets", function()
 		for key, id in AssetConfig.Images do
 			truthy(id == "" or string.sub(id, 1, 11) == "rbxasset://", key)
 		end
+		-- Uploaded by the creator: whole positive numbers only.
+		for key, id in AssetConfig.CreatorImages do
+			truthy(type(id) == "number" and id > 0 and id % 1 == 0, key)
+		end
 	end)
 	test("every species sound key exists in the asset config", function()
 		for id, species in CreatureConfig.Species do
