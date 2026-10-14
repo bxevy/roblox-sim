@@ -58,6 +58,10 @@ type Entity = {
 	Action: string?,
 	ActionTime: number,
 	HopPhase: number,
+	Walking: boolean, -- moved last frame (followers wait for some slack before starting again)
+	WalkBob: number, -- current hop height, eased down after stopping
+	WalkRoll: number, -- current waddle lean, eased in and out
+	WalkLean: number, -- current forward tip, eased in and out
 	WorkTimer: number,
 	Speed: number,
 	HopHeight: number,
@@ -469,8 +473,10 @@ local function ownerRoot(entity: Entity): BasePart?
 	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 end
 
-local WADDLE_ROLL = 0.14 -- radians of side-to-side lean per step
-local WALK_LEAN = 0.07 -- radians of forward tip while walking
+local WADDLE_ROLL = 0.1 -- radians of side-to-side lean per step
+local WALK_LEAN = 0.06 -- radians of forward tip while walking
+local HOP_SCALE = 1.8 -- walking hops are this many times the species' hop height
+local FOLLOW_SLACK = 2.5 -- studs a resting follower lets you get away before it walks
 
 local function decide(entity: Entity)
 	if entity.Wild then
@@ -546,8 +552,8 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 	local hopHeight = if idle then idle.HopHeight else 0.5
 	local bob = 0
 	local tilt = 0
-	local roll = 0
 	local spin = 0
+	local walkRoll, walkLean = 0, 0 -- this frame's walk pose (eased into entity.Walk*)
 
 	if entity.State == "Idle" then
 		if entity.Action then
@@ -616,8 +622,14 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 		local delta = flatTarget - entity.Position
 		local distance = delta.Magnitude
 		local finalLeg = not (waypoints and #waypoints > 0)
-		if distance < 0.3 and finalLeg then
-			entity.Position = flatTarget
+		-- A follower that has stopped waits until you are a little further away, so it
+		-- walks in smooth stretches instead of a step every few frames.
+		local resting = entity.State == "Following" and not entity.Walking and distance < FOLLOW_SLACK
+		if (distance < 0.3 or resting) and finalLeg then
+			entity.Walking = false
+			if distance < 0.3 then
+				entity.Position = flatTarget
+			end
 			if entity.State ~= "MovingToJob" then
 				entity.Target = nil
 				if entity.State == "Returning" then
@@ -625,6 +637,7 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 				end
 			end
 		else
+			entity.Walking = true
 			local move = math.min(speed * dt, distance)
 			entity.Position += delta.Unit * move
 			local desiredYaw = math.atan2(-delta.X, -delta.Z)
@@ -633,12 +646,12 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 			-- Hop arc; a landing kicks up a puff and a footstep sound.
 			local before = entity.HopPhase
 			entity.HopPhase += move / math.max(speed, 1) * 9
-			bob = math.abs(math.sin(entity.HopPhase)) * hopHeight
+			entity.WalkBob = math.abs(math.sin(entity.HopPhase)) * hopHeight * HOP_SCALE
 			-- Walk cycle for models without their own animations: lean into each step
 			-- (left, right, left...) and tip forward a little, so they waddle along.
 			if not entity.Tracks then
-				roll = math.sin(entity.HopPhase) * WADDLE_ROLL
-				tilt = math.max(tilt, WALK_LEAN)
+				walkRoll = math.sin(entity.HopPhase) * WADDLE_ROLL
+				walkLean = WALK_LEAN
 			end
 			if detailed and math.floor(before / math.pi) ~= math.floor(entity.HopPhase / math.pi) then
 				local puff = entity.Model
@@ -713,6 +726,20 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 		end
 	end
 
+	-- Ease the walk pose so starting and stopping never snap: the hop settles to the
+	-- ground, the waddle and forward tip fade in and out.
+	if entity.State == "Working" or not entity.Target then
+		entity.Walking = false
+	end
+	if not entity.Walking then
+		entity.WalkBob *= math.max(1 - dt * 12, 0)
+	end
+	local ease = math.min(dt * 12, 1)
+	entity.WalkRoll += (walkRoll - entity.WalkRoll) * ease
+	entity.WalkLean += (walkLean - entity.WalkLean) * ease
+	bob += entity.WalkBob
+	tilt += entity.WalkLean
+
 	if entity.Floating then
 		bob += 0.4 + math.sin(os.clock() * 2 + entity.Position.X) * 0.25
 	end
@@ -720,7 +747,7 @@ local function step(entity: Entity, dt: number, detailed: boolean): CFrame
 	local y = floorY(entity) + entity.Height + bob
 	return CFrame.new(entity.Position.X, y, entity.Position.Z)
 		* CFrame.Angles(0, entity.Yaw + spin, 0)
-		* CFrame.Angles(-tilt, 0, roll)
+		* CFrame.Angles(-tilt, 0, entity.WalkRoll)
 end
 
 -- Tracking anchors ------------------------------------------------------------------------
@@ -748,6 +775,10 @@ local function newEntity(anchor: Instance, speciesId: string, plot: Folder?): En
 		Action = nil,
 		ActionTime = 0,
 		HopPhase = 0,
+		Walking = false,
+		WalkBob = 0,
+		WalkRoll = 0,
+		WalkLean = 0,
 		WorkTimer = rng:NextNumber(0, 2),
 		Speed = 8,
 		HopHeight = 0.5,
