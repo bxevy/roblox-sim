@@ -408,7 +408,8 @@ local function buildTrade(ctx: any, parent: Instance): TradeLook
 	return { Root = root, Top = top, List = list }
 end
 
--- The Crystal Mine and Crystal Smelter's own look (art/ui-crystal): the square vine frame
+-- The production buildings' look (art/ui-crystal: Crystal Mine, Crystal Smelter, Moonpetal
+-- Farm and Workshop): the square vine frame
 -- with the banner, one page at a time picked with the five tabs underneath.
 local CRYSTAL_STAGE = Vector2.new(520, 720)
 local CRYSTAL_FRAME = { At = Vector2.new(20, 62), Size = Vector2.new(480, 560) }
@@ -427,7 +428,8 @@ local CRYSTAL_PIECES = {
 	"TabUpgrade",
 	"TabSettings",
 }
-local CRYSTAL_TYPES: { [string]: boolean } = { CrystalMine = true, CrystalSmelter = true }
+local CRYSTAL_TYPES: { [string]: boolean } =
+	{ CrystalMine = true, CrystalSmelter = true, MoonpetalFarm = true, Workshop = true }
 -- Tab picture → page.
 local CRYSTAL_TABS = {
 	{ "TabCrystal", "Production" },
