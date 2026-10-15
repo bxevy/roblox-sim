@@ -260,10 +260,13 @@ local function outline(l: TextLabel, thickness: number)
 	Theme.Make("UIStroke", { Color = OUTLINE, Thickness = thickness }, l)
 end
 
--- Text that shrinks to fit its box (descriptions differ in length).
-local function fitText(l: TextLabel, maxSize: number)
-	l.TextScaled = true
-	Theme.Make("UITextSizeConstraint", { MaxTextSize = maxSize, MinTextSize = 7 }, l)
+-- A fixed text size, top-aligned in a box sized for the longest starter text. (TextScaled
+-- measures in screen pixels: when the stage was scaled down to fit a small window it hit
+-- its minimum and spilled over the lines around it.)
+local function fitText(l: TextLabel, size: number)
+	l.TextSize = size
+	l.TextYAlignment = Enum.TextYAlignment.Top
+	l.ClipsDescendants = true
 end
 
 local function kitImage(parent: Instance, name: string, props: { [string]: any }): ImageLabel
@@ -388,7 +391,7 @@ local function buildArt(ctx: any)
 		local artBox = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromOffset(38, 36),
-			Size = UDim2.fromOffset(CARD.X - 76, 134),
+			Size = UDim2.fromOffset(CARD.X - 76, 118),
 			ZIndex = 14,
 		}, holder)
 		if Theme.KitImage(art.Portrait) then
@@ -402,7 +405,7 @@ local function buildArt(ctx: any)
 			TextColor3 = Color3.new(1, 1, 1),
 			TextSize = 30,
 			TextWrapped = false,
-			Position = UDim2.fromOffset(0, 176),
+			Position = UDim2.fromOffset(0, 156),
 			Size = UDim2.new(1, 0, 0, 30),
 		})
 		outline(name, 2)
@@ -410,7 +413,7 @@ local function buildArt(ctx: any)
 		-- Family and rarity badges, side by side and centred.
 		local badges = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, 218),
+			Position = UDim2.fromOffset(0, 192),
 			Size = UDim2.new(1, 0, 0, 30),
 			ZIndex = 14,
 		}, holder)
@@ -433,10 +436,10 @@ local function buildArt(ctx: any)
 
 		local inset = 38
 		local desc = label(holder, species.Description, {
-			Position = UDim2.fromOffset(inset, 256),
-			Size = UDim2.new(1, -inset * 2, 0, 54),
+			Position = UDim2.fromOffset(inset, 230),
+			Size = UDim2.new(1, -inset * 2, 0, 68), -- room for 4 lines (the longest is 4)
 		})
-		fitText(desc, 14)
+		fitText(desc, 13)
 		local best, bestValue = nil, 0
 		for jobId, value in species.JobAffinity do
 			if value > bestValue then
@@ -452,16 +455,16 @@ local function buildArt(ctx: any)
 				TextColor3 = Color3.fromRGB(255, 215, 120),
 				TextSize = 13,
 				TextWrapped = false,
-				Position = UDim2.fromOffset(inset, 312),
+				Position = UDim2.fromOffset(inset, 300),
 				Size = UDim2.new(1, -inset * 2, 0, 16),
 			}
 		)
 		local ability = label(holder, `<b>{species.Active.Name}:</b> {species.Active.Description}`, {
 			TextColor3 = Color3.fromRGB(225, 210, 190),
-			Position = UDim2.fromOffset(inset, 332),
-			Size = UDim2.new(1, -inset * 2, 0, 32),
+			Position = UDim2.fromOffset(inset, 320),
+			Size = UDim2.new(1, -inset * 2, 0, 46), -- room for 3 lines (the longest is 3)
 		})
-		fitText(ability, 12)
+		fitText(ability, 11)
 
 		-- The painted "Choose ..." button.
 		local buttonSize = UiKit[art.Button].Size
@@ -471,7 +474,7 @@ local function buildArt(ctx: any)
 			Name = "Choose",
 			BackgroundTransparency = 1,
 			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -34),
+			Position = UDim2.new(0.5, 0, 1, -28),
 			Size = UDim2.fromOffset(bw, bh),
 			ZIndex = 15,
 		}, holder)

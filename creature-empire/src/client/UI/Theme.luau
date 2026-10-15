@@ -276,7 +276,8 @@ function Theme.PreloadKit(timeout: number?): { string }
 		label:Destroy()
 		return ok
 	end
-	local limit = timeout or 8
+	-- Generous: freshly uploaded pictures can take a while to arrive the first time.
+	local limit = timeout or 14
 	local pending, total = 0, 0
 	for name, piece in UiKit do
 		if piece.Id ~= 0 then
