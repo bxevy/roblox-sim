@@ -199,13 +199,13 @@ end
 -- The creator's starter sheet (art/ui-starter): every piece is shown at its real shape and
 -- the text is laid on top at fixed spots, measured against the mockup. Sizes are in design
 -- pixels; the whole stage is scaled to fit the screen.
-local STAGE = Vector2.new(1100, 749) -- the window frame picture (662x451) at this size
+local STAGE = Vector2.new(1300, 886) -- the window frame picture (662x451) at this size
 local K = STAGE.X / 662
 -- The frame's open middle, in the picture's pixels: x 75..586, y 78..377.
 local INNER_X, INNER_Y = 75 * K, 78 * K
 local INNER_W, INNER_H = (586 - 75) * K, (377 - 78) * K
-local CARD = Vector2.new(270, 416)
-local CARD_GAP = 14
+local CARD = Vector2.new(300, 500)
+local CARD_GAP = 34
 
 type Art = { Frame: string, OldFrame: string, Button: string, Badge: string, Portrait: string, Tint: Color3 }
 local ART: { [string]: Art } = {
@@ -341,16 +341,16 @@ local function buildArt(ctx: any)
 	local title = label(stage, "Welcome to your empire!", {
 		FontFace = Theme.Title,
 		TextColor3 = CREAM,
-		TextSize = 34,
+		TextSize = 40,
 		TextWrapped = false,
-		Position = UDim2.fromOffset(0, 130),
+		Position = UDim2.fromOffset(0, 152),
 		Size = UDim2.new(1, 0, 0, 42),
 	})
 	outline(title, 2.5)
 	local subtitle = label(stage, "Choose a partner creature. You'll meet the other two soon.", {
-		TextSize = 16,
+		TextSize = 18,
 		TextWrapped = false,
-		Position = UDim2.fromOffset(0, 172),
+		Position = UDim2.fromOffset(0, 204),
 		Size = UDim2.new(1, 0, 0, 22),
 	})
 	outline(subtitle, 1.5)
@@ -358,7 +358,7 @@ local function buildArt(ctx: any)
 	local count = #CreatureConfig.Starters
 	local rowWidth = count * CARD.X + (count - 1) * CARD_GAP
 	local x0 = INNER_X + (INNER_W - rowWidth) / 2
-	local y0 = 202
+	local y0 = 238
 	local busy = false
 	for index, speciesId in CreatureConfig.Starters do
 		local species = CreatureConfig.Species[speciesId]
@@ -388,7 +388,7 @@ local function buildArt(ctx: any)
 		local artBox = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromOffset(38, 36),
-			Size = UDim2.fromOffset(CARD.X - 76, 112),
+			Size = UDim2.fromOffset(CARD.X - 76, 134),
 			ZIndex = 14,
 		}, holder)
 		if Theme.KitImage(art.Portrait) then
@@ -400,9 +400,9 @@ local function buildArt(ctx: any)
 		local name = label(holder, species.Name, {
 			FontFace = Theme.Heavy,
 			TextColor3 = Color3.new(1, 1, 1),
-			TextSize = 26,
+			TextSize = 30,
 			TextWrapped = false,
-			Position = UDim2.fromOffset(0, 150),
+			Position = UDim2.fromOffset(0, 176),
 			Size = UDim2.new(1, 0, 0, 30),
 		})
 		outline(name, 2)
@@ -410,15 +410,15 @@ local function buildArt(ctx: any)
 		-- Family and rarity badges, side by side and centred.
 		local badges = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(0, 184),
-			Size = UDim2.new(1, 0, 0, 26),
+			Position = UDim2.fromOffset(0, 218),
+			Size = UDim2.new(1, 0, 0, 30),
 			ZIndex = 14,
 		}, holder)
 		Theme.List(badges, 6, Enum.FillDirection.Horizontal, Enum.HorizontalAlignment.Center)
 		local function badge(piece: string, order: number)
 			local size = UiKit[piece].Size
 			kitImage(badges, piece, {
-				Size = UDim2.fromOffset(math.floor(size.X * 26 / size.Y), 26),
+				Size = UDim2.fromOffset(math.floor(size.X * 30 / size.Y), 30),
 				LayoutOrder = order,
 				ZIndex = 14,
 			})
@@ -433,10 +433,10 @@ local function buildArt(ctx: any)
 
 		local inset = 38
 		local desc = label(holder, species.Description, {
-			Position = UDim2.fromOffset(inset, 214),
-			Size = UDim2.new(1, -inset * 2, 0, 44),
+			Position = UDim2.fromOffset(inset, 256),
+			Size = UDim2.new(1, -inset * 2, 0, 54),
 		})
-		fitText(desc, 13)
+		fitText(desc, 14)
 		local best, bestValue = nil, 0
 		for jobId, value in species.JobAffinity do
 			if value > bestValue then
@@ -450,22 +450,22 @@ local function buildArt(ctx: any)
 			)}`,
 			{
 				TextColor3 = Color3.fromRGB(255, 215, 120),
-				TextSize = 12,
+				TextSize = 13,
 				TextWrapped = false,
-				Position = UDim2.fromOffset(inset, 260),
-				Size = UDim2.new(1, -inset * 2, 0, 14),
+				Position = UDim2.fromOffset(inset, 312),
+				Size = UDim2.new(1, -inset * 2, 0, 16),
 			}
 		)
 		local ability = label(holder, `<b>{species.Active.Name}:</b> {species.Active.Description}`, {
 			TextColor3 = Color3.fromRGB(225, 210, 190),
-			Position = UDim2.fromOffset(inset, 276),
-			Size = UDim2.new(1, -inset * 2, 0, 24),
+			Position = UDim2.fromOffset(inset, 332),
+			Size = UDim2.new(1, -inset * 2, 0, 32),
 		})
-		fitText(ability, 11)
+		fitText(ability, 12)
 
 		-- The painted "Choose ..." button.
 		local buttonSize = UiKit[art.Button].Size
-		local bw = 196
+		local bw = 220
 		local bh = math.floor(buttonSize.Y * bw / buttonSize.X)
 		local choose = Theme.Make("ImageButton", {
 			Name = "Choose",
