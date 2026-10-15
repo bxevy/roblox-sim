@@ -27,7 +27,7 @@ function InventoryWindow.new(ctx: any)
 		end
 		for order, id in ORDER do
 			local def = ResourceConfig[id]
-			if def then
+			if def and def.Enabled ~= false then -- switched-off items aren't shown
 				local isCurrency = def.Kind == "Currency"
 				local amount = if isCurrency then wallet.Currencies[id] or 0 else wallet.Resources[id] or 0
 				local capacity = wallet.Capacity and wallet.Capacity[id]

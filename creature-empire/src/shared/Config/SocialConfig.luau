@@ -36,4 +36,17 @@ SocialConfig.Trade = {
 	MaxDistance = nil :: number?, -- trades work from anywhere in the server
 }
 
+-- Switched-off items (ResourceConfig Enabled = false) can't be traded for now.
+do
+	local ResourceConfig = require(script.Parent.ResourceConfig)
+	local kept = {}
+	for _, id in SocialConfig.Trade.Resources do
+		local def = ResourceConfig[id]
+		if def and def.Enabled ~= false then
+			table.insert(kept, id)
+		end
+	end
+	SocialConfig.Trade.Resources = kept
+end
+
 return SocialConfig

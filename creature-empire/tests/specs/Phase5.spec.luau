@@ -51,7 +51,11 @@ end
 
 describe("Trading rules", function()
 	test("offers from clients are shape-checked", function()
-		truthy(Trade.Clean({ Creatures = { "a" }, Resources = { EmberLure = 2 } }))
+		truthy(Trade.Clean({ Creatures = { "a" }, Resources = {} }))
+		-- Ember Lures trade only while they're in the game (switched off with the basin).
+		local SocialConfig = H.require("ReplicatedStorage", "Shared", "Config", "SocialConfig")
+		local luresTrade = table.find(SocialConfig.Trade.Resources, "EmberLure") ~= nil
+		eq(Trade.Clean({ Creatures = { "a" }, Resources = { EmberLure = 2 } }) ~= nil, luresTrade)
 		falsy(Trade.Clean({ Creatures = { "a", "a" }, Resources = {} }), "duplicate creature")
 		falsy(Trade.Clean({ Creatures = {}, Resources = { Gold = 10 } }), "gold can't be traded")
 		falsy(Trade.Clean({ Creatures = {}, Resources = { Moonpetal = 10 } }), "materials can't be traded")
@@ -61,7 +65,13 @@ describe("Trading rules", function()
 		falsy(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 0 / 0 } }), "NaN")
 		falsy(Trade.Clean({ Creatures = { "a", "b", "c", "d", "e" }, Resources = {} }), "too many creatures")
 		falsy(Trade.Clean("nope"))
-		eq(next(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 0 } }).Resources), nil, "zero amounts dropped")
+		if luresTrade then
+			eq(
+				next(Trade.Clean({ Creatures = {}, Resources = { EmberLure = 0 } }).Resources),
+				nil,
+				"zero amounts dropped"
+			)
+		end
 	end)
 	test("only your own tradable, free creatures and items you have", function()
 		local data = H.WithFarm(Schema.Default(0))

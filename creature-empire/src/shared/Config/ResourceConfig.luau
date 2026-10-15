@@ -69,6 +69,7 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Icon = "❂",
 		Color = Color3.fromRGB(255, 170, 80),
 		MaxStack = 20,
+		Enabled = false, -- out for now, with Emberfall Basin (lures befriend its wild creatures)
 	},
 	RefinedCrystal = {
 		Id = "RefinedCrystal",
