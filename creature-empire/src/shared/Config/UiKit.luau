@@ -99,6 +99,20 @@ local IDS: { [string]: number } = {
 	ItemMoonpetal = 81701981346899,
 	ItemRawCrystal = 106920649433972,
 	ItemRefinedCrystal = 106251455036634,
+	-- Crystal Mine / Smelter sheet (art/ui-crystal)
+	CrystalFrame = 140560082987379,
+	CrystalHeader = 80424682227144,
+	CrystalClose = 102282753368298,
+	ProductionBox = 89667594110627,
+	WorkersBox = 115175076129945,
+	SynergiesBox = 123970161275477,
+	UpgradeBox = 116273155981034,
+	CrystalMoveButton = 93339787532918,
+	TabCrystal = 104082574848214,
+	TabWorkers = 96111922181296,
+	TabSynergies = 77475325338766,
+	TabUpgrade = 90565918666418,
+	TabSettings = 107939006546415,
 }
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
@@ -201,6 +215,20 @@ local UiKit = {
 	ItemMoonpetal = piece(Vector2.new(142, 141)),
 	ItemRawCrystal = piece(Vector2.new(141, 138)),
 	ItemRefinedCrystal = piece(Vector2.new(141, 138)),
+	-- Crystal Mine / Smelter sheet. The frame stretches along its vine sides.
+	CrystalFrame = piece(Vector2.new(359, 346), { 110, 110, 250, 236 }),
+	CrystalHeader = piece(Vector2.new(343, 82)),
+	CrystalClose = piece(Vector2.new(121, 94)),
+	ProductionBox = piece(Vector2.new(346, 112)),
+	WorkersBox = piece(Vector2.new(355, 126)),
+	SynergiesBox = piece(Vector2.new(338, 115)),
+	UpgradeBox = piece(Vector2.new(355, 166)),
+	CrystalMoveButton = piece(Vector2.new(341, 74)),
+	TabCrystal = piece(Vector2.new(65, 69)),
+	TabWorkers = piece(Vector2.new(63, 65)),
+	TabSynergies = piece(Vector2.new(62, 68)),
+	TabUpgrade = piece(Vector2.new(64, 69)),
+	TabSettings = piece(Vector2.new(65, 70)),
 } :: { [string]: Piece }
 
 for name, entry in UiKit do

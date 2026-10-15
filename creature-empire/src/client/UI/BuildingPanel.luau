@@ -408,6 +408,163 @@ local function buildTrade(ctx: any, parent: Instance): TradeLook
 	return { Root = root, Top = top, List = list }
 end
 
+-- The Crystal Mine and Crystal Smelter's own look (art/ui-crystal): the square vine frame
+-- with the banner, one page at a time picked with the five tabs underneath.
+local CRYSTAL_STAGE = Vector2.new(520, 720)
+local CRYSTAL_FRAME = { At = Vector2.new(20, 62), Size = Vector2.new(480, 560) }
+local CRYSTAL_PIECES = {
+	"CrystalFrame",
+	"CrystalHeader",
+	"CrystalClose",
+	"ProductionBox",
+	"WorkersBox",
+	"SynergiesBox",
+	"UpgradeBox",
+	"CrystalMoveButton",
+	"TabCrystal",
+	"TabWorkers",
+	"TabSynergies",
+	"TabUpgrade",
+	"TabSettings",
+}
+local CRYSTAL_TYPES: { [string]: boolean } = { CrystalMine = true, CrystalSmelter = true }
+-- Tab picture → page.
+local CRYSTAL_TABS = {
+	{ "TabCrystal", "Production" },
+	{ "TabWorkers", "Workers" },
+	{ "TabSynergies", "Synergies" },
+	{ "TabUpgrade", "Upgrade" },
+	{ "TabSettings", "Settings" },
+}
+
+type CrystalLook = {
+	Root: Frame,
+	Title: TextLabel,
+	Page: ScrollingFrame,
+	ShowTab: (string) -> (),
+	OnTab: (string) -> (),
+}
+
+local function canUseCrystalArt(): boolean
+	for _, name in CRYSTAL_PIECES do
+		if not Theme.KitImage(name) then
+			return false
+		end
+	end
+	return true
+end
+
+local function buildCrystal(ctx: any, parent: Instance): CrystalLook
+	local root = Theme.Make("Frame", {
+		Name = "CrystalWindow",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+	}, parent)
+	local stage = Theme.Make("Frame", {
+		Name = "Stage",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(CRYSTAL_STAGE.X, CRYSTAL_STAGE.Y),
+		BackgroundTransparency = 1,
+		Active = true,
+		ZIndex = 10,
+	}, root)
+	local fit = Theme.Make("UIScale", { Name = "Fit" }, stage)
+	local function refit()
+		local screen = ctx.Gui.AbsoluteSize
+		local guiScale = ctx.Gui:FindFirstChildOfClass("UIScale")
+		local g = if guiScale then guiScale.Scale else 1
+		if screen.X > 0 and screen.Y > 0 then
+			fit.Scale = math.min(1, screen.X * 0.96 / (CRYSTAL_STAGE.X * g), screen.Y * 0.92 / (CRYSTAL_STAGE.Y * g))
+		end
+	end
+	ctx.Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	task.defer(refit)
+
+	-- The frame stretches along its vine sides; the flowered corners stay full size.
+	local frame = Theme.Make("ImageLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(CRYSTAL_FRAME.At.X, CRYSTAL_FRAME.At.Y),
+		Size = UDim2.fromOffset(CRYSTAL_FRAME.Size.X, CRYSTAL_FRAME.Size.Y),
+		ZIndex = 11,
+	}, stage)
+	Theme.KitApply(frame, "CrystalFrame")
+	local f = frame:GetAttribute("KitFactor")
+	frame.SliceScale = 1 / (if type(f) == "number" and f > 0 then f else 1)
+
+	-- The banner (blank wood: the game writes the name and level on it).
+	local banner = artPiece(stage, "CrystalHeader", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 2),
+		Size = UDim2.fromOffset(377, 90),
+		ZIndex = 15,
+	})
+	local title = Theme.Text(banner, "", 20, {
+		FontFace = Theme.Heavy,
+		Position = UDim2.fromScale(64 / 343, 26 / 82),
+		Size = UDim2.fromScale(218 / 343, 34 / 82),
+		AutomaticSize = Enum.AutomaticSize.None,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		TextWrapped = false,
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.1,
+		ZIndex = 16,
+	})
+	local close = artButton(stage, "CrystalClose", {
+		Name = "Close",
+		Position = UDim2.fromOffset(CRYSTAL_STAGE.X - 104, 30),
+		Size = UDim2.fromOffset(100, 78),
+		ZIndex = 17,
+	})
+	close.Activated:Connect(ctx.Close)
+
+	-- The wood inside the frame holds the page.
+	local inner = Vector2.new(CRYSTAL_FRAME.At.X + 40, CRYSTAL_FRAME.At.Y + 58)
+	local page = artScroll(stage, inner, Vector2.new(CRYSTAL_FRAME.Size.X - 74, CRYSTAL_FRAME.Size.Y - 58 - 52))
+
+	local look: CrystalLook
+	local tabs: { [string]: ImageButton } = {}
+	local count = #CRYSTAL_TABS
+	local size, gap = 68, 14
+	local left = (CRYSTAL_STAGE.X - (count * size + (count - 1) * gap)) / 2
+	for index, tab in CRYSTAL_TABS do
+		local button = artButton(stage, tab[1], {
+			Name = tab[2],
+			Position = UDim2.fromOffset(
+				left + (index - 1) * (size + gap),
+				CRYSTAL_FRAME.At.Y + CRYSTAL_FRAME.Size.Y + 6
+			),
+			Size = UDim2.fromOffset(size, size),
+			ZIndex = 14,
+		})
+		button.Activated:Connect(function()
+			look.OnTab(tab[2])
+		end)
+		tabs[tab[2]] = button
+	end
+
+	look = {
+		Root = root,
+		Title = title,
+		Page = page,
+		ShowTab = function(current: string)
+			for which, button in tabs do
+				local on = which == current
+				button.ImageColor3 = if on then Color3.new(1, 1, 1) else Color3.fromRGB(150, 140, 130)
+				local pop = button:FindFirstChildOfClass("UIScale")
+				if pop then
+					pop.Scale = if on then 1.08 else 1
+				end
+			end
+		end,
+		OnTab = function() end,
+	}
+	return look
+end
+
 function BuildingPanel.new(ctx: any)
 	local State = ctx.Controllers.State
 	local Buildings = ctx.Controllers.Building
@@ -428,6 +585,7 @@ function BuildingPanel.new(ctx: any)
 	look.Root.Parent = root
 	look.Root.Visible = true
 	local trade: TradeLook? = if canUseTradeArt() then buildTrade(ctx, root) else nil
+	local crystal: CrystalLook? = if canUseCrystalArt() then buildCrystal(ctx, root) else nil
 	-- Buildings with workers split into two pages in the art look (the leaf and paw tabs).
 	local page: "Main" | "Workers" = "Main"
 
@@ -437,6 +595,7 @@ function BuildingPanel.new(ctx: any)
 
 	local render: () -> ()
 	local renderTrade: () -> ()
+	local renderCrystal: (any, any) -> ()
 	look.OnPage = function(which: string)
 		page = if which == "Workers" then "Workers" else "Main"
 		picking = false
@@ -1252,6 +1411,414 @@ function BuildingPanel.new(ctx: any)
 		end
 	end
 
+	-- A whole-width wooden box from the crystal sheet, kept to its picture's shape.
+	local function crystalBox(parent: Instance, name: string, order: number, clickable: boolean?): GuiObject
+		local size = UiKit[name].Size
+		local box = Theme.Make(if clickable then "ImageButton" else "ImageLabel", {
+			Name = name,
+			BackgroundTransparency = 1,
+			LayoutOrder = order,
+			ZIndex = 12,
+		}, parent) :: any
+		Theme.KitApply(box, name, Rect.new(Vector2.zero, size))
+		box.ScaleType = Enum.ScaleType.Stretch
+		keepRatio(box, size.Y / size.X)
+		return box
+	end
+
+	-- Text placed on a box, in the box picture's own pixels.
+	local function boxText(
+		box: GuiObject,
+		name: string,
+		text: string,
+		size: number,
+		at: Rect,
+		props: { [string]: any }?
+	)
+		local art = UiKit[name].Size
+		local label = Theme.Text(box, text, size, {
+			Position = UDim2.fromScale(at.Min.X / art.X, at.Min.Y / art.Y),
+			Size = UDim2.fromScale(at.Width / art.X, at.Height / art.Y),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextWrapped = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+			ZIndex = 13,
+		})
+		local extra: { [string]: any } = props or {}
+		for key, value in extra do
+			(label :: any)[key] = value
+		end
+		return label
+	end
+
+	local function plainText(parent: Instance, text: string, size: number, order: number, color: Color3?)
+		return Theme.Text(parent, text, size, {
+			LayoutOrder = order,
+			TextColor3 = color or Theme.Colors.Text,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.5,
+			ZIndex = 13,
+		})
+	end
+
+	local crystalPage = "Production"
+	if crystal then
+		crystal.OnTab = function(which: string)
+			crystalPage = which
+			picking = false
+			render()
+		end
+	end
+
+	renderCrystal = function(info: any, def: any)
+		local c = crystal :: CrystalLook
+		local page = c.Page
+		Window.Clear(page)
+		c.Title.Text = `{def.Name} · Level {info.Level}`
+		c.ShowTab(crystalPage)
+		liveStorage = nil
+		local output = info.Output and ResourceConfig[info.Output]
+
+		if crystalPage == "Production" then
+			local box = crystalBox(page, "ProductionBox", 1)
+			local stored = boxText(box, "ProductionBox", "", 15, Rect.new(26, 40, 182, 62), { FontFace = Theme.Bold })
+			-- The gold line under the count fills up as the storage does.
+			local fill = Theme.Make("Frame", {
+				BackgroundColor3 = output and output.Color or Theme.Colors.Gold,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(28 / 346, 63 / 112),
+				Size = UDim2.fromScale(0, 4 / 112),
+				ZIndex = 13,
+			}, box)
+			liveStorage = {
+				Label = stored,
+				Set = function(fraction: number)
+					fill.Size = UDim2.fromScale(math.clamp(fraction, 0, 1) * 148 / 346, 4 / 112)
+				end,
+			}
+			local perMinute = info.PerSecond * 60
+			boxText(
+				box,
+				"ProductionBox",
+				if perMinute > 0 then `{Format.Rate(perMinute)} per minute` else "Not producing",
+				13,
+				Rect.new(26, 70, 182, 92),
+				{
+					FontFace = Theme.Bold,
+					TextColor3 = if perMinute > 0 then Theme.Colors.Success else Theme.Colors.Warning,
+				}
+			)
+			local collect = Theme.Make("TextButton", {
+				Name = "Collect",
+				Text = "",
+				BackgroundTransparency = 1,
+				Position = UDim2.fromScale(188 / 346, 47 / 112),
+				Size = UDim2.fromScale(138 / 346, 48 / 112),
+				ZIndex = 14,
+			}, box)
+			collect.Activated:Connect(function()
+				Theme.OnClick()
+				local ok, amount = request("Collect", info.Id)
+				if ok then
+					ctx.Notify(`Collected {Format.Number(amount)} {output and output.Name or ""}.`, "Success")
+				end
+			end)
+			plainText(page, def.Description, 14, 2, Theme.Colors.Muted)
+			if perMinute <= 0 then
+				plainText(page, "Assign a creature on the Workers tab to start.", 14, 3, Theme.Colors.Warning)
+			end
+			local inputs = {}
+			local wallet = State.Get("Wallet")
+			for resource, per in info.InputsPerUnit or {} do
+				local d = ResourceConfig[resource]
+				local have = wallet and (wallet.Resources[resource] or wallet.Currencies[resource]) or 0
+				table.insert(
+					inputs,
+					`{Format.Rate(per)} {d and d.Name or resource} (you have {Format.Number(math.floor(have))})`
+				)
+			end
+			if #inputs > 0 then
+				plainText(
+					page,
+					`Uses from your silo, per {output and output.Name or "unit"}: ` .. table.concat(inputs, ", "),
+					14,
+					4
+				)
+			end
+			if info.Starved then
+				plainText(page, "⚠ Paused: not enough materials in your silo.", 14, 5, Theme.Colors.Warning)
+			end
+			if perMinute > 0 and info.Capacity and not info.Starved then
+				local have = info.Stored[info.Output] or 0
+				local seconds = (info.Capacity - have) / info.PerSecond
+				plainText(
+					page,
+					if seconds > 1
+						then `Full in about {Format.Duration(seconds)}`
+						else "Storage is full. Collect to keep production going!",
+					14,
+					6,
+					Theme.Colors.Muted
+				)
+			end
+			for index, buff in info.Buffs or {} do
+				plainText(
+					page,
+					`⚡ {buff.Stat} +{Format.Percent(buff.Value)} for {Format.Duration(buff.Remaining)}`,
+					14,
+					6 + index,
+					Theme.Colors.Gold
+				)
+			end
+		elseif crystalPage == "Workers" then
+			local creatures = State.Get("Creatures")
+			local list = creatures and creatures.List or {}
+			local perWorker = {}
+			for _, w in info.Workers do
+				perWorker[w.CreatureId] = w.PerSecond
+			end
+			for slot = 1, info.Slots do
+				local creatureId = info.Assigned[slot]
+				local creature = creatureId and list[creatureId]
+				local box = crystalBox(page, "WorkersBox", slot, true) :: ImageButton
+				boxText(
+					box,
+					"WorkersBox",
+					if slot == 1 then `WORKERS ({#info.Assigned}/{info.Slots})` else `SLOT {slot}`,
+					13,
+					Rect.new(44, 21, 166, 42),
+					{ FontFace = Theme.Bold, TextXAlignment = Enum.TextXAlignment.Center }
+				)
+				if creature then
+					local face = Theme.Make("Frame", {
+						BackgroundTransparency = 1,
+						Position = UDim2.fromScale(30 / 355, 54 / 126),
+						Size = UDim2.fromScale(60 / 355, 51 / 126),
+						ZIndex = 13,
+					}, box)
+					Viewport.Creature(face, creature.Species)
+					boxText(box, "WorkersBox", `{creature.Name} Lv {creature.Level}`, 17, Rect.new(104, 58, 300, 80), {
+						FontFace = Theme.Heavy,
+					})
+					boxText(
+						box,
+						"WorkersBox",
+						`{Format.Rate((perWorker[creatureId] or 0) * 60)} per minute · tap for details`,
+						13,
+						Rect.new(104, 82, 335, 102),
+						{ FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted }
+					)
+					box.Activated:Connect(function()
+						Theme.OnClick()
+						ctx.Open("Creatures", creatureId)
+					end)
+					local remove = Theme.Button(box, "X", "Danger", {
+						AnchorPoint = Vector2.new(0.5, 0.5),
+						Position = UDim2.fromScale(322 / 355, 66 / 126),
+						Size = UDim2.fromOffset(24, 24),
+						TextSize = 13,
+						FontFace = Theme.Heavy,
+						ZIndex = 15,
+					})
+					remove.Activated:Connect(function()
+						request("AssignCreature", creatureId, nil)
+					end)
+				else
+					boxText(
+						box,
+						"WorkersBox",
+						if picking then "Pick a creature below" else "+ Assign a creature",
+						16,
+						Rect.new(100, 56, 335, 106),
+						{ FontFace = Theme.Bold, TextXAlignment = Enum.TextXAlignment.Center }
+					)
+					box.Activated:Connect(function()
+						Theme.OnClick()
+						picking = not picking
+						render()
+					end)
+				end
+			end
+			if picking then
+				local coreLevel = State.Get("Buildings").List.core.Level
+				local found = 0
+				for id, cr in list do
+					if cr.Assignment ~= info.Id then
+						local species = CreatureConfig.Species[cr.Species]
+						local affinity = WorkRules.Affinity(def, cr.Species, cr.Stage)
+						if species and affinity > 0 then
+							found += 1
+							local worker = Production.WorkerAt(
+								previewData(coreLevel),
+								{
+									Id = id,
+									Species = cr.Species,
+									Level = cr.Level,
+									Stage = cr.Stage,
+									Mutation = cr.Mutation,
+								} :: any,
+								{ Type = info.Type, Level = info.Level } :: any,
+								nil
+							)
+							local row = Window.Row(page, 42, 20 + found)
+							Theme.Text(
+								row,
+								`<b>{cr.Name}</b> Lv {cr.Level} · ≈ {Format.Rate(
+									(worker and worker.PerSecond or 0) * 60
+								)}/min`
+									.. (if cr.Assignment then " · <i>busy elsewhere</i>" else ""),
+								14,
+								{
+									Size = UDim2.new(1, -110, 1, 0),
+									AutomaticSize = Enum.AutomaticSize.None,
+									TextYAlignment = Enum.TextYAlignment.Center,
+									ZIndex = 13,
+								}
+							)
+							local assign = Theme.Button(
+								row,
+								"Assign",
+								"Primary",
+								{ Size = UDim2.fromOffset(100, 34), TextSize = 15, ZIndex = 13 }
+							)
+							assign.Activated:Connect(function()
+								local ok = request("AssignCreature", id, info.Id)
+								if ok then
+									picking = false
+									ctx.Notify(`{cr.Name} is heading to work!`, "Success")
+								end
+							end)
+						end
+					end
+				end
+				if found == 0 then
+					plainText(page, "No other creature can do this job yet.", 14, 20, Theme.Colors.Muted)
+				end
+			end
+		elseif crystalPage == "Synergies" then
+			local active = {}
+			local activeCount = 0
+			for _, id in info.Synergies or {} do
+				active[id] = true
+				activeCount += 1
+			end
+			local box = crystalBox(page, "SynergiesBox", 1)
+			boxText(
+				box,
+				"SynergiesBox",
+				if activeCount > 0
+					then `<b>{activeCount} active</b>\nBonuses stack up to +75% per stat`
+					else "<b>None active yet</b>\nPut the right creatures together here",
+				14,
+				Rect.new(78, 46, 318, 100),
+				{ TextWrapped = true, TextTruncate = Enum.TextTruncate.None }
+			)
+			local order = 1
+			for _, synergy in SynergyConfig do
+				if synergy.Job == nil or synergy.Job == def.Job then
+					order += 1
+					local on = active[synergy.Id] == true
+					plainText(
+						page,
+						(if on then "✔ " else "○ ") .. `<b>{synergy.Name}</b>: {synergy.Description}`,
+						14,
+						order,
+						if on then Theme.Colors.Success else Theme.Colors.Muted
+					)
+				end
+			end
+		elseif crystalPage == "Upgrade" then
+			local box = crystalBox(page, "UpgradeBox", 1)
+			local current = def.Levels[info.Level]
+			local nextLevel = def.Levels[info.Level + 1]
+			local buttonArea = Rect.new(145, 93, 318, 127)
+			if not nextLevel then
+				boxText(box, "UpgradeBox", `<b>Level {info.Level}</b> · fully upgraded`, 16, Rect.new(26, 46, 330, 82))
+				boxText(box, "UpgradeBox", "Max level", 16, buttonArea, {
+					FontFace = Theme.Heavy,
+					TextXAlignment = Enum.TextXAlignment.Center,
+					TextStrokeColor3 = Theme.Colors.TextShadow,
+					TextStrokeTransparency = 0.1,
+				})
+				plainText(page, "More levels arrive with new updates.", 14, 2, Theme.Colors.Muted)
+				return
+			end
+			boxText(
+				box,
+				"UpgradeBox",
+				`Level {info.Level} → <b>{info.Level + 1}</b>`,
+				18,
+				Rect.new(26, 46, 330, 82),
+				{
+					FontFace = Theme.Heavy,
+				}
+			)
+			local wallet = State.Get("Wallet")
+			local affordable = true
+			for currency, amount in nextLevel.Cost or {} do
+				if (wallet.Currencies[currency] or wallet.Resources[currency] or 0) < amount then
+					affordable = false
+				end
+			end
+			local costText = Format.Cost(nextLevel.Cost or {}, ResourceConfig)
+			boxText(box, "UpgradeBox", "Upgrade · " .. costText, 15, buttonArea, {
+				FontFace = Theme.Heavy,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextStrokeColor3 = Theme.Colors.TextShadow,
+				TextStrokeTransparency = 0.1,
+			})
+			local enabled = affordable and not info.UpgradeBlocker
+			local button = Theme.Make("TextButton", {
+				Name = "Upgrade",
+				Text = "",
+				BackgroundColor3 = Color3.new(0, 0, 0),
+				BackgroundTransparency = if enabled then 1 else 0.5,
+				BorderSizePixel = 0,
+				Position = UDim2.fromScale(95 / 355, 89 / 166),
+				Size = UDim2.fromScale(232 / 355, 50 / 166),
+				ZIndex = 14,
+			}, box)
+			Theme.Corner(button, 6)
+			button.Activated:Connect(function()
+				Theme.OnClick()
+				if not enabled then
+					ctx.Notify(info.UpgradeBlocker or "You need " .. costText .. ".", "Error")
+					return
+				end
+				local ok = request("UpgradeBuilding", info.Id)
+				if ok then
+					ctx.Notify(`{def.Name} upgraded to level {info.Level + 1}!`, "Reward")
+				end
+			end)
+			local order = 2
+			if nextLevel.Description then
+				plainText(page, nextLevel.Description, 14, order, Theme.Colors.Muted)
+			end
+			for _, line in levelChanges(current, nextLevel) do
+				order += 1
+				plainText(page, "• " .. line, 15, order)
+			end
+			if info.UpgradeBlocker then
+				plainText(page, "✖ " .. info.UpgradeBlocker, 14, 50, Theme.Colors.Warning)
+			elseif not affordable then
+				plainText(page, "Not enough gold yet.", 14, 50, Theme.Colors.Muted)
+			end
+		else -- Settings
+			plainText(page, def.Description, 15, 1)
+			if def.Locked then
+				plainText(page, "🔒 " .. def.Locked, 15, 2, Theme.Colors.Warning)
+			end
+			plainText(page, "Pick it up and put it somewhere else on your plot:", 14, 3, Theme.Colors.Muted)
+			local move = crystalBox(page, "CrystalMoveButton", 4, true) :: ImageButton
+			move.Activated:Connect(function()
+				Theme.OnClick()
+				ctx.Close()
+				ctx.Controllers.Placement.Begin(info.Type, { MoveId = info.Id, Rot = info.Rot })
+			end)
+		end
+	end
+
 	-- Expedition Portal: plan a trip (destination, team, approach, supplies) with the exact
 	-- success chance the server will use, then watch active trips and claim them.
 	local plan =
@@ -1930,9 +2497,17 @@ function BuildingPanel.new(ctx: any)
 		local infoNow = buildingId and buildingsNow and buildingsNow.List[buildingId]
 		local isTrade = trade ~= nil
 			and (plazaKind == "TradingPost" or (infoNow ~= nil and infoNow.Type == "TradingPost"))
-		look.Root.Visible = not isTrade
+		local isCrystal = crystal ~= nil and not isTrade and infoNow ~= nil and CRYSTAL_TYPES[infoNow.Type] == true
+		look.Root.Visible = not isTrade and not isCrystal
 		if trade then
 			trade.Root.Visible = isTrade
+		end
+		if crystal then
+			crystal.Root.Visible = isCrystal
+		end
+		if isCrystal then
+			renderCrystal(infoNow, BuildingConfig[infoNow.Type])
+			return
 		end
 		if isTrade then
 			liveStorage = nil
@@ -2098,6 +2673,7 @@ function BuildingPanel.new(ctx: any)
 		Open = function(id: any)
 			if id ~= buildingId then
 				page = "Main"
+				crystalPage = "Production"
 			end
 			buildingId = id
 			picking = false
