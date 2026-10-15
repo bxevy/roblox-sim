@@ -380,7 +380,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Id = "TradingPost",
 		Name = "Trading Post",
 		Category = "Empire",
-		Description = "The plaza shop: sell materials for Gold and craft lures.",
+		Description = "The plaza shop: sell your harvests for Gold.",
 		Footprint = { X = 3, Z = 3 },
 		Placeable = false, -- in the plaza (PlazaConfig), not on plots
 		Phase = 1,

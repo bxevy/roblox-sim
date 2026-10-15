@@ -21,7 +21,6 @@ local PlotConfig = require(Shared.Config.PlotConfig)
 local Format = require(Shared.Util.Format)
 local Expedition = require(Shared.Util.Expedition)
 local ExpeditionConfig = require(Shared.Config.ExpeditionConfig)
-local CraftConfig = require(Shared.Config.CraftConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local ResearchConfig = require(Shared.Config.ResearchConfig)
 local WorldEventConfig = require(Shared.Config.WorldEventConfig)
@@ -489,15 +488,17 @@ function BuildingPanel.new(ctx: any)
 		return math.max(untilTime - Workspace:GetServerTimeNow(), 0)
 	end
 
+	-- The Trading Post: just selling. One row per material you can sell, with how many
+	-- you have, the price and a single "Sell all" button; "Sell everything" on top.
 	local function tradingSection()
-		local card = Window.Section(win.Body, "SELL MATERIALS", 2)
+		local card = Window.Section(win.Body, "SELL", 2)
 		local wallet = State.Get("Wallet")
 		local coinsLeft = boostLeft("Coins")
 		local multiplier = if coinsLeft > 0 then SpinConfig.BoostMultiplier else 1
 		if coinsLeft > 0 then
 			Theme.Text(
 				card,
-				`<b>● 2× Coins is on!</b> Every sale pays double for {Format.Duration(coinsLeft)}.`,
+				`<b>2x Coins is on!</b> Every sale pays double for {Format.Duration(coinsLeft)}.`,
 				15,
 				{ TextColor3 = Theme.Colors.Gold }
 			)
@@ -508,83 +509,73 @@ function BuildingPanel.new(ctx: any)
 				table.insert(ids, id)
 			end
 		end
-		table.sort(ids)
+		-- Cheapest first (Moonpetals, Raw Crystal, ...).
+		table.sort(ids, function(a, b)
+			return (ResourceConfig[a].SellPrice or 0) < (ResourceConfig[b].SellPrice or 0)
+		end)
+
+		local total = 0
+		local rows = 0
 		for _, id in ids do
 			local def = ResourceConfig[id]
-			local have = wallet and wallet.Resources[id] or 0
+			local have = math.floor(wallet and wallet.Resources[id] or 0)
 			local price = (def.SellPrice or 0) * multiplier
+			total += have * price
+			rows += 1
+			local row = Window.Row(card, 44, rows + 1)
 			Theme.Text(
-				card,
-				`<font color="#{def.Color:ToHex()}">{def.Icon}</font> <b>{def.Name}</b>: {Format.Number(have)} · {price} gold each`,
-				16
-			)
-			local row = Window.Row(card, 40)
-			for _, amount in { 10, 50 } do
-				local b =
-					Theme.Button(row, `Sell {amount}`, "Secondary", { Size = UDim2.fromOffset(110, 36), TextSize = 15 })
-				Theme.SetEnabled(b, have >= amount)
-				b.Activated:Connect(function()
-					if b:GetAttribute("Disabled") then
-						return
-					end
-					local ok, gold = request("Sell", id, amount)
-					if ok then
-						ctx.Notify(`Sold {amount} {def.Name} for {Format.Number(gold)} gold.`, "Success")
-					end
-				end)
-			end
-			local all = Theme.Button(
 				row,
-				`Sell all · {Format.Number(have * price)} gold`,
-				"Gold",
-				{ Size = UDim2.fromOffset(220, 36), TextSize = 15 }
+				`<font color="#{def.Color:ToHex()}">{def.Icon}</font>  <b>{def.Name}</b>   x{Format.Number(have)}   <font color="#{Theme.Colors.Muted:ToHex()}">{price} gold each</font>`,
+				17,
+				{
+					Size = UDim2.new(1, -190, 1, 0),
+					AutomaticSize = Enum.AutomaticSize.None,
+					TextYAlignment = Enum.TextYAlignment.Center,
+				}
 			)
-			Theme.SetEnabled(all, have > 0)
-			all.Activated:Connect(function()
-				if all:GetAttribute("Disabled") then
+			local sell = Theme.Button(
+				row,
+				if have > 0 then `Sell · {Format.Number(have * price)}` else "None yet",
+				"Gold",
+				{ Size = UDim2.fromOffset(180, 38), TextSize = 16 }
+			)
+			Theme.SetEnabled(sell, have > 0)
+			sell.Activated:Connect(function()
+				if sell:GetAttribute("Disabled") then
 					return
 				end
 				local ok, gold = request("Sell", id, "All")
 				if ok then
-					ctx.Notify(`Sold for {Format.Number(gold)} gold.`, "Success")
+					ctx.Notify(`Sold {def.Name} for {Format.Number(gold)} gold.`, "Success")
 				end
 			end)
 		end
-	end
 
-	local function craftSection()
-		local card = Window.Section(win.Body, "CRAFT", 3)
-		local wallet = State.Get("Wallet")
-		for _, recipe in CraftConfig do
-			if recipe.Phase > GameConfig.Phase then
-				continue
+		local everything = Theme.Button(
+			card,
+			if total > 0 then `Sell everything · {Format.Number(total)} gold` else "Nothing to sell yet",
+			"Primary",
+			{ Size = UDim2.new(1, 0, 0, 46), TextSize = 18, LayoutOrder = 1 }
+		)
+		Theme.SetEnabled(everything, total > 0)
+		everything.Activated:Connect(function()
+			if everything:GetAttribute("Disabled") then
+				return
 			end
-			local output = ResourceConfig[recipe.Output]
-			local have = wallet and wallet.Resources[recipe.Output] or 0
-			Theme.Text(
-				card,
-				`{output.Icon} <b>{recipe.Name}</b> (you have {have}) · {Format.Cost(recipe.Inputs, ResourceConfig)}`,
-				16
-			)
-			Theme.Text(card, output.Description or "", 13, { TextColor3 = Theme.Colors.Muted })
-			local affordable = true
-			for id, amount in recipe.Inputs do
-				if (wallet and wallet.Resources[id] or 0) < amount then
-					affordable = false
+			local earned = 0
+			for _, id in ids do
+				local have = wallet and wallet.Resources[id] or 0
+				if have >= 1 then
+					local ok, gold = request("Sell", id, "All")
+					if ok and type(gold) == "number" then
+						earned += gold
+					end
 				end
 			end
-			local b = Theme.Button(card, "Craft", "Primary", { Size = UDim2.fromOffset(160, 36) })
-			Theme.SetEnabled(b, affordable)
-			b.Activated:Connect(function()
-				if b:GetAttribute("Disabled") then
-					ctx.Notify("You need " .. Format.Cost(recipe.Inputs, ResourceConfig) .. ".", "Error")
-					return
-				end
-				if request("Craft", recipe.Id) then
-					ctx.Notify(`Crafted {recipe.Name}!`, "Success")
-				end
-			end)
-		end
+			if earned > 0 then
+				ctx.Notify(`Sold everything for {Format.Number(earned)} gold.`, "Success")
+			end
+		end)
 	end
 
 	-- Expedition Portal: plan a trip (destination, team, approach, supplies) with the exact
@@ -1243,7 +1234,6 @@ function BuildingPanel.new(ctx: any)
 			Theme.Text(head, def.Description, 15)
 			if plazaType == "TradingPost" then
 				tradingSection()
-				craftSection()
 			elseif plazaType == "Hatchery" then
 				hatcherySection()
 			end
@@ -1265,7 +1255,6 @@ function BuildingPanel.new(ctx: any)
 
 		if info.Type == "TradingPost" then
 			tradingSection()
-			craftSection()
 		elseif info.Type == "ExpeditionPortal" then
 			portalSection()
 		elseif info.Type == "ResourceSilo" then
