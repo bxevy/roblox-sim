@@ -22,6 +22,7 @@ local ResourceConfig = shared("Config", "ResourceConfig")
 local PlotConfig = shared("Config", "PlotConfig")
 local GameConfig = shared("Config", "GameConfig")
 local RarityConfig = shared("Config", "RarityConfig")
+local WorkRules = shared("Util", "WorkRules")
 
 local function creature(id, species, extra)
 	local record = {
@@ -336,28 +337,26 @@ describe("Update 2 content", function()
 				if def.Recipe then
 					truthy(RecipeConfig[def.Recipe].Enabled, typeId .. " recipe enabled")
 					local workers = 0
-					for _, species in obtainable do
-						if (species.JobAffinity[def.Job] or 0) > 0 then
+					for id in obtainable do
+						if WorkRules.CanWork(def, id, 1) then
 							workers += 1
 						end
 					end
-					truthy(workers >= 2, `{typeId}: only {workers} obtainable species can work there`)
+					-- A starter's own building is for that one creature; the rest need choice.
+					local needed = if def.OnlySpecies then #def.OnlySpecies else 2
+					truthy(workers >= needed, `{typeId}: only {workers} obtainable species can work there`)
 				end
 			end
 		end
 	end)
 	test("obtainable species have at least one job that has a building", function()
-		local jobsWithBuildings = {}
-		for _, def in BuildingConfig do
-			if def.Job and not def.Locked and def.Phase <= GameConfig.Phase then
-				jobsWithBuildings[def.Job] = true
-			end
-		end
 		for id, species in CreatureConfig.Species do
 			if species.Phase <= GameConfig.Phase then
 				local useful = false
-				for job in species.JobAffinity do
-					useful = useful or jobsWithBuildings[job] == true
+				for _, def in BuildingConfig do
+					if def.Job and not def.Locked and def.Phase <= GameConfig.Phase then
+						useful = useful or WorkRules.CanWork(def, id, 1)
+					end
 				end
 				truthy(useful, id .. " has nothing to do")
 			end

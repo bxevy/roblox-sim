@@ -96,7 +96,7 @@ function Hud.new(ctx: any)
 		p.Frame.Visible = false
 	end
 	-- Later currencies, also shown once you have some.
-	local laterPills: { [string]: Pill } = { Insight = pill("Insight", 6), EmpireShards = pill("EmpireShards", 7) }
+	local laterPills: { [string]: Pill } = { EmpireShards = pill("EmpireShards", 6) }
 	for _, p in laterPills do
 		p.Frame.Visible = false
 	end

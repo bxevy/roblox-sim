@@ -24,8 +24,8 @@ local SynergyConfig: { Synergy } = {
 	{
 		Id = "SunAndSoil",
 		Name = "Sun and Soil",
-		Description = "A Verdant and an Emberkin farming together: +15% yield.",
-		Job = "Farmer",
+		Description = "A Verdant and an Emberkin at a Workshop: +15% yield.",
+		Job = "Crafter",
 		Families = { "Verdant", "Emberkin" },
 		Stat = "Yield",
 		Value = 0.15,
@@ -33,8 +33,8 @@ local SynergyConfig: { Synergy } = {
 	{
 		Id = "Irrigation",
 		Name = "Irrigation",
-		Description = "A Verdant and a Tideborn farming together: +15% work speed.",
-		Job = "Farmer",
+		Description = "A Verdant and a Tideborn at a Workshop: +15% work speed.",
+		Job = "Crafter",
 		Families = { "Verdant", "Tideborn" },
 		Stat = "WorkSpeed",
 		Value = 0.15,
@@ -42,8 +42,8 @@ local SynergyConfig: { Synergy } = {
 	{
 		Id = "DeepForge",
 		Name = "Deep Forge",
-		Description = "A Crystalkin and an Emberkin at a smelter: +20% work speed.",
-		Job = "Smelter",
+		Description = "A Crystalkin and an Emberkin at a Workshop: +20% work speed.",
+		Job = "Crafter",
 		Families = { "Crystalkin", "Emberkin" },
 		Stat = "WorkSpeed",
 		Value = 0.2,
@@ -51,8 +51,8 @@ local SynergyConfig: { Synergy } = {
 	{
 		Id = "Quench",
 		Name = "Quench",
-		Description = "An Emberkin and a Tideborn at a smelter: +15% yield.",
-		Job = "Smelter",
+		Description = "An Emberkin and a Tideborn at a Workshop: +15% yield.",
+		Job = "Crafter",
 		Families = { "Emberkin", "Tideborn" },
 		Stat = "Yield",
 		Value = 0.15,

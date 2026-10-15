@@ -14,7 +14,7 @@ local Window = require(script.Parent.Window)
 local AscensionWindow = {}
 
 local RESETS = {
-	"Gold, Essence and Insight (each run starts with 50 gold, plus Golden Start)",
+	"Gold and Essence (each run starts with 200 gold, plus Golden Start)",
 	"Materials in your silo",
 	"Every building, back to the starting layout",
 	"Land expansions",

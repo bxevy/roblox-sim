@@ -18,6 +18,7 @@ local BuildingConfig = require(Shared.Config.BuildingConfig)
 local EconomyConfig = require(Shared.Config.EconomyConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local Production = require(Shared.Util.Production)
+local WorkRules = require(Shared.Util.WorkRules)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local MutationConfig = require(Shared.Config.MutationConfig)
 local Mutation = require(Shared.Util.Mutation)
@@ -233,11 +234,8 @@ local function assign(player: Player, creatureId: string, buildingId: string?): 
 		if not def.Job then
 			return false, "Creatures can't work there."
 		end
-		local species = CreatureConfig.Species[creature.Species]
-		local affinity = if species then CreatureConfig.Affinity(species, creature.Stage, def.Job) else 0
-		if affinity <= 0 then
-			local job = JobConfig[def.Job]
-			return false, `{displayName(creature)} can't work as a {job and job.Name or def.Job}.`
+		if not WorkRules.CanWork(def, creature.Species, creature.Stage) then
+			return false, WorkRules.WhyNot(def, creature.Species, displayName(creature))
 		end
 		local level = def.Levels[building.Level]
 		local used = 0

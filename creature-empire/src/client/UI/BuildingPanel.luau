@@ -13,6 +13,7 @@ local ResourceConfig = require(Shared.Config.ResourceConfig)
 local RarityConfig = require(Shared.Config.RarityConfig)
 local JobConfig = require(Shared.Config.JobConfig)
 local Production = require(Shared.Util.Production)
+local WorkRules = require(Shared.Util.WorkRules)
 local Hatching = require(Shared.Util.Hatching)
 local Evolution = require(Shared.Util.Evolution)
 local EggConfig = require(Shared.Config.EggConfig)
@@ -223,8 +224,8 @@ function BuildingPanel.new(ctx: any)
 			for id, c in list do
 				if c.Assignment ~= info.Id then
 					local species = CreatureConfig.Species[c.Species]
-					local affinity = if species then CreatureConfig.Affinity(species, c.Stage, def.Job) else 0
-					if affinity > 0 then
+					local affinity = WorkRules.Affinity(def, c.Species, c.Stage)
+					if species and affinity > 0 then
 						candidates += 1
 						local worker = Production.WorkerAt(
 							previewData(coreLevel),
@@ -310,7 +311,7 @@ function BuildingPanel.new(ctx: any)
 		local intro = Window.Section(win.Body, "RESEARCH", 5)
 		Theme.Text(
 			intro,
-			`{ResourceConfig.Insight.Icon} You have <b>{Format.Number(math.floor(have("Insight")))} Insight</b>. Researchers here turn Moonpetals into Insight; collect it, then spend it below. Research resets when you Ascend.`,
+			`{ResourceConfig.Essence.Icon} You have <b>{Format.Number(math.floor(have("Essence")))} Essence</b>. Creatures here turn Moonpetals into Essence; collect it, then spend it below. Research resets when you Ascend.`,
 			14
 		)
 		for order, branch in ResearchConfig.Branches do
@@ -419,7 +420,7 @@ function BuildingPanel.new(ctx: any)
 		)
 		Theme.Text(
 			card,
-			"Couriers empty your fullest buildings first, every few seconds. Currencies (Essence, Insight) go straight to your wallet. Offline, they make one delivery when you return.",
+			"Couriers empty your fullest buildings first, every few seconds. Currencies (Essence) go straight to your wallet. Offline, they make one delivery when you return.",
 			13,
 			{ TextColor3 = Theme.Colors.Muted }
 		)

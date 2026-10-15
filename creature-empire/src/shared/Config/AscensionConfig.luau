@@ -1,7 +1,7 @@
 --!strict
 -- Ascension: an optional fresh start that makes the next run faster.
 --
--- What resets: Gold, Essence, Insight, silo materials, every building (back to the
+-- What resets: Gold, Essence, silo materials, every building (back to the
 -- starting layout), land expansions and research.
 -- What stays: every creature (levels, stages, mutations), your collection, discoveries,
 -- guardian records, quests, eggs' pity, settings and Ascension perks.

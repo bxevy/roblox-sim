@@ -7,7 +7,7 @@
 --   Crystal Mine -> Raw Crystal -> Crystal Smelter -> Refined Crystal -> Essence Condenser -> Essence
 --   (Refined Crystal also pays for Empire Core tiers 3+ and land expansions; Essence
 --    evolves creatures and hatches Geode Eggs.)
---   Research Station -> Insight (from Moonpetals) -> research and Arcane Eggs
+--   Research Station -> Essence (from Moonpetals) -> research, evolving and eggs
 
 local Types = require(script.Parent.Parent.Types)
 
@@ -50,13 +50,23 @@ local RecipeConfig: { [string]: Types.RecipeDef & { Enabled: boolean } } = {
 		RequiresJob = "Alchemist",
 		Enabled = true,
 	},
-	StudyInsight = {
-		Id = "StudyInsight",
+	StudyEssence = {
+		Id = "StudyEssence",
 		Name = "Study",
-		Inputs = { Moonpetal = 2 },
-		Outputs = { Insight = 1 },
+		Inputs = { Moonpetal = 3 },
+		Outputs = { Essence = 1 },
 		Power = 0,
 		RequiresJob = "Researcher",
+		Enabled = true,
+	},
+	-- The Workshop: any creature crafts trinkets that go straight to the wallet as Gold.
+	CraftTrinkets = {
+		Id = "CraftTrinkets",
+		Name = "Craft Trinkets",
+		Inputs = {},
+		Outputs = { Gold = 3 },
+		Power = 0,
+		RequiresJob = "Crafter",
 		Enabled = true,
 	},
 	BrewGrowthElixir = {

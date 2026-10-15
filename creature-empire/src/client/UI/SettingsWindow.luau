@@ -125,7 +125,6 @@ function SettingsWindow.new(ctx: any)
 				{ "+50 emberstone", "ember", 50 },
 				{ "+5 levels", "levelup" },
 				{ "Finish expeditions", "finishexpeditions" },
-				{ "+100 Insight", "insight", 100 },
 				{ "+20 shards", "shards", 20 },
 				{ "Core tier 5", "coremax" },
 				{ "Event: Golden Hour", "event", "GoldenHour" },

@@ -13,6 +13,7 @@ local RarityConfig = require(Shared.Config.RarityConfig)
 local ResourceConfig = require(Shared.Config.ResourceConfig)
 local GameConfig = require(Shared.Config.GameConfig)
 local Production = require(Shared.Util.Production)
+local WorkRules = require(Shared.Util.WorkRules)
 local Evolution = require(Shared.Util.Evolution)
 local Format = require(Shared.Util.Format)
 local MutationConfig = require(Shared.Config.MutationConfig)
@@ -295,7 +296,7 @@ function CreaturesWindow.new(ctx: any)
 			for _, id in ids do
 				local b = buildings.List[id]
 				local def = BuildingConfig[b.Type]
-				local affinity = CreatureConfig.Affinity(species, info.Stage, def.Job :: string)
+				local affinity = WorkRules.Affinity(def, info.Species, info.Stage)
 				local row = Window.Row(jobCard, 40)
 				local here = info.Assignment == id
 				local used = #b.Assigned
@@ -324,7 +325,7 @@ function CreaturesWindow.new(ctx: any)
 						button.Text = "Locked"
 						Theme.SetEnabled(button, false)
 					elseif affinity <= 0 then
-						button.Text = "Can't do this job"
+						button.Text = WorkRules.ShortWhyNot(def, info.Species)
 						Theme.SetEnabled(button, false)
 					elseif used >= b.Slots then
 						button.Text = "Full"

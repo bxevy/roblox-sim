@@ -4,11 +4,11 @@
 
 local EconomyConfig = {}
 
+-- Enough for your starter's own building (150), with a little left over.
 EconomyConfig.StartingCurrencies = {
-	Gold = 50,
+	Gold = 200,
 	Essence = 0,
 	EmpireShards = 0,
-	Insight = 0,
 }
 
 EconomyConfig.StartingResources = {

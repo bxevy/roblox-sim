@@ -260,9 +260,9 @@ QuestConfig.Tutorial = {
 	{
 		Id = "Study",
 		Title = "The Research Station",
-		Description = "Assign a Wisplet (or another researcher) to the Research Station and collect 20 Insight.",
+		Description = "Assign any creature to the Research Station (Wisplets are best) and collect 20 Essence there.",
 		Kind = "Collect",
-		Target = "Insight",
+		Target = "Essence",
 		Amount = 20,
 		Reward = { Gold = 1500 },
 		Pointer = "ResearchStation",
@@ -279,7 +279,7 @@ QuestConfig.Tutorial = {
 	{
 		Id = "Together",
 		Title = "Better together",
-		Description = "Trigger a synergy: try a Verdant and an Emberkin on the same farm. The building panel lists every synergy.",
+		Description = "Trigger a synergy: try a Verdant and an Emberkin at the same Workshop. The building panel lists every synergy.",
 		Kind = "Synergy",
 		Amount = 1,
 		Reward = { Gold = 2500 },
@@ -296,7 +296,7 @@ QuestConfig.Tutorial = {
 	{
 		Id = "Arcane",
 		Title = "Runes in the shell",
-		Description = "Hatch an egg. Arcane Eggs (Insight and Essence) hold scholars, couriers and reef dwellers.",
+		Description = "Hatch an egg. Arcane Eggs (Essence) hold scholars, couriers and reef dwellers.",
 		Kind = "Hatch",
 		Amount = 1,
 		Reward = { Essence = 50 },

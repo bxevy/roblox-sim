@@ -200,11 +200,11 @@ describe("Production", function()
 		eq(rate.Capacity, 40)
 		eq(rate.Output, "Moonpetal")
 	end)
-	test("job affinity scales output (Cindercub farms at 60%)", function()
+	test("the Moonpetal Farm is Sproutling's own: other creatures produce nothing there", function()
 		local sprout = Production.Rates(profileWith("Sproutling")).farm1.PerSecond
 		local cub = Production.Rates(profileWith("Cindercub")).farm1.PerSecond
-		truthy(cub < sprout, "Cindercub should farm worse than Sproutling")
-		truthy(cub > 0, "Cindercub can still farm")
+		truthy(sprout > 0, "Sproutling farms")
+		eq(cub, 0, "Cindercub can't work Sproutling's farm")
 	end)
 	test("creatures without the job affinity produce nothing", function()
 		local data = profileWith("Zappup") -- no Farmer affinity

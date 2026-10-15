@@ -84,7 +84,7 @@ EggConfig.Eggs = {
 		Id = "ArcaneEgg",
 		Name = "Arcane Egg",
 		Description = "Covered in glowing runes. Scholars, reef dwellers and clockwork helpers.",
-		Cost = { Insight = 40, Essence = 20 },
+		Cost = { Essence = 60 },
 		Color = Color3.fromRGB(110, 90, 190),
 		Spots = Color3.fromRGB(120, 230, 200),
 		Loot = {

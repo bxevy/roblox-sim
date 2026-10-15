@@ -798,7 +798,7 @@ builders.ResearchStation = function(ctx)
 	-- Door and desk
 	block(ctx, Vector3.new(2.2, 3, 0.3), at(ctx, 0, 1.5, -3.6), C.DarkWood, Enum.Material.Wood, true)
 	block(ctx, Vector3.new(3, 1, 1.4), at(ctx, -4.5, 0.5, -5), C.Wood, Enum.Material.WoodPlanks)
-	-- Floating rune orb (glows Insight green)
+	-- Floating rune orb (glows rune green)
 	local orb = Parts.Ball(ctx.Model, (at(ctx, 0, 9.4, 1)).Position, 1.6, {
 		Color = Color3.fromRGB(120, 230, 200),
 		Material = Enum.Material.Neon,
@@ -889,6 +889,42 @@ builders.CourierPost = function(ctx)
 	workSpot(ctx, 2, -2.5, -4)
 	workSpot(ctx, 3, 2.5, -4)
 	Parts.Label(ctx.Base, "Courier Post · Lv " .. level, { Offset = Vector3.new(0, 8, 0), MaxDistance = 60 })
+end
+
+builders.Workshop = function(ctx)
+	local w, d, level = ctx.W, ctx.D, ctx.Level
+	block(ctx, Vector3.new(w - 1, 0.4, d - 1), at(ctx, 0, 0.2, 0), C.Wood, Enum.Material.WoodPlanks)
+	-- An open-fronted shed with a slanted roof over the work benches
+	for _, x in { -3.2, 3.2 } do
+		block(ctx, Vector3.new(0.5, 4.2, 0.5), at(ctx, x, 2.3, -2.6), C.DarkWood, Enum.Material.Wood)
+		block(ctx, Vector3.new(0.5, 5, 0.5), at(ctx, x, 2.7, 2.8), C.DarkWood, Enum.Material.Wood)
+	end
+	block(ctx, Vector3.new(7.4, 3.8, 0.4), at(ctx, 0, 2.3, 3), C.Wood, Enum.Material.WoodPlanks)
+	block(
+		ctx,
+		Vector3.new(7.8, 0.35, 6.4),
+		at(ctx, 0, 4.9, 0.1) * CFrame.Angles(math.rad(8), 0, 0),
+		C.Cloth2,
+		Enum.Material.Fabric
+	)
+	-- Benches (one per worker slot) with little trinkets on them
+	for i = 0, math.min(level, 3) - 1 do
+		local x = -2.4 + i * 2.4
+		block(ctx, Vector3.new(2, 1, 1.2), at(ctx, x, 0.9, 1.4), C.DarkWood, Enum.Material.Wood)
+		block(ctx, Vector3.new(0.5, 0.5, 0.5), at(ctx, x - 0.4, 1.65, 1.4), C.Gold, Enum.Material.SmoothPlastic, true)
+		block(ctx, Vector3.new(0.4, 0.6, 0.4), at(ctx, x + 0.5, 1.7, 1.3), C.Copper, Enum.Material.Metal, true)
+	end
+	if level >= 4 then
+		-- Display shelf of finished trinkets
+		block(ctx, Vector3.new(0.6, 2.6, 4), at(ctx, -3.6, 1.5, 0), C.Wood, Enum.Material.WoodPlanks)
+		for z = -1.2, 1.2, 1.2 do
+			block(ctx, Vector3.new(0.4, 0.4, 0.4), at(ctx, -3.6, 2.9, z), C.Gold, Enum.Material.Neon, true)
+		end
+	end
+	workSpot(ctx, 1, -2.4, -0.4)
+	workSpot(ctx, 2, 0, -0.4)
+	workSpot(ctx, 3, 2.4, -0.4)
+	Parts.Label(ctx.Base, "Workshop · Lv " .. level, { Offset = Vector3.new(0, 7, 0), MaxDistance = 60 })
 end
 
 builders.ExpeditionPortal = function(ctx)

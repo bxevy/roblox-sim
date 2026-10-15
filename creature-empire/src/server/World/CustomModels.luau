@@ -56,6 +56,7 @@ CustomModels.Aliases = {
 	ExpeditionPortal = { "Portal" },
 	ResearchStation = { "Research", "Lab", "Observatory" },
 	CourierPost = { "Courier", "Depot" },
+	Workshop = { "Workbench", "CraftingShed" },
 	CrystalMine = { "Mine" },
 	CrystalSmelter = { "Smelter", "Furnace" },
 	EssenceCondenser = { "Condenser" },

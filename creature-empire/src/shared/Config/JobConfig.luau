@@ -69,6 +69,14 @@ local JobConfig: { [string]: Job } = {
 		Stats = { "WorkSpeed", "Capacity" },
 		Phase = 4,
 	},
+	Crafter = {
+		Id = "Crafter",
+		Name = "Crafter",
+		Verb = "Crafting",
+		Description = "Makes trinkets at the Workshop. Every creature can do it; crafters do it best.",
+		Stats = { "WorkSpeed", "Yield" },
+		Phase = 1,
+	},
 	Guardian = {
 		Id = "Guardian",
 		Name = "Guardian",

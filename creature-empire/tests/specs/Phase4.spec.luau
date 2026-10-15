@@ -72,7 +72,7 @@ describe("Research", function()
 		}
 		for id, node in ResearchConfig.Nodes do
 			truthy(table.find(ResearchConfig.Branches, node.Branch), id .. " branch")
-			truthy(node.Cost.Insight and node.Cost.Insight > 0, id .. " costs Insight")
+			truthy(node.Cost.Essence and node.Cost.Essence > 0, id .. " costs Essence")
 			for _, required in node.Requires do
 				truthy(ResearchConfig.Nodes[required], id .. " requires " .. required)
 			end
@@ -142,18 +142,19 @@ describe("Synergies", function()
 			end
 			return out
 		end
-		local farm = ids(Synergy.Active("Farmer", { "Sproutling", "Cindercub" }))
-		truthy(farm.SunAndSoil)
-		falsy(farm.Irrigation)
+		local workshop = ids(Synergy.Active("Crafter", { "Sproutling", "Cindercub" }))
+		truthy(workshop.SunAndSoil)
+		falsy(workshop.Irrigation)
 		falsy(ids(Synergy.Active("Smelter", { "Sproutling", "Cindercub" })).SunAndSoil, "job-specific")
-		truthy(ids(Synergy.Active("Miner", { "Pebblit", "Shardback", "Geodon" })).Pack, "three of a family")
-		truthy(ids(Synergy.Active("Farmer", { "Sproutling", "Cindercub", "Pebblit" })).OldFriends)
-		eq(#Synergy.Active("Farmer", { "Sproutling" }), 0)
+		truthy(ids(Synergy.Active("Crafter", { "Pebblit", "Shardback", "Geodon" })).Pack, "three of a family")
+		truthy(ids(Synergy.Active("Crafter", { "Sproutling", "Cindercub", "Pebblit" })).OldFriends)
+		eq(#Synergy.Active("Crafter", { "Sproutling" }), 0)
 	end)
 	test("a synergy raises the building's output and is reported", function()
 		local data = Schema.Default(0)
-		local farm = farmId(data)
-		data.Buildings[farm].Level = 2 -- two slots
+		-- A Workshop: any creature works there, so mixed teams (and synergies) happen.
+		local farm = "ws"
+		data.Buildings.ws = { Id = "ws", Type = "Workshop", Level = 2, X = 2, Z = 2, Rot = 0, Stored = {} }
 		data.Creatures.a = creature("a", "Sproutling", { Assignment = farm })
 		data.Creatures.b = creature("b", "Puddlefin", { Assignment = farm })
 		local rate = Production.Rates(data)[farm]
@@ -238,7 +239,6 @@ describe("Ascension", function()
 		data.Buildings.core.Level = 5
 		data.Currencies.Gold = 123456
 		data.Currencies.Essence = 500
-		data.Currencies.Insight = 80
 		data.Resources.Moonpetal = 900
 		data.Resources.EmberLure = 3
 		data.Expansions.West = true
@@ -272,7 +272,6 @@ describe("Ascension", function()
 		-- Resets
 		eq(data.Currencies.Gold, EconomyConfig.StartingCurrencies.Gold + 4000)
 		eq(data.Currencies.Essence, 0)
-		eq(data.Currencies.Insight, 0)
 		eq(data.Resources.Moonpetal, 0)
 		eq(next(data.Expansions), nil)
 		eq(next(data.Research), nil)

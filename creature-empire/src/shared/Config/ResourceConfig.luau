@@ -17,17 +17,9 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Id = "Essence",
 		Name = "Essence",
 		Kind = "Currency",
-		Description = "Condensed magic. Evolves creatures and hatches Geode Eggs. Made at the Essence Condenser.",
+		Description = "Condensed magic. Evolves creatures, pays for research and hatches Geode and Arcane Eggs. Made at the Essence Condenser and the Research Station.",
 		Icon = "✧",
 		Color = Color3.fromRGB(170, 120, 255),
-	},
-	Insight = {
-		Id = "Insight",
-		Name = "Insight",
-		Kind = "Currency",
-		Description = "Knowledge from the Research Station. Spend it on research.",
-		Icon = "❖",
-		Color = Color3.fromRGB(120, 230, 200),
 	},
 	EmpireShards = {
 		Id = "EmpireShards",

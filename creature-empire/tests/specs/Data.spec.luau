@@ -136,7 +136,8 @@ describe("Schema", function()
 		c("b", "Sproutling", "farm1") -- level 1 farm has only 1 slot
 		c("c", "Sproutling", "nowhere")
 		c("d", "Zappup", "farm1") -- cannot farm
-		c("e", "Sproutling", "research") -- locked building
+		c("e", "Cindercub", "farm1") -- the farm is Sproutling's own
+		c("f", "Zappup", "research") -- any creature can study
 		Schema.Sanitize(data, 0)
 		local assigned = 0
 		for _, creature in data.Creatures do
@@ -148,6 +149,7 @@ describe("Schema", function()
 		eq(data.Creatures.c.Assignment, nil)
 		eq(data.Creatures.d.Assignment, nil)
 		eq(data.Creatures.e.Assignment, nil)
+		eq(data.Creatures.f.Assignment, "research")
 	end)
 	test("missing or moved fixed buildings are restored to the layout", function()
 		local data = Schema.Default(0)

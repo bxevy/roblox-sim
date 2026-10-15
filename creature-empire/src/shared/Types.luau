@@ -130,6 +130,8 @@ export type BuildingDef = {
 	PlaceGrowth: number?,
 	FreeCount: number?, -- how many every plot starts with (they are pre-placed)
 	Locked: string?, -- reason shown when a fixed building is not usable yet
+	OnlySpecies: { string }?, -- only these species can work here (Util/WorkRules)
+	AnyCreature: boolean?, -- every creature can work here (Util/WorkRules)
 	RequiresResearch: string?, -- ResearchConfig node needed before it can be placed
 	Phase: number,
 }

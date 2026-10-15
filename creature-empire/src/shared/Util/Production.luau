@@ -12,6 +12,7 @@ local Formulas = require(script.Parent.Formulas)
 local Research = require(script.Parent.Research)
 local Synergy = require(script.Parent.Synergy)
 local Mutation = require(script.Parent.Mutation)
+local WorkRules = require(script.Parent.WorkRules)
 
 export type Buff = { Stat: string, Category: string, Value: number, Expires: number }
 
@@ -100,7 +101,7 @@ function Production.WorkerAt(
 		Job = def.Job,
 		ExtraBonuses = extra,
 		LevelBonus = CreatureConfig.LevelBonus,
-		Affinity = CreatureConfig.Affinity(species, creature.Stage or 1, def.Job),
+		Affinity = WorkRules.Affinity(def, creature.Species, creature.Stage),
 	}, level, EconomyConfig.BonusRules)
 	-- A recipe can make several units per cycle (Essence Condenser: 3).
 	local recipe = def.Recipe and RecipeConfig[def.Recipe]
@@ -131,7 +132,14 @@ local function staff(data: Types.PlayerData): { [string]: { Types.CreatureRecord
 		local building = creature.Assignment and data.Buildings[creature.Assignment]
 		local def = building and BuildingConfig[building.Type]
 		local level = def and building and def.Levels[building.Level]
-		if building and level and def and def.Job and not def.Locked then
+		if
+			building
+			and level
+			and def
+			and def.Job
+			and not def.Locked
+			and WorkRules.CanWork(def, creature.Species, creature.Stage)
+		then
 			local list = members[building.Id] or {}
 			if #list < (level.Slots or 0) then
 				table.insert(list, creature)

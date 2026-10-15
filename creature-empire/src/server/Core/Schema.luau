@@ -25,10 +25,11 @@ local SpinConfig = require(Shared.Config.SpinConfig)
 local Formulas = require(Shared.Util.Formulas)
 local Housing = require(Shared.Util.Housing)
 local Team = require(Shared.Util.Team)
+local WorkRules = require(Shared.Util.WorkRules)
 
 local Schema = {}
 
-Schema.CURRENT_VERSION = 9
+Schema.CURRENT_VERSION = 10
 
 local function isFiniteNumber(value: any): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -222,6 +223,19 @@ Schema.Migrations = {
 			data.Team = if type(data.Companion) == "string" then { data.Companion } else {}
 		end
 	end,
+	-- v10: three currencies (Gold, Essence, Empire Shards). Insight is folded into Essence
+	-- one for one; the tutorial's opening steps changed (see QuestRemap below).
+	[9] = function(data: { [string]: any })
+		local currencies = data.Currencies
+		if type(currencies) == "table" then
+			local insight = currencies.Insight
+			if type(insight) == "number" and insight > 0 and insight == insight and insight ~= math.huge then
+				currencies.Essence = (if type(currencies.Essence) == "number" then currencies.Essence else 0)
+					+ math.floor(insight)
+			end
+			currencies.Insight = nil
+		end
+	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 
 -- Runs every migration the profile needs. Returns ok, or false + reason when the profile
@@ -383,7 +397,7 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 				and def.Job ~= nil
 				and def.Locked == nil
 				and species ~= nil
-				and CreatureConfig.Affinity(species, record.Stage, def.Job) > 0
+				and WorkRules.CanWork(def, record.Species, record.Stage)
 				and level ~= nil
 				and (slotsUsed[assignment] or 0) < (level.Slots or 0)
 			if valid then

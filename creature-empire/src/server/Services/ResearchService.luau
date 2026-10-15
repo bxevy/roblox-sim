@@ -1,5 +1,5 @@
 --!strict
--- The research tree (ResearchConfig). Research is bought with Insight from the Research
+-- The research tree (ResearchConfig). Research is bought with Essence (also made at the Research
 -- Station (plus gold or materials); prerequisites and costs are checked here, and the
 -- effects are read from saved data by Shared/Util/Research wherever they apply.
 
