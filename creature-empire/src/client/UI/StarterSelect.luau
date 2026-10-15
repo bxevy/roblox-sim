@@ -207,24 +207,27 @@ local INNER_W, INNER_H = (586 - 75) * K, (377 - 78) * K
 local CARD = Vector2.new(270, 416)
 local CARD_GAP = 14
 
-type Art = { Frame: string, Button: string, Badge: string, Portrait: string, Tint: Color3 }
+type Art = { Frame: string, OldFrame: string, Button: string, Badge: string, Portrait: string, Tint: Color3 }
 local ART: { [string]: Art } = {
 	Sproutling = {
-		Frame = "CardFrameGreen",
+		Frame = "WoodFrameGreen",
+		OldFrame = "CardFrameGreen", -- the vine frame, if the wooden one can't load
 		Button = "ButtonSproutling",
 		Badge = "BadgeVerdants",
 		Portrait = "PortraitSproutling",
 		Tint = Color3.fromRGB(30, 80, 32),
 	},
 	Cindercub = {
-		Frame = "CardFrameOrange",
+		Frame = "WoodFrameOrange",
+		OldFrame = "CardFrameOrange", -- the vine frame, if the wooden one can't load
 		Button = "ButtonCindercub",
 		Badge = "BadgeEmberkin",
 		Portrait = "PortraitCindercub",
 		Tint = Color3.fromRGB(100, 40, 16),
 	},
 	Pebblit = {
-		Frame = "CardFrameBlue",
+		Frame = "WoodFrameBlue",
+		OldFrame = "CardFrameBlue", -- the vine frame, if the wooden one can't load
 		Button = "ButtonPebblit",
 		Badge = "BadgeCrystalkin",
 		Portrait = "PortraitPebblit",
@@ -281,7 +284,11 @@ local function canUseArt(): boolean
 	end
 	for _, speciesId in CreatureConfig.Starters do
 		local art = ART[speciesId]
-		if not art or not Theme.KitImage(art.Frame) or not Theme.KitImage(art.Button) then
+		if
+			not art
+			or not (Theme.KitImage(art.Frame) or Theme.KitImage(art.OldFrame))
+			or not Theme.KitImage(art.Button)
+		then
 			return false
 		end
 	end
@@ -363,15 +370,19 @@ local function buildArt(ctx: any)
 			Size = UDim2.fromOffset(CARD.X, CARD.Y),
 			ZIndex = 12,
 		}, stage)
+		-- The plain wooden frame in the family colour (its border is thinner than the vine
+		-- frame's, so the colour fills closer to the edge).
+		local wooden = Theme.KitImage(art.Frame) ~= nil
+		local tintInset = if wooden then 20 else 28
 		local tint = Theme.Make("Frame", {
 			BackgroundColor3 = art.Tint,
-			Position = UDim2.fromOffset(28, 28),
-			Size = UDim2.new(1, -56, 1, -56),
+			Position = UDim2.fromOffset(tintInset, tintInset),
+			Size = UDim2.new(1, -tintInset * 2, 1, -tintInset * 2),
 			ZIndex = 12,
 		}, holder)
-		Theme.Corner(tint, 10)
+		Theme.Corner(tint, 6)
 		Theme.Gradient(tint, 1, 0.55)
-		kitImage(holder, art.Frame, { Size = UDim2.fromScale(1, 1), ZIndex = 13 })
+		kitImage(holder, if wooden then art.Frame else art.OldFrame, { Size = UDim2.fromScale(1, 1), ZIndex = 13 })
 
 		-- The creature: the painted portrait, or the 3D model if it isn't available.
 		local artBox = Theme.Make("Frame", {

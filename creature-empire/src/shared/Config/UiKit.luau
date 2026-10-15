@@ -52,6 +52,10 @@ local IDS: { [string]: number } = {
 	PortraitSproutling = 81048497216059,
 	PortraitCindercub = 72919480696239,
 	PortraitPebblit = 81826648297332,
+	-- Plain wooden card frames (art/ui-frames)
+	WoodFrameGreen = 80630794751715,
+	WoodFrameOrange = 137924713261382,
+	WoodFrameBlue = 125385689515967,
 	-- Spin Wheel sheet (art/ui-spin)
 	SpinPanel = 102847727495518,
 	SpinHeader = 88177704359846,
@@ -124,6 +128,10 @@ local UiKit = {
 	PortraitSproutling = piece(Vector2.new(228, 208)),
 	PortraitCindercub = piece(Vector2.new(250, 210)),
 	PortraitPebblit = piece(Vector2.new(250, 210)),
+	-- Plain wooden card frames: the border is ~27 px, so only the straight sides stretch.
+	WoodFrameGreen = piece(Vector2.new(227, 226), { 40, 40, 187, 186 }),
+	WoodFrameOrange = piece(Vector2.new(225, 226), { 40, 40, 185, 186 }),
+	WoodFrameBlue = piece(Vector2.new(226, 225), { 40, 40, 186, 185 }),
 	-- Spin Wheel sheet, sizes as uploaded.
 	SpinPanel = piece(Vector2.new(281, 216)),
 	SpinHeader = piece(Vector2.new(310, 82)),
