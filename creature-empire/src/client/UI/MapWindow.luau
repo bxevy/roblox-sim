@@ -57,7 +57,7 @@ function MapWindow.new(ctx: any)
 					ctx.Close()
 					ctx.Request("Travel", "Home")
 				end)
-			elseif region and region.Phase <= GameConfig.Phase then
+			elseif region and region.Phase <= GameConfig.Phase and region.Enabled ~= false then
 				local unlocked = tier >= region.CoreTier
 				local go = Theme.Button(
 					card,

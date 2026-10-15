@@ -7,6 +7,7 @@
 
 local Types = require(script.Parent.Parent.Types)
 local Formulas = require(script.Parent.Parent.Util.Formulas)
+local RegionConfig = require(script.Parent.RegionConfig)
 
 local function gold(base: number, growth: number, level: number): { [string]: number }
 	-- Level 2 is the first paid upgrade, so it costs exactly `base`.
@@ -88,7 +89,7 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 			},
 			{
 				Cost = gold(600, 3.6, 2),
-				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter, Evolution Chamber, Expedition Portal and a Courier Post, +5% creature yield. Opens Emberfall Basin.",
+				Description = "Tier 2: 3 farms, the Crystal Mine, Smelter, Evolution Chamber, Expedition Portal and a Courier Post, +5% creature yield.",
 				BuildingLimits = {
 					MoonpetalFarm = 3,
 					Habitat = 3,
@@ -265,7 +266,9 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Description = "Sends teams of creatures on timed expeditions. Each level runs one more expedition at a time.",
 		Footprint = { X = 4, Z = 4 },
 		Placeable = true,
-		PlaceCost = { Gold = 2000, Emberstone = 10 },
+		-- Emberstone comes from Emberfall Basin; while the basin is off, only Gold (expeditions
+		-- then bring Emberstone home for the upgrades).
+		PlaceCost = if RegionConfig.IsOpen("Emberfall") then { Gold = 2000, Emberstone = 10 } else { Gold = 2000 },
 		PlaceGrowth = 1,
 		Phase = 3,
 		Levels = {

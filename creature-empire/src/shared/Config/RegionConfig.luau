@@ -25,6 +25,9 @@ export type Region = {
 	HalfSize: Vector3, -- bounds of the region (players inside count as "in" it)
 	CoreTier: number, -- Empire Core tier needed to travel there
 	Phase: number,
+	-- false: switched off for now (not built, no gate, travel, boss, wild or nodes; its
+	-- tutorial steps are skipped). The content stays here, ready to switch back on.
+	Enabled: boolean?,
 	ArrivalOffset: Vector3,
 	PlazaGate: Vector3, -- world position of the gate in the plaza
 	Heat: {
@@ -72,6 +75,7 @@ RegionConfig.Regions = {
 		HalfSize = v(270, 120, 270),
 		CoreTier = 2,
 		Phase = 3,
+		Enabled = false, -- off for now: coming back later with the other biomes and their bosses
 		ArrivalOffset = v(0, 3, 215),
 		PlazaGate = v(20, 0.5, -30),
 		Heat = {
@@ -182,7 +186,20 @@ RegionConfig.Regions = {
 	},
 } :: { [string]: Region }
 
-RegionConfig.Order = { "Emberfall" }
+-- Every region, in order; RegionConfig.Order holds only the ones switched on.
+RegionConfig.All = { "Emberfall" }
+RegionConfig.Order = {} :: { string }
+for _, id in RegionConfig.All do
+	if RegionConfig.Regions[id].Enabled ~= false then
+		table.insert(RegionConfig.Order, id)
+	end
+end
+
+-- Whether a region exists and is switched on.
+function RegionConfig.IsOpen(id: string): boolean
+	local region = RegionConfig.Regions[id]
+	return region ~= nil and region.Enabled ~= false
+end
 
 function RegionConfig.Contains(region: Region, position: Vector3): boolean
 	local d = position - region.Center

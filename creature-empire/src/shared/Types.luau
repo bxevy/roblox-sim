@@ -171,6 +171,7 @@ export type QuestStep = {
 	Amount: number,
 	Reward: QuestReward,
 	Pointer: string?, -- building id/type the tutorial arrow points at
+	Region: string?, -- needs this region: skipped while it's switched off
 }
 
 -- Saved data ---------------------------------------------------------------------------

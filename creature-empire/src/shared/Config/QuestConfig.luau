@@ -191,6 +191,7 @@ QuestConfig.Tutorial = {
 	-- Update 3: Emberfall Basin
 	{
 		Id = "Basin",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "Into the heat",
 		Description = "Step through the Emberfall Gate in the plaza (press M for the map). Watch your heat meter!",
 		Kind = "Visit",
@@ -200,6 +201,7 @@ QuestConfig.Tutorial = {
 	},
 	{
 		Id = "Gather",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "Warm stones",
 		Description = "Gather 10 Emberstone from deposits in the basin (hold the prompt).",
 		Kind = "Gather",
@@ -209,6 +211,7 @@ QuestConfig.Tutorial = {
 	},
 	{
 		Id = "Landmarks",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "Cartographer",
 		Description = "Discover 3 landmarks in Emberfall Basin.",
 		Kind = "Discover",
@@ -217,6 +220,7 @@ QuestConfig.Tutorial = {
 	},
 	{
 		Id = "Lure",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "Something sweet",
 		Description = "Craft an Ember Lure at the Trading Post in the plaza.",
 		Kind = "Craft",
@@ -227,6 +231,7 @@ QuestConfig.Tutorial = {
 	},
 	{
 		Id = "Befriend",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "New friends",
 		Description = "Befriend a wild creature in the basin with a lure.",
 		Kind = "Befriend",
@@ -244,6 +249,7 @@ QuestConfig.Tutorial = {
 	},
 	{
 		Id = "Guardian",
+		Region = "Emberfall", -- skipped while the basin is switched off
 		Title = "The Matriarch",
 		Description = "Defeat the Magmaul Matriarch in the Guardian's Caldera (bring friends, or a Tideborn companion).",
 		Kind = "Guardian",

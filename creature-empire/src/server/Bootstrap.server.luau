@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 require(Shared.Remotes) -- create remotes before clients look for them
 local GameConfig = require(Shared.Config.GameConfig)
+local RegionConfig = require(Shared.Config.RegionConfig)
 
 local Core = script.Parent.Core
 local Net = require(Core.Net)
@@ -43,7 +44,9 @@ local DevService = require(Services.DevService)
 
 require(script.Parent.World.AssetLoader).Load() -- custom models by asset id, before building
 require(script.Parent.World.WorldBuilder).Build()
-require(script.Parent.World.EmberfallBuilder).Build()
+if RegionConfig.IsOpen("Emberfall") then
+	require(script.Parent.World.EmberfallBuilder).Build() -- the basin and its plaza gate
+end
 
 Net.Configure({
 	IsReady = PlayerDataService.IsReady,

@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
 local Production = require(Shared.Util.Production)
 local QuestConfig = require(Shared.Config.QuestConfig)
+local RegionConfig = require(Shared.Config.RegionConfig)
 local Remotes = require(Shared.Remotes)
 
 local Core = script.Parent.Parent.Core
@@ -171,6 +172,14 @@ local function refresh(player: Player)
 		return
 	end
 	local step = currentStep(data)
+	-- Steps for a region that's switched off are passed over (no reward).
+	while step and step.Region and not RegionConfig.IsOpen(step.Region) do
+		data.Quests.Tutorial += 1
+		data.Quests.Progress = 0
+		data.Quests.Claimable = false
+		PlayerDataService.MarkDirty(player)
+		step = currentStep(data)
+	end
 	if step and step.Kind == "ChooseStarter" and progressOf(data, step) >= step.Amount then
 		-- Picking a partner is its own reward; move straight on to the next step.
 		data.Quests.Tutorial += 1

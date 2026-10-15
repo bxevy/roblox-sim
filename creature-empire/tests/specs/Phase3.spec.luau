@@ -259,7 +259,21 @@ describe("Emberfall layout", function()
 	test("the region is far from the empire plots", function()
 		truthy(RegionConfig.At(Vector3.new(0, 0, 0)) == nil)
 		truthy(RegionConfig.At(Vector3.new(150, 0, 150)) == nil)
-		truthy(RegionConfig.At(region.Center) == region)
+		truthy(RegionConfig.Contains(region, region.Center))
+		-- Only switched-on regions are found (Emberfall is off for now).
+		if RegionConfig.IsOpen(region.Id) then
+			truthy(RegionConfig.At(region.Center) == region)
+		else
+			truthy(RegionConfig.At(region.Center) == nil)
+		end
+	end)
+
+	test("a switched-off region is closed everywhere", function()
+		for _, id in RegionConfig.All do
+			local open = RegionConfig.IsOpen(id)
+			truthy(table.find(RegionConfig.Order, id) ~= nil == open, id)
+		end
+		truthy(not RegionConfig.IsOpen("Nowhere"))
 	end)
 end)
 

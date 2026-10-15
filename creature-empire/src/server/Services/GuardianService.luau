@@ -359,7 +359,7 @@ function GuardianService.Start()
 	folder.Parent = Workspace
 	for id, def in CombatConfig.Guardians do
 		local region = RegionConfig.Regions[def.Region]
-		if region then
+		if region and RegionConfig.IsOpen(def.Region) then
 			local anchor = Instance.new("Configuration")
 			anchor.Name = id
 			anchor:SetAttribute("Name", def.Name)

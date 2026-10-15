@@ -107,7 +107,7 @@ local function travel(player: Player, destination: string): (boolean, any)
 		return true, nil
 	end
 	local region = RegionConfig.Regions[destination]
-	if not region or region.Phase > GameConfig.Phase then
+	if not region or region.Phase > GameConfig.Phase or not RegionConfig.IsOpen(destination) then
 		return false, "That region isn't open yet."
 	end
 	if coreTier(player) < region.CoreTier then
