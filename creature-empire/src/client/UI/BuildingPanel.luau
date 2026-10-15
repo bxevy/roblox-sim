@@ -1611,30 +1611,47 @@ function BuildingPanel.new(ctx: any)
 			13,
 			{ TextColor3 = Theme.Colors.Muted }
 		)
+		-- Everyone living on the plot (not in the backpack), with what they're up to.
 		local creatures = State.Get("Creatures")
-		local any = false
+		local buildings = State.Get("Buildings")
+		local residents = {}
 		for id, c in creatures and creatures.List or {} do
-			if not c.Assignment and not c.Stored and not c.Expedition then
-				any = true
-				if art then
-					creatureRow(card, id, c.Species, `<b>{c.Name}</b>\nLv {c.Level}`, 0)
-					continue
-				end
-				local row = Window.Row(card, 40)
-				Theme.Text(row, `<b>{c.Name}</b> Lv {c.Level}`, 15, {
-					Size = UDim2.new(1, -130, 1, 0),
-					AutomaticSize = Enum.AutomaticSize.None,
-					TextYAlignment = Enum.TextYAlignment.Center,
-				})
-				local open =
-					Theme.Button(row, "Details", "Secondary", { Size = UDim2.fromOffset(120, 34), TextSize = 15 })
-				open.Activated:Connect(function()
-					ctx.Open("Creatures", id)
-				end)
+			if not c.Stored then
+				table.insert(residents, { Id = id, Creature = c })
 			end
 		end
-		if not any then
-			Theme.Text(card, "Everyone is at work. Busy little empire!", 15, { TextColor3 = Theme.Colors.Muted })
+		table.sort(residents, function(a, b)
+			return a.Creature.Name < b.Creature.Name
+		end)
+		for index, resident in residents do
+			local id, c = resident.Id, resident.Creature
+			local doing = "Relaxing at home"
+			if c.Expedition then
+				doing = "Out exploring"
+			elseif c.Assignment then
+				local where = buildings and buildings.List[c.Assignment]
+				local def = where and BuildingConfig[where.Type]
+				doing = `Working at the {def and def.Name or "plot"}`
+			end
+			if art then
+				creatureRow(card, id, c.Species, `<b>{c.Name}</b> Lv {c.Level}\n<font size="12">{doing}</font>`, index)
+				continue
+			end
+			local row = Window.Row(card, 40, index)
+			Theme.Text(row, `<b>{c.Name}</b> Lv {c.Level} · <font color="#dec496">{doing}</font>`, 15, {
+				Size = UDim2.new(1, -130, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextYAlignment = Enum.TextYAlignment.Center,
+			})
+			local open = Theme.Button(row, "Details", "Secondary", { Size = UDim2.fromOffset(120, 34), TextSize = 15 })
+			open.Activated:Connect(function()
+				ctx.Open("Creatures", id)
+			end)
+		end
+		if #residents == 0 then
+			Theme.Text(card, "No creatures live here yet. Hatch an egg to get started!", 15, {
+				TextColor3 = Theme.Colors.Muted,
+			})
 		end
 	end
 
@@ -1788,7 +1805,7 @@ function BuildingPanel.new(ctx: any)
 	State.OnChanged("Creatures", function()
 		local b = State.Get("Buildings")
 		local info = buildingId and b and b.List[buildingId]
-		if info and info.Type == "ExpeditionPortal" then
+		if info and (info.Type == "ExpeditionPortal" or info.Type == "Habitat") then
 			schedule()
 		end
 	end)
