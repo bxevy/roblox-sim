@@ -122,7 +122,6 @@ function SettingsWindow.new(ctx: any)
 				{ "+100 petals", "petals", 100 },
 				{ "+100 essence", "essence", 100 },
 				{ "+50 crystals", "crystals", 50 },
-				{ "+50 emberstone", "ember", 50 },
 				{ "+5 levels", "levelup" },
 				{ "Finish expeditions", "finishexpeditions" },
 				{ "+20 shards", "shards", 20 },

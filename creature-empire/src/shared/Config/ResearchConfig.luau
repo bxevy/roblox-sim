@@ -14,6 +14,8 @@
 --   Synergy    { Value }    synergy bonuses are Value share stronger
 --   Unlock     { Target }   a building type id that needs this research
 
+local ResourceConfig = require(script.Parent.ResourceConfig)
+
 export type Effect = {
 	Kind: string,
 	Stat: string?,
@@ -163,6 +165,13 @@ local nodes: { Node } = {
 ResearchConfig.Nodes = {} :: { [string]: Node }
 ResearchConfig.Order = {} :: { string }
 for _, node in nodes do
+	-- A switched-off material isn't asked for.
+	for resource in table.clone(node.Cost) do
+		local def = ResourceConfig[resource]
+		if def and def.Enabled == false then
+			node.Cost[resource] = nil
+		end
+	end
 	ResearchConfig.Nodes[node.Id] = node
 	table.insert(ResearchConfig.Order, node.Id)
 end

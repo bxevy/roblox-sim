@@ -505,7 +505,7 @@ function BuildingPanel.new(ctx: any)
 		end
 		local ids = {}
 		for id, def in ResourceConfig do
-			if def.Kind == "Material" and def.SellPrice then
+			if def.Kind == "Material" and def.SellPrice and def.Enabled ~= false then
 				table.insert(ids, id)
 			end
 		end
@@ -831,6 +831,9 @@ function BuildingPanel.new(ctx: any)
 		local supplyCost: { [string]: number } = {}
 		for _, id in { "HeatShield", "Rations" } do
 			local supply = ExpeditionConfig.Supplies[id]
+			if not supply then
+				continue -- needs a material that's switched off
+			end
 			local on = table.find(plan.Supplies, id) ~= nil
 			if on then
 				for resource, amount in supply.Cost do
@@ -919,6 +922,9 @@ function BuildingPanel.new(ctx: any)
 		local wallet = State.Get("Wallet")
 		for id, capacity in wallet and wallet.Capacity or {} do
 			local def = ResourceConfig[id]
+			if not def or def.Enabled == false then
+				continue -- switched off for now
+			end
 			local have = wallet.Resources[id] or 0
 			Theme.Text(card, `{def.Icon} {def.Name}: {Format.Number(have)} / {Format.Number(capacity)}`, 16)
 			local _, set = Theme.Bar(card, def.Color, 8)

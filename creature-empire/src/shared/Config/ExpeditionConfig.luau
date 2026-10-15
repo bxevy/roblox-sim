@@ -28,6 +28,8 @@ export type Destination = {
 	EventOnly: boolean?, -- only during a world event (the Ember Rift); it ends with the event
 }
 
+local ResourceConfig = require(script.Parent.ResourceConfig)
+
 local ExpeditionConfig = {}
 
 ExpeditionConfig.MaxTeam = 3
@@ -258,5 +260,36 @@ ExpeditionConfig.Destinations = {
 } :: { [string]: Destination }
 
 ExpeditionConfig.Order = { "Foothills", "Tunnels", "Rim" }
+
+-- A switched-off material (ResourceConfig Enabled = false) isn't brought home, and supplies
+-- that cost it can't be packed.
+local function off(resource: string): boolean
+	local def = ResourceConfig[resource]
+	return def ~= nil and def.Enabled == false
+end
+for _, destination in ExpeditionConfig.Destinations do
+	local kept = {}
+	for _, reward in destination.Rewards do
+		if not off(reward.Resource) then
+			table.insert(kept, reward)
+		end
+	end
+	destination.Rewards = kept
+	for _, event in destination.Events do
+		local reward: { [string]: number } = event.Reward or {}
+		for resource: string in table.clone(reward) do
+			if off(resource) then
+				reward[resource] = nil
+			end
+		end
+	end
+end
+for id, supply in table.clone(ExpeditionConfig.Supplies) do
+	for resource in supply.Cost do
+		if off(resource) then
+			ExpeditionConfig.Supplies[id] = nil
+		end
+	end
+end
 
 return ExpeditionConfig

@@ -8,6 +8,7 @@
 local Types = require(script.Parent.Parent.Types)
 local Formulas = require(script.Parent.Parent.Util.Formulas)
 local RegionConfig = require(script.Parent.RegionConfig)
+local ResourceConfig = require(script.Parent.ResourceConfig)
 
 local function gold(base: number, growth: number, level: number): { [string]: number }
 	-- Level 2 is the first paid upgrade, so it costs exactly `base`.
@@ -23,7 +24,9 @@ local function goldAnd(
 	materialBase: number
 ): { [string]: number }
 	local cost = gold(base, growth, level)
-	cost[material] = Formulas.CostAt(materialBase, growth, level - 1)
+	if ResourceConfig[material].Enabled ~= false then -- a switched-off material isn't asked for
+		cost[material] = Formulas.CostAt(materialBase, growth, level - 1)
+	end
 	return cost
 end
 
@@ -298,7 +301,9 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		Placeable = true,
 		-- Emberstone comes from Emberfall Basin; while the basin is off, only Gold (expeditions
 		-- then bring Emberstone home for the upgrades).
-		PlaceCost = if RegionConfig.IsOpen("Emberfall") then { Gold = 2000, Emberstone = 10 } else { Gold = 2000 },
+		PlaceCost = if RegionConfig.IsOpen("Emberfall") and ResourceConfig.Emberstone.Enabled ~= false
+			then { Gold = 2000, Emberstone = 10 }
+			else { Gold = 2000 },
 		PlaceGrowth = 1,
 		Phase = 3,
 		Levels = {

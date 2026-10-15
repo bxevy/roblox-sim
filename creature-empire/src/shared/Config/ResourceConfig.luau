@@ -57,6 +57,7 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Icon = "◉",
 		Color = Color3.fromRGB(255, 120, 60),
 		SellPrice = 6,
+		Enabled = false, -- out for now, with Emberfall Basin (one line to bring back)
 	},
 	EmberLure = {
 		Id = "EmberLure",

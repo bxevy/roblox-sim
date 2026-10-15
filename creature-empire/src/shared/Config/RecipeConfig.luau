@@ -59,12 +59,13 @@ local RecipeConfig: { [string]: Types.RecipeDef & { Enabled: boolean } } = {
 		RequiresJob = "Researcher",
 		Enabled = true,
 	},
-	-- The Workshop: any creature crafts trinkets that go straight to the wallet as Gold.
+	-- The Workshop: any creature crafts trinkets that go straight to the wallet as Gold,
+	-- 10 Gold for each point of work.
 	CraftTrinkets = {
 		Id = "CraftTrinkets",
 		Name = "Craft Trinkets",
 		Inputs = {},
-		Outputs = { Gold = 3 },
+		Outputs = { Gold = 10 },
 		Power = 0,
 		RequiresJob = "Crafter",
 		Enabled = true,

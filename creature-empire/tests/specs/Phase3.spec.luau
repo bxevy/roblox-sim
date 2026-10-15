@@ -76,7 +76,13 @@ describe("Expeditions", function()
 		local balanced = Expedition.Chance(foothills, team, "Balanced", {})
 		near(Expedition.Chance(foothills, team, "Cautious", {}) - balanced, 0.15, 1e-9)
 		near(balanced - Expedition.Chance(foothills, team, "Bold", {}), 0.15, 1e-9)
-		near(Expedition.Chance(foothills, team, "Balanced", { "HeatShield" }) - balanced, 0.1, 1e-9)
+		local shield = ExpeditionConfig.Supplies.HeatShield
+		if shield then
+			near(Expedition.Chance(foothills, team, "Balanced", { "HeatShield" }) - balanced, shield.Chance, 1e-9)
+		else
+			-- It costs Emberstone, which is switched off for now: it can't be packed.
+			eq(Expedition.Chance(foothills, team, "Balanced", { "HeatShield" }), balanced)
+		end
 	end)
 	test("chance is always between 5% and 97%", function()
 		truthy(Expedition.Chance(rim, {}, "Bold", {}) >= 0.05)

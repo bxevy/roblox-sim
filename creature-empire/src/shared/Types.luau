@@ -155,6 +155,9 @@ export type ResourceDef = {
 	SellPrice: number?, -- Gold per unit at the Trading Post
 	MaxStack: number?, -- items: how many you can carry (materials use silo capacity)
 	Image: string?, -- rbxassetid, see AssetConfig
+	-- false: out of the game for now (not earned, not asked for, not shown); saved
+	-- amounts are kept for when it comes back.
+	Enabled: boolean?,
 }
 
 export type QuestReward = {

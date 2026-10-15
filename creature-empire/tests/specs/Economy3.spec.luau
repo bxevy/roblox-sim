@@ -171,3 +171,48 @@ describe("Tutorial progress in older saves", function()
 		eq(migrated(33).Tutorial, #QuestConfig.Tutorial + 1, "finished stays finished")
 	end)
 end)
+
+describe("Switched-off materials (Emberstone for now)", function()
+	local ExpeditionConfig = shared("Config", "ExpeditionConfig")
+	local ResearchConfig = shared("Config", "ResearchConfig")
+	local RecipeConfig = shared("Config", "RecipeConfig")
+	local function offList()
+		local list = {}
+		for id, def in ResourceConfig do
+			if type(def) == "table" and def.Enabled == false then
+				table.insert(list, id)
+			end
+		end
+		return list
+	end
+	test("Emberstone is switched off", function()
+		eq(ResourceConfig.Emberstone.Enabled, false)
+	end)
+	test("nothing gives or asks for a switched-off material", function()
+		for _, id in offList() do
+			for _, destination in ExpeditionConfig.Destinations do
+				for _, reward in destination.Rewards do
+					truthy(reward.Resource ~= id, destination.Id .. " reward")
+				end
+				for _, event in destination.Events do
+					eq((event.Reward or {})[id], nil, destination.Id .. " event")
+				end
+			end
+			for supplyId, supply in ExpeditionConfig.Supplies do
+				eq(supply.Cost[id], nil, supplyId)
+			end
+			for nodeId, node in ResearchConfig.Nodes do
+				eq(node.Cost[id], nil, nodeId)
+			end
+			for typeId, def in BuildingConfig do
+				eq((def.PlaceCost or {})[id], nil, typeId .. " place cost")
+				for level, info in def.Levels do
+					eq((info.Cost or {})[id], nil, `{typeId} level {level}`)
+				end
+			end
+		end
+	end)
+	test("the Workshop pays 10 Gold per point of work", function()
+		eq(RecipeConfig.CraftTrinkets.Outputs.Gold, 10)
+	end)
+end)
