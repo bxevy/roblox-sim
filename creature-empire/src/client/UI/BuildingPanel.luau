@@ -45,7 +45,10 @@ local function levelChanges(from: any, to: any): { string }
 		table.insert(changes, `Storage {Format.Number(from.Storage or 0)} → <b>{Format.Number(to.Storage)}</b>`)
 	end
 	if to.CycleTime and to.CycleTime ~= from.CycleTime then
-		table.insert(changes, `Growth time {from.CycleTime}s → <b>{to.CycleTime}s</b>`)
+		local function seconds(value: number): string
+			return string.format("%g", math.floor(value * 10 + 0.5) / 10)
+		end
+		table.insert(changes, `Growth time {seconds(from.CycleTime or 0)}s → <b>{seconds(to.CycleTime)}s</b>`)
 	end
 	if to.YieldPerCycle and to.YieldPerCycle ~= from.YieldPerCycle then
 		table.insert(changes, `Harvest size ×{from.YieldPerCycle} → <b>×{to.YieldPerCycle}</b>`)
@@ -362,6 +365,26 @@ function BuildingPanel.new(ctx: any)
 		return card :: any
 	end
 
+	-- Keeps a full-width row as tall as its picture's shape needs. (A UIAspectRatioConstraint
+	-- squashes it to nothing inside an auto-sized list.) Heights are in the stage's own
+	-- units, so the screen-fit scale is taken out of the measured width.
+	local function keepRatio(row: GuiObject, ratio: number)
+		row.Size = UDim2.new(1, 0, 0, 80)
+		local function fit()
+			local offset = row.Size.Y.Offset
+			if row.AbsoluteSize.X <= 0 or row.AbsoluteSize.Y <= 0 or offset <= 0 then
+				return
+			end
+			local scale = row.AbsoluteSize.Y / offset
+			local wanted = math.floor(row.AbsoluteSize.X / scale * ratio + 0.5)
+			if math.abs(wanted - offset) >= 1 then
+				row.Size = UDim2.new(1, 0, 0, wanted)
+			end
+		end
+		row:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+		task.defer(fit)
+	end
+
 	-- One creature on the wooden slot row: its portrait in the square, a line of text, and
 	-- the Details button (opens it in the Creatures window). Returns the row.
 	local function creatureRow(parent: Instance, id: string, species: string, line: string, order: number): ImageLabel
@@ -373,7 +396,7 @@ function BuildingPanel.new(ctx: any)
 		}, parent)
 		Theme.KitApply(row, "SlotRow")
 		row.ScaleType = Enum.ScaleType.Stretch
-		Theme.Make("UIAspectRatioConstraint", { AspectRatio = 429 / 89 }, row)
+		keepRatio(row, 89 / 429)
 		local face = Theme.Make("Frame", {
 			BackgroundTransparency = 1,
 			Position = UDim2.fromScale(17 / 429, 13 / 89),
@@ -411,7 +434,7 @@ function BuildingPanel.new(ctx: any)
 		}, parent)
 		Theme.KitApply(row, "EmptySlotRow")
 		row.ScaleType = Enum.ScaleType.Stretch
-		Theme.Make("UIAspectRatioConstraint", { AspectRatio = 429 / 86 }, row)
+		keepRatio(row, 86 / 429)
 		Theme.Text(row, label, 15, {
 			FontFace = Theme.Bold,
 			TextColor3 = Theme.Colors.Muted,
