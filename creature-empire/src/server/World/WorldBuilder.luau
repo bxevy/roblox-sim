@@ -378,6 +378,28 @@ local function hexagon(
 	end
 end
 
+-- How far the plaza floor reaches along each path (index = plot number): a hand-made
+-- floor of any shape is measured so every path starts right at its edge.
+local plazaEdge: { [number]: number } = {}
+
+-- Walks out from the centre along `direction`, dropping rays onto `floor`, and returns the
+-- last distance that still lands on it.
+local function floorEdge(floor: Instance, direction: Vector3, top: number, depth: number): number?
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { floor }
+	local edge: number? = nil
+	for distance = 4, 120, 0.5 do
+		local from = direction * distance + Vector3.new(0, top + 5, 0)
+		if Workspace:Raycast(from, Vector3.new(0, -(depth + 10), 0), params) then
+			edge = distance
+		elseif edge then
+			break
+		end
+	end
+	return edge
+end
+
 local function buildPlaza(folder: Folder)
 	local plaza = Instance.new("Folder")
 	plaza.Name = "Plaza"
@@ -417,6 +439,16 @@ local function buildPlaza(folder: Folder)
 		end
 		local lift = (floorModel:GetAttribute("HeightOffset") :: number?) or 0
 		placed:PivotTo(placed:GetPivot() + Vector3.new(0, PlazaConfig.FloorY - surface + lift, 0))
+		-- Where the floor ends towards each plot's path.
+		local _, placedSize = CustomModels.Bounds(placed)
+		local top = PlazaConfig.FloorY + lift + placedSize.Y
+		for i = 0, PlotConfig.PlotCount - 1 do
+			local angle = i / PlotConfig.PlotCount * math.pi * 2
+			local edge = floorEdge(placed, Vector3.new(math.sin(angle), 0, math.cos(angle)), top, placedSize.Y * 2)
+			if edge then
+				plazaEdge[i] = edge
+			end
+		end
 	else
 		hexagon(plaza, "PlazaBorder", PLAZA_APOTHEM, 0.25, STONE, Enum.Material.Cobblestone)
 		hexagon(plaza, "PlazaFloor", PLAZA_APOTHEM - 2, 0.3, Color3.fromRGB(176, 170, 160), Enum.Material.Slate)
@@ -491,7 +523,8 @@ local function buildPaths(folder: Folder)
 	for i = 0, PlotConfig.PlotCount - 1 do
 		local angle = i / PlotConfig.PlotCount * math.pi * 2
 		local direction = Vector3.new(math.sin(angle), 0, math.cos(angle))
-		local from, to = PLAZA_APOTHEM, PlotConfig.RingRadius -- from the middle of a plaza side
+		-- From the plaza floor's edge (tucked 2 studs under it so there's no gap).
+		local from, to = (plazaEdge[i] or PLAZA_APOTHEM) - 2, PlotConfig.RingRadius
 		local length = to - from
 		local mid = direction * (from + length / 2)
 		local side = Vector3.new(-direction.Z, 0, direction.X)
