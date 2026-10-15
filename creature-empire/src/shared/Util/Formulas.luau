@@ -148,6 +148,11 @@ function Formulas.PlaceCost(def: Types.BuildingDef, owned: number): { [string]: 
 	for currency, base in placeCost do
 		cost[currency] = Formulas.RoundNice(base * (def.PlaceGrowth or 1) ^ exponent)
 	end
+	local list = def.PlaceCostList
+	if list and #list > 0 then
+		local index = owned + 1
+		cost.Gold = if index <= #list then list[index] else list[#list] * 2 ^ (index - #list)
+	end
 	return cost
 end
 

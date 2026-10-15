@@ -95,10 +95,12 @@ describe("Formulas.Accumulate / Offline", function()
 		eq(Formulas.OfflineSeconds(2000, 1500, 7200), 0) -- clock went backwards
 		eq(Formulas.OfflineSeconds(0, 1500, 7200), 0) -- no record
 	end)
-	test("placement price grows after the free copies", function()
+	test("placement price follows each building's price list, then doubles", function()
 		local farm = BuildingConfig.MoonpetalFarm
-		eq(Formulas.PlaceCost(farm, 1).Gold, 150) -- owning the free starter farm
-		eq(Formulas.PlaceCost(farm, 2).Gold, 330) -- 150 * 2.2
+		eq(Formulas.PlaceCost(farm, 0).Gold, 150) -- your first one (the tutorial)
+		eq(Formulas.PlaceCost(farm, 1).Gold, farm.PlaceCostList[2])
+		local last = farm.PlaceCostList[#farm.PlaceCostList]
+		eq(Formulas.PlaceCost(farm, #farm.PlaceCostList).Gold, last * 2)
 	end)
 end)
 
@@ -279,92 +281,74 @@ end)
 
 describe("Pacing (informational)", function()
 	test("first hour of play reaches Empire Core tier 2", function()
-		-- Simulates an attentive player: collects and sells whenever storage fills, buys
-		-- farm/silo upgrades and second/third farms when affordable, uses no abilities.
-		local data = H.WithFarm(Schema.Default(0))
-		local function creature(id, species)
-			data.Creatures[id] = {
-				Id = id,
-				Species = species,
-				Level = 1,
-				Xp = 0,
-				Stage = 1,
-				Source = "Sim",
-				ObtainedAt = 0,
-				Tradable = false,
-				WorkCycles = 0,
-				AbilityReadyAt = 0,
-			}
+		-- Simulates the new opening: your first starter at its own building, the second
+		-- after 5 minutes and the third after 15 (each building bought as it arrives), the
+		-- tutorial's gold rewards, and everything sold at the Trading Post every 10 seconds.
+		local RecipeConfig = H.require("ReplicatedStorage", "Shared", "Config", "RecipeConfig")
+		local ResourceConfig = H.require("ReplicatedStorage", "Shared", "Config", "ResourceConfig")
+		local data = Schema.Default(0)
+		local gold = data.Currencies.Gold
+		local function value(typeId)
+			local def = BuildingConfig[typeId]
+			local recipe = RecipeConfig[def.Recipe]
+			local out = Production.OutputOf(def)
+			local v = ResourceConfig[out].SellPrice or 0
+			for resource, amount in recipe.Inputs do
+				v -= amount / (recipe.Outputs[out] or 1) * (ResourceConfig[resource].SellPrice or 0)
+			end
+			return v
 		end
-		creature("a", "Sproutling")
-		data.Creatures.a.Assignment = "farm1"
-		local gold = data.Currencies.Gold + 20 + 25 -- first two quest rewards
+		local arrivals = {
+			{ At = 0, Species = "Sproutling", Building = "MoonpetalFarm", Reward = 170 },
+			{ At = 300, Species = "Cindercub", Building = "CrystalSmelter", Reward = 130 },
+			{ At = 900, Species = "Pebblit", Building = "CrystalMine", Reward = 270 },
+		}
+		local pending = {}
 		local t = 0
 		local tier2At = nil
-		local function spend(cost)
-			if gold >= cost then
-				gold -= cost
-				return true
-			end
-			return false
-		end
 		while t < 3600 and not tier2At do
-			t += 10
-			if t == 300 then
-				creature("b", "Cindercub")
+			for i, arrival in arrivals do
+				if arrival.At == t then
+					table.insert(pending, arrival)
+				end
+				local _ = i
 			end
-			if t == 900 then
-				creature("c", "Pebblit")
-			end
-			-- Upgrades / buildings in a sensible order.
-			local farm1 = data.Buildings.farm1
-			if farm1.Level == 1 and spend(BuildingConfig.MoonpetalFarm.Levels[2].Cost.Gold) then
-				farm1.Level = 2
-			end
-			if
-				not data.Buildings.farm2
-				and farm1.Level >= 2
-				and spend(Formulas.PlaceCost(BuildingConfig.MoonpetalFarm, 1).Gold)
-			then
-				data.Buildings.farm2 =
-					{ Id = "farm2", Type = "MoonpetalFarm", Level = 1, X = 0, Z = 0, Rot = 0, Stored = {} }
-			end
-			if data.Buildings.silo.Level == 1 and spend(BuildingConfig.ResourceSilo.Levels[2].Cost.Gold) then
-				data.Buildings.silo.Level = 2
-			end
-			if spend(BuildingConfig.EmpireCore.Levels[2].Cost.Gold) then
-				tier2At = t
-			end
-			-- Assign idle creatures where there is room.
-			for _, c in data.Creatures do
-				if not c.Assignment then
-					for id, b in data.Buildings do
-						if b.Type == "MoonpetalFarm" then
-							local used = 0
-							for _, other in data.Creatures do
-								if other.Assignment == id then
-									used += 1
-								end
-							end
-							if used < BuildingConfig.MoonpetalFarm.Levels[b.Level].Slots then
-								c.Assignment = id
-								break
-							end
-						end
-					end
+			-- Build each starter's building as soon as it's affordable, then staff it.
+			for i = #pending, 1, -1 do
+				local arrival = pending[i]
+				local cost = Formulas.PlaceCost(BuildingConfig[arrival.Building], 0).Gold
+				if gold >= cost then
+					gold -= cost
+					local id = arrival.Building
+					data.Buildings[id] =
+						{ Id = id, Type = arrival.Building, Level = 1, X = 0, Z = 0, Rot = 0, Stored = {} }
+					data.Creatures[arrival.Species] = {
+						Id = arrival.Species,
+						Species = arrival.Species,
+						Level = 1,
+						Xp = 0,
+						Stage = 1,
+						Source = "Sim",
+						ObtainedAt = 0,
+						Tradable = false,
+						WorkCycles = 0,
+						AbilityReadyAt = 0,
+						Assignment = id,
+					}
+					gold += arrival.Reward -- that starter's tutorial steps
+					table.remove(pending, i)
 				end
 			end
-			-- Produce, then collect and sell everything every 10 seconds.
+			if gold >= BuildingConfig.EmpireCore.Levels[2].Cost.Gold then
+				tier2At = t
+			end
+			t += 10
 			for id, rate in Production.Rates(data) do
-				local stored = data.Buildings[id].Stored.Moonpetal or 0
-				stored = Formulas.Accumulate(stored, rate.PerSecond, 10, rate.Capacity)
-				local whole = math.floor(stored)
-				data.Buildings[id].Stored.Moonpetal = stored - whole
-				gold += whole * 2
+				gold += rate.PerSecond * 10 * value(data.Buildings[id].Type)
 			end
 		end
 		print(`      tier 2 reached after {tier2At and math.floor(tier2At / 60) or ">60"} minutes`)
 		truthy(tier2At and tier2At <= 45 * 60, "tier 2 should be reachable within 45 minutes")
-		truthy(tier2At and tier2At >= 5 * 60, "tier 2 should take more than 5 minutes")
+		truthy(tier2At and tier2At >= 15 * 60, "tier 2 should take at least 15 minutes (medium pace)")
 	end)
 end)

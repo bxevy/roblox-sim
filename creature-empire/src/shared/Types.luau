@@ -131,6 +131,9 @@ export type BuildingDef = {
 	FreeCount: number?, -- how many every plot starts with (they are pre-placed)
 	Locked: string?, -- reason shown when a fixed building is not usable yet
 	OnlySpecies: { string }?, -- only these species can work here (Util/WorkRules)
+	-- Gold for the 1st, 2nd, ... copy (each copy after the list doubles); overrides
+	-- PlaceCost/PlaceGrowth for Gold. Set from the payback targets in BuildingConfig.
+	PlaceCostList: { number }?,
 	AnyCreature: boolean?, -- every creature can work here (Util/WorkRules)
 	RequiresResearch: string?, -- ResearchConfig node needed before it can be placed
 	Phase: number,

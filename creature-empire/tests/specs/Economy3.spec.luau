@@ -284,3 +284,82 @@ describe("Starter building income", function()
 		end
 	end)
 end)
+
+describe("Prices (medium pace)", function()
+	local Production = shared("Util", "Production")
+	local RecipeConfig = shared("Config", "RecipeConfig")
+	local GameConfig = shared("Config", "GameConfig")
+	local Formulas = shared("Util", "Formulas")
+	local OWNER = { MoonpetalFarm = "Sproutling", CrystalMine = "Pebblit", CrystalSmelter = "Cindercub" }
+	local function creature(speciesId)
+		return {
+			Id = "x",
+			Species = speciesId,
+			Level = 1,
+			Stage = 1,
+			Xp = 0,
+			ObtainedAt = 0,
+			Tradable = false,
+			WorkCycles = 0,
+			AbilityReadyAt = 0,
+		}
+	end
+	local function value(typeId)
+		local def = BuildingConfig[typeId]
+		local recipe = RecipeConfig[def.Recipe]
+		local out = Production.OutputOf(def)
+		local v = ResourceConfig[out].SellPrice or 1
+		for resource, amount in recipe.Inputs do
+			v -= amount / (recipe.Outputs[out] or 1) * (ResourceConfig[resource].SellPrice or 0)
+		end
+		return v
+	end
+	local function perWorker(typeId, speciesId, level)
+		local data = Schema.Default(0)
+		data.Buildings.b = { Id = "b", Type = typeId, Level = level, X = 2, Z = 2, Rot = 0, Stored = {} }
+		return Production.WorkerAt(data, creature(speciesId), data.Buildings.b, nil).PerSecond * 60 * value(typeId)
+	end
+	-- Gold a minute with every slot filled (starter buildings by their starter, the
+	-- Workshop by an average creature).
+	local function full(typeId, level)
+		local per
+		if OWNER[typeId] then
+			per = perWorker(typeId, OWNER[typeId], level)
+		else
+			local sum, count = 0, 0
+			for id, species in CreatureConfig.Species do
+				if species.Phase <= GameConfig.Phase then
+					sum += perWorker(typeId, id, level)
+					count += 1
+				end
+			end
+			per = sum / count
+		end
+		return per * BuildingConfig[typeId].Levels[level].Slots
+	end
+	local function near(minutes, target, label)
+		truthy(
+			minutes >= target * 0.75 and minutes <= target * 1.25,
+			`{label}: {math.floor(minutes)} min (target {target})`
+		)
+	end
+	test("upgrades pay back in 10 / 15 / 25 / 40 minutes", function()
+		local targets = { [2] = 10, [3] = 15, [4] = 25, [5] = 40 }
+		for _, typeId in { "MoonpetalFarm", "CrystalMine", "CrystalSmelter", "Workshop" } do
+			for level = 2, 5 do
+				local gain = full(typeId, level) - full(typeId, level - 1)
+				near(BuildingConfig[typeId].Levels[level].Cost.Gold / gain, targets[level], `{typeId} L{level}`)
+			end
+		end
+	end)
+	test("extra copies pay back in 10, then 20, then 40 minutes", function()
+		for _, typeId in { "MoonpetalFarm", "CrystalMine", "CrystalSmelter", "Workshop" } do
+			local income = full(typeId, 1)
+			local first = if OWNER[typeId] then 1 else 0 -- your first starter building is the tutorial's
+			for i, target in { 10, 20, 40 } do
+				local price = Formulas.PlaceCost(BuildingConfig[typeId], first + i - 1).Gold
+				near(price / income, target, `{typeId} copy {first + i}`)
+			end
+		end
+	end)
+end)

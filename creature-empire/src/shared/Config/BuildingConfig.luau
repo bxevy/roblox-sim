@@ -473,4 +473,32 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 	},
 }
 
+-- Prices: the "medium" pace. Each is set from how long the building takes to pay it back
+-- out of its own extra income (all worker slots filled; starter buildings by their own
+-- starter, the Workshop by an average creature; Economy3.spec checks these):
+--   upgrade to level 2 / 3 / 4 / 5    10 / 15 / 25 / 40 minutes
+--   another copy                       10, then 20, then 40 minutes (your first starter
+--                                      building stays 150 so the tutorial works)
+--   Empire Core tier 2 / 3 / 4 / 5     15 / 40 / 90 / 180 minutes of a typical empire's
+--                                      income at the tier before
+local UPGRADE_GOLD: { [string]: { number } } = {
+	MoonpetalFarm = { 1100, 1200, 4600, 15000 },
+	CrystalMine = { 1100, 1200, 4500, 14000 },
+	CrystalSmelter = { 1100, 1200, 4400, 14000 },
+	Workshop = { 1800, 2000, 7500, 24000 },
+}
+for typeId, prices in UPGRADE_GOLD do
+	for i, price in prices do
+		BuildingConfig[typeId].Levels[i + 1].Cost = { Gold = price }
+	end
+end
+BuildingConfig.MoonpetalFarm.PlaceCostList = { 150, 900, 1800, 3600 }
+BuildingConfig.CrystalMine.PlaceCostList = { 150, 900, 1800, 3600 }
+BuildingConfig.CrystalSmelter.PlaceCostList = { 150, 900, 1800, 3600 }
+BuildingConfig.Workshop.PlaceCostList = { 1500, 3000, 6000 }
+for tier, price in { [2] = 6300, [3] = 40000, [4] = 130000, [5] = 560000 } do
+	local cost = BuildingConfig.EmpireCore.Levels[tier].Cost :: { [string]: number }
+	cost.Gold = price -- tiers 3+ still also ask for Refined Crystal
+end
+
 return BuildingConfig
