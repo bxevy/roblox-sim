@@ -31,6 +31,7 @@ local SpinConfig = require(Shared.Config.SpinConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 local Viewport = require(script.Parent.Viewport)
+local UiKit = require(Shared.Config.UiKit)
 
 local BuildingPanel = {}
 
@@ -74,17 +75,356 @@ local function levelChanges(from: any, to: any): { string }
 	return changes
 end
 
+-- The window around the sections: the creator's building panel sheet (art/ui-panel) when
+-- its pictures load, else the standard drawn window.
+type Look = {
+	Root: GuiObject,
+	Body: ScrollingFrame,
+	Side: ScrollingFrame,
+	SetTitle: (string) -> (),
+	ShowTabs: (boolean, string) -> (),
+	ShowMove: ((() -> ())?) -> (),
+	OnPage: (string) -> (),
+}
+
+local function buildDrawn(ctx: any): Look
+	local win = Window.new(ctx.Gui, "Building", "⌂", Vector2.new(640, 600), ctx.Close)
+	Theme.List(win.Body, 10)
+	local look: Look
+	look = {
+		Root = win.Root,
+		Body = win.Body,
+		Side = win.Body,
+		SetTitle = win.SetTitle,
+		ShowTabs = function() end,
+		ShowMove = function(onMove: (() -> ())?)
+			if not onMove then
+				return
+			end
+			local move = Theme.Button(win.Body, "⇄ Move this building", "Secondary", {
+				Size = UDim2.fromOffset(220, 38),
+				LayoutOrder = 20,
+			})
+			move.Activated:Connect(onMove)
+		end,
+		OnPage = function() end,
+	}
+	return look
+end
+
+-- Spots on the art layout, in the sheet's own pixels (checked against the sheet).
+local STAGE = Vector2.new(750, 722)
+local ART_PIECES = { "PanelSide", "PanelHeader", "PanelClose", "BarBrown", "SlotRow", "EmptySlotRow" }
+
+local function canUseArt(): boolean
+	for _, name in ART_PIECES do
+		if not Theme.KitImage(name) then
+			return false
+		end
+	end
+	return true
+end
+
+-- A kit picture shown whole (or one part of it) at a fixed spot.
+local function artPiece(parent: Instance, name: string, props: { [string]: any }, part: Rect?): ImageLabel
+	local image = Theme.Make("ImageLabel", { BackgroundTransparency = 1, ZIndex = 11 }, parent)
+	for key, value in props do
+		(image :: any)[key] = value
+	end
+	Theme.KitApply(image, name, part or Rect.new(Vector2.zero, UiKit[name].Size))
+	return image
+end
+
+local function artButton(parent: Instance, name: string, props: { [string]: any }): ImageButton
+	local button = Theme.Make("ImageButton", { BackgroundTransparency = 1, ZIndex = 14 }, parent)
+	for key, value in props do
+		(button :: any)[key] = value
+	end
+	Theme.KitApply(button, name, Rect.new(Vector2.zero, UiKit[name].Size))
+	local pop = Theme.Make("UIScale", {}, button)
+	button.MouseEnter:Connect(function()
+		pop.Scale = 1.05
+	end)
+	button.MouseLeave:Connect(function()
+		pop.Scale = 1
+	end)
+	button.Activated:Connect(function()
+		Theme.OnClick()
+	end)
+	return button
+end
+
+local function artScroll(parent: Instance, position: Vector2, size: Vector2): ScrollingFrame
+	local scroll = Theme.Make("ScrollingFrame", {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Position = UDim2.fromOffset(position.X, position.Y),
+		Size = UDim2.fromOffset(size.X, size.Y),
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 5,
+		ScrollBarImageColor3 = Theme.Colors.Border,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Selectable = false,
+		ZIndex = 12,
+	}, parent) :: ScrollingFrame
+	Theme.List(scroll, 8)
+	Theme.Padding(scroll, 2, 6).PaddingRight = UDim.new(0, 10)
+	return scroll
+end
+
+local function buildArt(ctx: any): Look
+	local root = Theme.Make("Frame", {
+		Name = "BuildingWindow",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+	}, ctx.Gui)
+	local stage = Theme.Make("Frame", {
+		Name = "Stage",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.52),
+		Size = UDim2.fromOffset(STAGE.X, STAGE.Y),
+		BackgroundTransparency = 1,
+		Active = true, -- clicks on the panel don't fall through to the dimmer (which closes)
+		ZIndex = 10,
+	}, root)
+	local fit = Theme.Make("UIScale", { Name = "Fit" }, stage)
+	local function refit()
+		local screen = ctx.Gui.AbsoluteSize
+		local guiScale = ctx.Gui:FindFirstChildOfClass("UIScale")
+		local g = if guiScale then guiScale.Scale else 1
+		if screen.X > 0 and screen.Y > 0 then
+			fit.Scale = math.min(1, screen.X * 0.96 / (STAGE.X * g), screen.Y * 0.9 / (STAGE.Y * g))
+		end
+	end
+	ctx.Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	task.defer(refit)
+
+	-- Left: the tall wooden panel with the description and upgrade.
+	artPiece(stage, "PanelSide", { Position = UDim2.fromOffset(15, 56), Size = UDim2.fromOffset(280, 462) })
+	local side = artScroll(stage, Vector2.new(36, 78), Vector2.new(240, 420))
+
+	-- The title plaque. Its picture has words painted on, so it is put together from its two
+	-- ends and a clean strip of wood (the gap between two painted words) stretched between.
+	local plaque = Theme.Make("Frame", {
+		Position = UDim2.fromOffset(300, 58),
+		Size = UDim2.fromOffset(350, 83),
+		BackgroundTransparency = 1,
+		ZIndex = 11,
+	}, stage)
+	artPiece(plaque, "PanelHeader", { Size = UDim2.fromOffset(30, 83) }, Rect.new(0, 0, 30, 83))
+	local strip = artPiece(plaque, "PanelHeader", {
+		Position = UDim2.fromOffset(30, 0),
+		Size = UDim2.new(1, -54, 0, 83),
+	}, Rect.new(133, 0, 135, 83))
+	strip.ScaleType = Enum.ScaleType.Stretch
+	artPiece(plaque, "PanelHeader", {
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.fromOffset(24, 83),
+	}, Rect.new(326, 0, 350, 83))
+	local title = Theme.Text(plaque, "", 22, {
+		FontFace = Theme.Heavy,
+		Position = UDim2.fromOffset(26, 4),
+		Size = UDim2.new(1, -52, 1, -10),
+		AutomaticSize = Enum.AutomaticSize.None,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		TextWrapped = false,
+		TextStrokeColor3 = Theme.Colors.TextShadow,
+		TextStrokeTransparency = 0.1,
+		ZIndex = 13,
+	})
+
+	local close = artButton(stage, "PanelClose", {
+		Name = "Close",
+		Position = UDim2.fromOffset(652, 53),
+		Size = UDim2.fromOffset(83, 85),
+	})
+	close.Activated:Connect(ctx.Close)
+
+	-- Right: the sections, on their own wooden bars and slot rows.
+	local body = artScroll(stage, Vector2.new(298, 152), Vector2.new(442, 366))
+
+	local move = artButton(stage, "MoveButton", {
+		Name = "Move",
+		Position = UDim2.fromOffset(195, 529),
+		Size = UDim2.fromOffset(365, 70),
+		Visible = false,
+	})
+	local onMove: (() -> ())? = nil
+	move.Activated:Connect(function()
+		if onMove then
+			onMove()
+		end
+	end)
+
+	local look: Look
+	-- Leaf: the building's own page. Paw: its workers.
+	local tabs: { [string]: ImageButton } = {}
+	for index, tab in { { "TabLeaf", "Main", "Building" }, { "TabPaw", "Workers", "Workers" } } do
+		local button = artButton(stage, tab[1], {
+			Name = tab[2],
+			Position = UDim2.fromOffset(279 + (index - 1) * 111, 612),
+			Size = UDim2.fromOffset(81, 80),
+			Visible = false,
+		})
+		Theme.Text(button, tab[3], 13, {
+			FontFace = Theme.Bold,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(0.5, 0, 1, 2),
+			Size = UDim2.fromOffset(100, 16),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.1,
+			ZIndex = 15,
+		})
+		button.Activated:Connect(function()
+			look.OnPage(tab[2])
+		end)
+		tabs[tab[2]] = button
+	end
+
+	look = {
+		Root = root,
+		Body = body,
+		Side = side,
+		SetTitle = function(text: string)
+			title.Text = text
+			-- Long names step down a size so they stay on the plaque.
+			title.TextSize = if #text > 26 then 18 else 22
+		end,
+		ShowTabs = function(show: boolean, current: string)
+			for which, button in tabs do
+				button.Visible = show
+				button.ImageColor3 = if which == current then Color3.new(1, 1, 1) else Color3.fromRGB(140, 130, 120)
+			end
+		end,
+		ShowMove = function(handler: (() -> ())?)
+			onMove = handler
+			move.Visible = handler ~= nil
+		end,
+		OnPage = function() end,
+	}
+	return look
+end
+
 function BuildingPanel.new(ctx: any)
 	local State = ctx.Controllers.State
 	local Buildings = ctx.Controllers.Building
-	local win = Window.new(ctx.Gui, "Building", "⌂", Vector2.new(640, 600), ctx.Close)
-	Theme.List(win.Body, 10)
+	local art = canUseArt()
+	local look = if art then buildArt(ctx) else buildDrawn(ctx)
+	-- `body` holds the sections; `side` the description and upgrade (the left panel in the
+	-- art look, the same scrolling list in the drawn one).
+	local body, side = look.Body, look.Side
+	-- Buildings with workers split into two pages in the art look (the leaf and paw tabs).
+	local page: "Main" | "Workers" = "Main"
 
 	local buildingId: string? = nil
 	local liveStorage: { Label: TextLabel, Set: (number) -> () }? = nil
 	local picking = false
 
 	local render: () -> ()
+	look.OnPage = function(which: string)
+		page = if which == "Workers" then "Workers" else "Main"
+		picking = false
+		render()
+	end
+
+	-- A section card: the brown riveted bar in the art look (green for production), plain
+	-- on the side panel's wood.
+	local function section(parent: Instance, title: string?, order: number?, piece: string?): Frame
+		if not art then
+			return Window.Section(parent, title, order)
+		end
+		local card = Theme.Make("ImageLabel", {
+			Image = "",
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			LayoutOrder = order or 0,
+		}, parent)
+		if parent == side then
+			Theme.Padding(card, 2)
+		else
+			Theme.Skin(card, piece or "BarBrown")
+			Theme.Padding(card, 16, 22)
+		end
+		Theme.List(card, 6)
+		if title then
+			Theme.Text(card, title, 14, { FontFace = Theme.Bold, TextColor3 = Theme.Colors.Muted, LayoutOrder = -1 })
+		end
+		return card :: any
+	end
+
+	-- One creature on the wooden slot row: its portrait in the square, a line of text, and
+	-- the Details button (opens it in the Creatures window). Returns the row.
+	local function creatureRow(parent: Instance, id: string, species: string, line: string, order: number): ImageLabel
+		local row = Theme.Make("ImageLabel", {
+			Name = id,
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			LayoutOrder = order,
+		}, parent)
+		Theme.KitApply(row, "SlotRow")
+		row.ScaleType = Enum.ScaleType.Stretch
+		Theme.Make("UIAspectRatioConstraint", { AspectRatio = 429 / 89 }, row)
+		local face = Theme.Make("Frame", {
+			BackgroundTransparency = 1,
+			Position = UDim2.fromScale(17 / 429, 13 / 89),
+			Size = UDim2.fromScale(66 / 429, 64 / 89),
+		}, row)
+		Viewport.Creature(face, species)
+		Theme.Text(row, line, 14, {
+			Position = UDim2.fromScale(96 / 429, 0),
+			Size = UDim2.fromScale(186 / 429, 1),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextStrokeColor3 = Theme.Colors.TextShadow,
+			TextStrokeTransparency = 0.4,
+		})
+		local details = Theme.Make("ImageButton", {
+			Name = "Details",
+			BackgroundTransparency = 1,
+			Position = UDim2.fromScale(285 / 429, 25 / 89),
+			Size = UDim2.fromScale(133 / 429, 43 / 89),
+		}, row)
+		Theme.KitApply(details, "DetailsButton")
+		details.Activated:Connect(function()
+			Theme.OnClick()
+			ctx.Open("Creatures", id)
+		end)
+		return row
+	end
+
+	-- The dashed empty slot with a paw: tap it to pick a creature.
+	local function emptyRow(parent: Instance, label: string, order: number): ImageButton
+		local row = Theme.Make("ImageButton", {
+			BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 0),
+			LayoutOrder = order,
+		}, parent)
+		Theme.KitApply(row, "EmptySlotRow")
+		row.ScaleType = Enum.ScaleType.Stretch
+		Theme.Make("UIAspectRatioConstraint", { AspectRatio = 429 / 86 }, row)
+		Theme.Text(row, label, 15, {
+			FontFace = Theme.Bold,
+			TextColor3 = Theme.Colors.Muted,
+			Position = UDim2.fromScale(96 / 429, 0),
+			Size = UDim2.fromScale(310 / 429, 1),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Center,
+		})
+		row.Activated:Connect(function()
+			Theme.OnClick()
+		end)
+		return row
+	end
 
 	local function request(name: string, ...: any): (boolean, any)
 		local ok, result = ctx.Request(name, ...)
@@ -95,7 +435,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function productionSection(info: any, def: any)
-		local card = Window.Section(win.Body, "PRODUCTION", 2)
+		local card = section(body, "PRODUCTION", 2, "BarGreen")
 		local output = info.Output and ResourceConfig[info.Output]
 		local label = Theme.Text(card, "", 17, { FontFace = Theme.Bold })
 		local _, setBar = Theme.Bar(card, output and output.Color or Theme.Colors.Primary, 10)
@@ -179,17 +519,55 @@ function BuildingPanel.new(ctx: any)
 
 	local function workersSection(info: any, def: any)
 		local job = def.Job and JobConfig[def.Job]
-		local workers =
-			Window.Section(win.Body, `WORKERS ({#info.Assigned}/{info.Slots}) · {job and job.Name or ""}`, 3)
+		local title = `WORKERS ({#info.Assigned}/{info.Slots}) · {job and job.Name or ""}`
+		local workers: Frame
+		if art then
+			workers = Theme.Make("Frame", {
+				BackgroundTransparency = 1,
+				Size = UDim2.new(1, 0, 0, 0),
+				AutomaticSize = Enum.AutomaticSize.Y,
+				LayoutOrder = 3,
+			}, body)
+			Theme.List(workers, 6)
+			Theme.Text(workers, title, 14, {
+				FontFace = Theme.Bold,
+				TextColor3 = Theme.Colors.Muted,
+				TextStrokeColor3 = Theme.Colors.TextShadow,
+				TextStrokeTransparency = 0.3,
+				LayoutOrder = -1,
+			})
+		else
+			workers = section(body, title, 3)
+		end
 		local creatures = State.Get("Creatures")
 		local list = creatures and creatures.List or {}
 		local perWorker = {}
 		for _, w in info.Workers do
 			perWorker[w.CreatureId] = w.PerSecond
 		end
-		for _, creatureId in info.Assigned do
+		for index, creatureId in info.Assigned do
 			local c = list[creatureId]
-			if c then
+			if c and art then
+				local row = creatureRow(
+					workers,
+					creatureId,
+					c.Species,
+					`<b>{c.Name}</b> Lv {c.Level}\n{Format.Rate((perWorker[creatureId] or 0) * 60)}/min`,
+					index
+				)
+				-- Unassign: a small X in the slot's corner.
+				local remove = Theme.Button(row, "X", "Danger", {
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromScale(80 / 429, 15 / 89),
+					Size = UDim2.fromOffset(22, 22),
+					TextSize = 13,
+					FontFace = Theme.Heavy,
+					ZIndex = 3,
+				})
+				remove.Activated:Connect(function()
+					request("AssignCreature", creatureId, nil)
+				end)
+			elseif c then
 				local row = Window.Row(workers, 48)
 				local face = Theme.Make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(44, 44) }, row)
 				Viewport.Creature(face, c.Species)
@@ -210,14 +588,19 @@ function BuildingPanel.new(ctx: any)
 				end)
 			end
 		end
-		for _ = #info.Assigned + 1, info.Slots do
-			local empty = Theme.Button(workers, "+ Assign a creature", "Ghost", { Size = UDim2.new(1, 0, 0, 40) })
+		for slot = #info.Assigned + 1, info.Slots do
+			local empty: GuiButton = if art
+				then emptyRow(workers, if picking then "Pick a creature below" else "Assign a creature", slot)
+				else Theme.Button(workers, "+ Assign a creature", "Ghost", { Size = UDim2.new(1, 0, 0, 40) })
 			empty.Activated:Connect(function()
 				picking = not picking
 				render()
 			end)
 		end
 		if picking then
+			if art then
+				workers = section(body, "PICK A WORKER", 4)
+			end
 			local coreLevel = State.Get("Buildings").List.core.Level
 			local candidates = 0
 			for id, c in list do
@@ -267,7 +650,7 @@ function BuildingPanel.new(ctx: any)
 
 	-- Active synergies here, and the ones this building could have.
 	local function synergySection(info: any, def: any)
-		local card = Window.Section(win.Body, "SYNERGIES", 4)
+		local card = section(body, "SYNERGIES", 4)
 		local active = {}
 		for _, id in info.Synergies or {} do
 			active[id] = true
@@ -307,14 +690,14 @@ function BuildingPanel.new(ctx: any)
 		local function have(id: string): number
 			return wallet and (wallet.Currencies[id] or wallet.Resources[id]) or 0
 		end
-		local intro = Window.Section(win.Body, "RESEARCH", 5)
+		local intro = section(body, "RESEARCH", 5)
 		Theme.Text(
 			intro,
 			`{ResourceConfig.Essence.Icon} You have <b>{Format.Number(math.floor(have("Essence")))} Essence</b>. Creatures here turn Moonpetals into Essence; collect it, then spend it below. Research resets when you Ascend.`,
 			14
 		)
 		for order, branch in ResearchConfig.Branches do
-			local card = Window.Section(win.Body, string.upper(branch), 5 + order)
+			local card = section(body, string.upper(branch), 5 + order)
 			for _, nodeId in ResearchConfig.Order do
 				local node = ResearchConfig.Nodes[nodeId]
 				if node.Branch == branch and node.Phase <= GameConfig.Phase then
@@ -384,7 +767,7 @@ function BuildingPanel.new(ctx: any)
 		if not ascension then
 			return
 		end
-		local card = Window.Section(win.Body, "ASCENSION", 3)
+		local card = section(body, "ASCENSION", 3)
 		Theme.Text(
 			card,
 			if ascension.Count > 0
@@ -407,7 +790,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function courierSection(info: any)
-		local card = Window.Section(win.Body, "DELIVERIES", 2)
+		local card = section(body, "DELIVERIES", 2)
 		local perMinute = info.PerSecond * 60
 		Theme.Text(
 			card,
@@ -434,7 +817,7 @@ function BuildingPanel.new(ctx: any)
 		if #def.Levels <= 1 then
 			return
 		end
-		local card = Window.Section(win.Body, "UPGRADE", 6)
+		local card = section(side, "UPGRADE", 6)
 		local current = def.Levels[info.Level]
 		local nextLevel = def.Levels[info.Level + 1]
 		if not nextLevel then
@@ -491,7 +874,7 @@ function BuildingPanel.new(ctx: any)
 	-- The Trading Post: just selling. One row per material you can sell, with how many
 	-- you have, the price and a single "Sell all" button; "Sell everything" on top.
 	local function tradingSection()
-		local card = Window.Section(win.Body, "SELL", 2)
+		local card = section(body, "SELL", 2)
 		local wallet = State.Get("Wallet")
 		local coinsLeft = boostLeft("Coins")
 		local multiplier = if coinsLeft > 0 then SpinConfig.BoostMultiplier else 1
@@ -595,7 +978,7 @@ function BuildingPanel.new(ctx: any)
 		local wallet = State.Get("Wallet")
 
 		-- Active trips
-		local active = Window.Section(win.Body, "TEAMS OUT EXPLORING", 2)
+		local active = section(body, "TEAMS OUT EXPLORING", 2)
 		local count = 0
 		local ids = {}
 		for id in expeditions.List do
@@ -650,7 +1033,7 @@ function BuildingPanel.new(ctx: any)
 		)
 
 		-- Planner
-		local planner = Window.Section(win.Body, "PLAN AN EXPEDITION", 3)
+		local planner = section(body, "PLAN AN EXPEDITION", 3)
 		local destinations = {}
 		-- The Ember Rift is only offered while the world event is open for teams.
 		local eventFolder = ReplicatedStorage:FindFirstChild("WorldEvent")
@@ -918,7 +1301,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function siloSection()
-		local card = Window.Section(win.Body, "STORED MATERIALS", 2)
+		local card = section(body, "STORED MATERIALS", 2)
 		local wallet = State.Get("Wallet")
 		for id, capacity in wallet and wallet.Capacity or {} do
 			local def = ResourceConfig[id]
@@ -941,7 +1324,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function coreSection(info: any, def: any)
-		local card = Window.Section(win.Body, "EMPIRE TIERS", 2)
+		local card = section(body, "EMPIRE TIERS", 2)
 		for level, data in def.Levels do
 			local limits = {}
 			for typeId, limit in data.BuildingLimits or {} do
@@ -966,7 +1349,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function expansionSection()
-		local card = Window.Section(win.Body, "EXPAND YOUR LAND", 3)
+		local card = section(body, "EXPAND YOUR LAND", 3)
 		local empire = State.Get("Empire") or {}
 		local owned = empire.Expansions or {}
 		local core = State.Get("Buildings").List.core
@@ -1011,7 +1394,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function hatcherySection()
-		local card = Window.Section(win.Body, "EGGS", 2)
+		local card = section(body, "EGGS", 2)
 		local empire = State.Get("Empire") or {}
 		local hatchery = State.Get("Hatchery") or { Pity = {} }
 		local wallet = State.Get("Wallet")
@@ -1136,7 +1519,7 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	local function chamberSection()
-		local card = Window.Section(win.Body, "READY TO EVOLVE?", 2)
+		local card = section(body, "READY TO EVOLVE?", 2)
 		local creatures = State.Get("Creatures")
 		local wallet = State.Get("Wallet") or { Currencies = {}, Resources = {} }
 		local any = false
@@ -1191,8 +1574,8 @@ function BuildingPanel.new(ctx: any)
 
 	local function habitatSection()
 		local empire = State.Get("Empire") or {}
-		local card = Window.Section(
-			win.Body,
+		local card = section(
+			body,
 			`HOUSING · {empire.HabitatCount or 0} / {empire.HabitatCapacity or 0} in {empire.Habitats or 0} habitat{if empire.Habitats
 					== 1
 				then ""
@@ -1210,6 +1593,10 @@ function BuildingPanel.new(ctx: any)
 		for id, c in creatures and creatures.List or {} do
 			if not c.Assignment and not c.Stored and not c.Expedition then
 				any = true
+				if art then
+					creatureRow(card, id, c.Species, `<b>{c.Name}</b>\nLv {c.Level}`, 0)
+					continue
+				end
 				local row = Window.Row(card, 40)
 				Theme.Text(row, `<b>{c.Name}</b> Lv {c.Level}`, 15, {
 					Size = UDim2.new(1, -130, 1, 0),
@@ -1229,14 +1616,19 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	render = function()
-		Window.Clear(win.Body)
+		Window.Clear(body)
+		if side ~= body then
+			Window.Clear(side)
+		end
+		look.ShowTabs(false, page)
+		look.ShowMove(nil)
 		liveStorage = nil
 		-- Plaza stations: no level, upgrades or moving.
 		local plazaType = if buildingId then string.match(buildingId, "^plaza:(.+)$") else nil
 		if plazaType and BuildingConfig[plazaType] then
 			local def = BuildingConfig[plazaType]
-			win.SetTitle(def.Name)
-			local head = Window.Section(win.Body, nil, 1)
+			look.SetTitle(def.Name)
+			local head = section(side, nil, 1)
 			Theme.Text(head, def.Description, 15)
 			if plazaType == "TradingPost" then
 				tradingSection()
@@ -1248,12 +1640,12 @@ function BuildingPanel.new(ctx: any)
 		local buildings = State.Get("Buildings")
 		local info = buildingId and buildings and buildings.List[buildingId]
 		if not info then
-			Theme.Text(win.Body, "This building is gone.", 16)
+			Theme.Text(body, "This building is gone.", 16)
 			return
 		end
 		local def = BuildingConfig[info.Type]
-		win.SetTitle(`{def.Name} · Level {info.Level}`)
-		local head = Window.Section(win.Body, nil, 1)
+		look.SetTitle(`{def.Name} · Level {info.Level}`)
+		local head = section(side, nil, 1)
 		Theme.Text(head, def.Description, 15)
 		if def.Locked then
 			Theme.Text(head, "🔒 " .. def.Locked, 15, { TextColor3 = Theme.Colors.Warning })
@@ -1275,29 +1667,32 @@ function BuildingPanel.new(ctx: any)
 			chamberSection()
 		elseif info.Type == "Habitat" then
 			habitatSection()
-		elseif info.Type == "CourierPost" then
-			courierSection(info)
-			workersSection(info, def)
-			synergySection(info, def)
-		elseif def.Recipe then
-			productionSection(info, def)
-			workersSection(info, def)
-			synergySection(info, def)
-			if info.Type == "ResearchStation" then
+		elseif info.Type == "CourierPost" or def.Recipe then
+			-- The art look shows one page at a time (leaf: the building, paw: its workers).
+			look.ShowTabs(art, page)
+			local main = not art or page == "Main"
+			local crew = not art or page == "Workers"
+			if main then
+				if info.Type == "CourierPost" then
+					courierSection(info)
+				else
+					productionSection(info, def)
+				end
+			end
+			if crew then
+				workersSection(info, def)
+				synergySection(info, def)
+			end
+			if main and info.Type == "ResearchStation" then
 				researchSection()
 			end
 		end
 		upgradeSection(info, def)
-		do -- every building on your plot can be moved
-			local move = Theme.Button(win.Body, "⇄ Move this building", "Secondary", {
-				Size = UDim2.fromOffset(220, 38),
-				LayoutOrder = 20,
-			})
-			move.Activated:Connect(function()
-				ctx.Close()
-				ctx.Controllers.Placement.Begin(info.Type, { MoveId = info.Id, Rot = info.Rot })
-			end)
-		end
+		-- Every building on your plot can be moved.
+		look.ShowMove(function()
+			ctx.Close()
+			ctx.Controllers.Placement.Begin(info.Type, { MoveId = info.Id, Rot = info.Rot })
+		end)
 	end
 
 	-- Keep the storage line live between server updates.
@@ -1316,9 +1711,9 @@ function BuildingPanel.new(ctx: any)
 
 	local function refreshIfOpen()
 		if ctx.IsOpen("Building") then
-			local scroll = win.Body.CanvasPosition
+			local scroll = body.CanvasPosition
 			render()
-			win.Body.CanvasPosition = scroll
+			body.CanvasPosition = scroll
 		end
 	end
 	-- Coalesce refreshes: Buildings updates arrive every few seconds while producing.
@@ -1376,8 +1771,11 @@ function BuildingPanel.new(ctx: any)
 	end)
 
 	return {
-		Root = win.Root,
+		Root = look.Root,
 		Open = function(id: any)
+			if id ~= buildingId then
+				page = "Main"
+			end
 			buildingId = id
 			picking = false
 			render()

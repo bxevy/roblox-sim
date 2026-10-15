@@ -226,6 +226,9 @@ local FRAME_SCALE: { [string]: number } = {
 	TileRare = 0.6,
 	TileEpic = 0.6,
 	TileMythic = 0.6,
+	PanelSide = 0.9,
+	BarGreen = 0.85,
+	BarBrown = 0.85,
 }
 local function kitFit(kit: UiKit.Piece, size: Vector2, wanted: number?): number
 	if STRIPS[kit.Name] then

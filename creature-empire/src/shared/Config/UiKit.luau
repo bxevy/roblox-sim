@@ -74,6 +74,19 @@ local IDS: { [string]: number } = {
 	IconEssence = 75244608322405,
 	IconLuck = 124772987573261,
 	IconDragon = 133349929132347,
+	-- Building panel sheet (art/ui-panel)
+	PanelSide = 105108873507099,
+	PanelHeader = 81941320325427,
+	PanelClose = 123540482511615,
+	BarGreen = 117989978229421,
+	BarBrown = 89520539345305,
+	SlotRow = 115879090501040,
+	EmptySlotRow = 137658337972192,
+	DetailsButton = 137568513865493,
+	MoveButton = 100157935666816,
+	TabLeaf = 93178907368636,
+	TabPaw = 135643665098380,
+	TabMove = 102435690354797,
 }
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
@@ -150,6 +163,20 @@ local UiKit = {
 	IconEssence = piece(Vector2.new(54, 59)),
 	IconLuck = piece(Vector2.new(49, 55)),
 	IconDragon = piece(Vector2.new(67, 65)),
+	-- Building panel sheet. The side panel and bars stretch between their riveted corners;
+	-- the header plaque has words painted on, so only its ends and a clean strip are used.
+	PanelSide = piece(Vector2.new(280, 462), { 44, 44, 236, 418 }),
+	PanelHeader = piece(Vector2.new(350, 83)),
+	PanelClose = piece(Vector2.new(83, 85)),
+	BarGreen = piece(Vector2.new(430, 79), { 30, 24, 400, 55 }),
+	BarBrown = piece(Vector2.new(429, 63), { 30, 20, 399, 43 }),
+	SlotRow = piece(Vector2.new(429, 89)),
+	EmptySlotRow = piece(Vector2.new(429, 86)),
+	DetailsButton = piece(Vector2.new(133, 43)),
+	MoveButton = piece(Vector2.new(365, 70)),
+	TabLeaf = piece(Vector2.new(81, 80)),
+	TabPaw = piece(Vector2.new(81, 80)),
+	TabMove = piece(Vector2.new(82, 79)),
 } :: { [string]: Piece }
 
 for name, entry in UiKit do
