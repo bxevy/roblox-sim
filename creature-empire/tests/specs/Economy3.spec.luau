@@ -216,3 +216,34 @@ describe("Switched-off materials (Emberstone for now)", function()
 		eq(RecipeConfig.CraftTrinkets.Outputs.Gold, 10)
 	end)
 end)
+
+describe("Workshop income", function()
+	local Production = shared("Util", "Production")
+	local GameConfig = shared("Config", "GameConfig")
+	test("a level-1 Workshop averages 150 Gold a minute across every creature", function()
+		local data = Schema.Default(0)
+		data.Buildings.ws = { Id = "ws", Type = "Workshop", Level = 1, X = 2, Z = 2, Rot = 0, Stored = {} }
+		local sum, count = 0, 0
+		for id, species in CreatureConfig.Species do
+			if species.Phase <= GameConfig.Phase then
+				local creature = {
+					Id = "x",
+					Species = id,
+					Level = 1,
+					Stage = 1,
+					Xp = 0,
+					ObtainedAt = 0,
+					Tradable = false,
+					WorkCycles = 0,
+					AbilityReadyAt = 0,
+				}
+				local worker = Production.WorkerAt(data, creature, data.Buildings.ws, nil)
+				sum += worker.PerSecond * 60
+				count += 1
+			end
+		end
+		H.near(sum / count, 150, 0.5)
+		-- About 10 minutes of work before the Workshop is full.
+		truthy(BuildingConfig.Workshop.Levels[1].Storage >= 150 * 9)
+	end)
+end)

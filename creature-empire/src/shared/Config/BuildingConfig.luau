@@ -75,6 +75,9 @@ local function productionLevels(
 	} :: any
 end
 
+-- Seconds per point of work at a level-1 Workshop (see Economy3.spec: average 150 Gold/min).
+local WORKSHOP_CYCLE = 8 * 44.4452205882353 / 150
+
 local BuildingConfig: { [string]: Types.BuildingDef } = {
 	EmpireCore = {
 		Id = "EmpireCore",
@@ -284,7 +287,9 @@ local BuildingConfig: { [string]: Types.BuildingDef } = {
 		PlaceCost = { Gold = 250 },
 		PlaceGrowth = 3,
 		Phase = 1,
-		Levels = productionLevels(300, 2.4, 8, 120, {
+		-- Tuned so a level-1 Workshop averages 150 Gold a minute across every creature
+		-- (10 Gold per point of work; storage holds about 10 minutes).
+		Levels = productionLevels(300, 2.4, WORKSHOP_CYCLE, 1500, {
 			"A second bench: room for 2 creatures, more storage.",
 			"Better tools: faster crafting and more Gold per trinket.",
 			"A third bench and a display shelf: much more storage.",
