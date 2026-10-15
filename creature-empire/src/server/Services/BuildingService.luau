@@ -196,9 +196,8 @@ local function move(player: Player, buildingId: string, x: number, z: number, ro
 	if not record or not def then
 		return false, "That building isn't yours."
 	end
-	if not def.Placeable then
-		return false, "This building can't be moved."
-	end
+	-- Every building on your plot can move (the Empire Core, silo and Research Station
+	-- too), anywhere it fits.
 	local occupancy = Grid.Occupancy(data.Buildings, footprints, buildingId)
 	local ok, reason = Grid.CanPlace(occupancy, def.Footprint, x, z, rot, data.Expansions)
 	if not ok then

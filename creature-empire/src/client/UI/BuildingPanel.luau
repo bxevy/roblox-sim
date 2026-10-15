@@ -1288,7 +1288,7 @@ function BuildingPanel.new(ctx: any)
 			end
 		end
 		upgradeSection(info, def)
-		if def.Placeable then
+		do -- every building on your plot can be moved
 			local move = Theme.Button(win.Body, "⇄ Move this building", "Secondary", {
 				Size = UDim2.fromOffset(220, 38),
 				LayoutOrder = 20,

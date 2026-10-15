@@ -386,15 +386,14 @@ function Schema.Sanitize(data: { [string]: any }, now: number): { string }
 			record.Stored[resource] = cleanAmount(amount)
 		end
 	end
-	-- Fixed buildings always exist, at their layout position.
+	-- Fixed buildings always exist (they start at their layout position, and can be moved
+	-- like any other building).
 	for _, entry in PlotConfig.FixedLayout do
 		local record = data.Buildings[entry.Id]
 		if not record or record.Type ~= entry.Type then
 			data.Buildings[entry.Id] =
 				{ Id = entry.Id, Type = entry.Type, Level = 1, X = entry.X, Z = entry.Z, Rot = entry.Rot, Stored = {} }
 			fix(`Fixed building {entry.Id} restored`)
-		else
-			record.X, record.Z, record.Rot = entry.X, entry.Z, entry.Rot
 		end
 	end
 

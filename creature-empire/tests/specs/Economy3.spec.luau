@@ -363,3 +363,13 @@ describe("Prices (medium pace)", function()
 		end
 	end)
 end)
+
+describe("Plot layout", function()
+	test("the Moonpetal Farm and Crystal Mine take 3x3 tiles", function()
+		for _, typeId in { "MoonpetalFarm", "CrystalMine" } do
+			local footprint = BuildingConfig[typeId].Footprint
+			eq(footprint.X, 3, typeId)
+			eq(footprint.Z, 3, typeId)
+		end
+	end)
+end)

@@ -152,13 +152,14 @@ describe("Schema", function()
 		eq(data.Creatures.e.Assignment, nil)
 		eq(data.Creatures.f.Assignment, "research")
 	end)
-	test("missing or moved fixed buildings are restored to the layout", function()
+	test("missing fixed buildings are restored; moved ones stay where you put them", function()
 		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.core = nil
-		data.Buildings.silo.X = 0
+		data.Buildings.silo.X = 2
 		Schema.Sanitize(data, 0)
 		eq(data.Buildings.core.Type, "EmpireCore")
-		eq(data.Buildings.silo.X, 15)
+		eq(data.Buildings.core.X, 10)
+		eq(data.Buildings.silo.X, 2)
 	end)
 	test("ability cooldowns far in the future are clamped", function()
 		local data = H.WithFarm(Schema.Default(0))
