@@ -353,93 +353,117 @@ function Hud.new(ctx: any)
 	end)
 
 	------------------------------------------------------------------ Menu (right)
-	-- Four big buttons for what players use most, and a "More" drawer for the rest, so the
-	-- side of the screen isn't a wall of nine text buttons.
+	-- Four round icons for what players use most and a "More" list for the rest. Kept light:
+	-- no wooden tiles, just the symbol with its name underneath.
 	local keyboard = UserInputService.KeyboardEnabled and not UserInputService.TouchEnabled
 	local touch = Theme.IsTouch()
-	-- Phones: a slightly smaller dock, centred a little high so it stays clear of the
+	-- Phones: a slightly bigger target, centred a little high so it stays clear of the
 	-- jump button in the bottom-right corner.
-	local DOCK_SIZE = if touch then 64 else 74
-	local DOCK_HEIGHT = if touch then 60 else 70
+	local ICON = if touch then 48 else 44
+	local DOCK_SIZE = ICON + 16
+	local DOCK_HEIGHT = ICON + 18
 
 	local dock = Theme.Make("Frame", {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -10, 0.46, 0),
+		Position = UDim2.new(1, -8, 0.46, 0),
 		Size = UDim2.fromOffset(DOCK_SIZE, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
-	Theme.List(dock, 6, nil, Enum.HorizontalAlignment.Right)
+	Theme.List(dock, 4, nil, Enum.HorizontalAlignment.Center)
 
-	local drawer = Theme.Panel(gui, {
+	-- A plain dark list (no vine frame).
+	local drawer = Theme.Make("Frame", {
 		Name = "MoreMenu",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -(DOCK_SIZE + 20), 0.46, 0),
-		Size = UDim2.fromOffset(190, 0),
+		Position = UDim2.new(1, -(DOCK_SIZE + 14), 0.46, 0),
+		Size = UDim2.fromOffset(if touch then 170 else 150, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundColor3 = Theme.Colors.PanelSunken,
+		BackgroundTransparency = 0.2,
+		BorderSizePixel = 0,
 		Visible = false,
 		ZIndex = 4,
-	})
-	Theme.Padding(drawer, 8)
-	Theme.List(drawer, 6)
+	}, gui)
+	Theme.Corner(drawer, 10)
+	Theme.Padding(drawer, 4)
+	Theme.List(drawer, 0)
 
-	local function keyHint(key: string): string
-		return if keyboard then `  <font size="13" color="#dec496">[{key}]</font>` else ""
+	local function hoverScale(button: GuiButton): UIScale
+		local scale = Theme.Make("UIScale", { Scale = 1 }, button)
+		local function set(value: number)
+			if not Theme.ReducedMotion then
+				scale.Scale = value
+			end
+		end
+		button.MouseEnter:Connect(function()
+			set(1.08)
+		end)
+		button.MouseLeave:Connect(function()
+			set(1)
+		end)
+		button.MouseButton1Down:Connect(function()
+			set(0.94)
+		end)
+		button.MouseButton1Up:Connect(function()
+			set(1)
+		end)
+		button.Activated:Connect(function()
+			Theme.OnClick()
+		end)
+		return scale
 	end
 
-	-- A wooden tile (the kit's vine frame): icon on top, name underneath, shortcut key in
-	-- the corner.
+	-- The kit's round symbol (or a glyph on a dark disc) with a small name underneath.
 	local function dockButton(glyph: string, label: string, key: string?, order: number): TextButton
-		local button = Theme.Button(dock, "", "Secondary", {
+		local button = Theme.Make("TextButton", {
 			Name = label,
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundTransparency = 1,
 			Size = UDim2.fromOffset(DOCK_SIZE, DOCK_HEIGHT),
 			LayoutOrder = order,
-		})
-		Theme.Skin(button, "CardFrame")
-		local iconSize = DOCK_HEIGHT - 30
-		local icon = Theme.KitIcon(button, "Icon" .. label, {
+			Selectable = true,
+		}, dock) :: TextButton
+		hoverScale(button)
+		local iconProps = {
 			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 7),
-			Size = UDim2.fromOffset(iconSize, iconSize),
-			ZIndex = 2,
-		})
+			Position = UDim2.new(0.5, 0, 0, 0),
+			Size = UDim2.fromOffset(ICON, ICON),
+		}
+		local icon = Theme.KitIcon(button, "Icon" .. label, iconProps)
 		if not icon then
-			Theme.Text(button, glyph, if touch then 22 else 26, {
+			local disc = Theme.Make("Frame", {
+				AnchorPoint = iconProps.AnchorPoint,
+				Position = iconProps.Position,
+				Size = iconProps.Size,
+				BackgroundColor3 = Theme.Colors.PanelSunken,
+				BackgroundTransparency = 0.15,
+				BorderSizePixel = 0,
+			}, button)
+			Theme.Corner(disc, 999)
+			Theme.Text(disc, glyph, if touch then 22 else 20, {
 				FontFace = Theme.Heavy,
-				Position = UDim2.fromOffset(0, 6),
-				Size = UDim2.new(1, 0, 0, iconSize),
+				Size = UDim2.fromScale(1, 1),
 				AutomaticSize = Enum.AutomaticSize.None,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
-				ZIndex = 2,
 			})
 		end
-		Theme.Text(button, label, if touch then 12 else 13, {
-			ZIndex = 3,
+		local name = if keyboard and key then `{label} <font color="#dec496">{key}</font>` else label
+		Theme.Text(button, name, 12, {
+			RichText = true,
 			TextStrokeColor3 = Theme.Colors.TextShadow,
-			TextStrokeTransparency = 0.2,
+			TextStrokeTransparency = 0.1,
 			FontFace = Theme.Bold,
-			AnchorPoint = Vector2.new(0, 1),
-			Position = UDim2.new(0, 0, 1, -7),
-			Size = UDim2.new(1, 0, 0, 15),
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, 0),
+			Size = UDim2.new(1, 12, 0, 14),
 			AutomaticSize = Enum.AutomaticSize.None,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			TextWrapped = false,
 		})
-		if keyboard and key then
-			Theme.Text(button, key, 11, {
-				FontFace = Theme.Bold,
-				TextColor3 = Theme.Colors.Muted,
-				AnchorPoint = Vector2.new(1, 0),
-				Position = UDim2.new(1, -7, 0, 6),
-				Size = UDim2.fromOffset(14, 12),
-				ZIndex = 3,
-				AutomaticSize = Enum.AutomaticSize.None,
-				TextXAlignment = Enum.TextXAlignment.Right,
-			})
-		end
-		button:SetAttribute("Tooltip", label)
 		return button
 	end
 
@@ -465,22 +489,68 @@ function Hud.new(ctx: any)
 		setDrawer(not drawer.Visible)
 	end)
 
+	-- Text rows that light up under the pointer; the shortcut key sits quietly on the right.
 	local function drawerButton(glyph: string, label: string, key: string, windowName: string, order: number)
-		local button = Theme.Button(drawer, `{glyph}  {label}` .. keyHint(key), "Secondary", {
-			Size = UDim2.new(1, 0, 0, if touch then 50 else 42),
+		local row = Theme.Make("TextButton", {
+			Name = windowName,
+			Text = "",
+			AutoButtonColor = false,
+			BackgroundColor3 = Theme.Colors.Text,
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, if touch then 40 else 30),
 			LayoutOrder = order,
-			RichText = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
+			Selectable = true,
+			ZIndex = 5,
+		}, drawer) :: TextButton
+		Theme.Corner(row, 6)
+		local function lit(on: boolean)
+			row.BackgroundTransparency = if on then 0.88 else 1
+		end
+		row.MouseEnter:Connect(function()
+			lit(true)
+		end)
+		row.MouseLeave:Connect(function()
+			lit(false)
+		end)
+		row.SelectionGained:Connect(function()
+			lit(true)
+		end)
+		row.SelectionLost:Connect(function()
+			lit(false)
+		end)
+		Theme.Text(row, `{glyph}  {label}`, if touch then 16 else 14, {
+			FontFace = Theme.Bold,
+			Position = UDim2.fromOffset(10, 0),
+			Size = UDim2.new(1, -36, 1, 0),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			TextWrapped = false,
+			ZIndex = 6,
 		})
-		Theme.Padding(button, 0, 14)
-		button.Activated:Connect(function()
+		if keyboard then
+			Theme.Text(row, key, 12, {
+				FontFace = Theme.Bold,
+				TextColor3 = Theme.Colors.Muted,
+				TextTransparency = 0.3,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -10, 0, 0),
+				Size = UDim2.new(0, 20, 1, 0),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Right,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				ZIndex = 6,
+			})
+		end
+		row.Activated:Connect(function()
+			Theme.OnClick()
 			setDrawer(false)
 			ctx.Controllers.UI.Toggle(windowName)
 		end)
 	end
 	drawerButton("✎", "Quests", "J", "Quests", 1)
 	drawerButton("▤", "Inventory", "G", "Inventory", 2)
-	drawerButton("☺", "Players & trading", "U", "Players", 3)
+	drawerButton("☺", "Players", "U", "Players", 3)
 	drawerButton("♛", "Rankings", "L", "Leaderboards", 4)
 	drawerButton("⚙", "Settings", "P", "Settings", 5)
 
