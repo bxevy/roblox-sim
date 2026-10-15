@@ -523,8 +523,12 @@ local function buildPaths(folder: Folder)
 	for i = 0, PlotConfig.PlotCount - 1 do
 		local angle = i / PlotConfig.PlotCount * math.pi * 2
 		local direction = Vector3.new(math.sin(angle), 0, math.cos(angle))
-		-- From the plaza floor's edge (tucked 2 studs under it so there's no gap).
-		local from, to = (plazaEdge[i] or PLAZA_APOTHEM) - 2, PlotConfig.RingRadius
+		-- From under the plaza floor's edge so there's never a gap. A measured edge can
+		-- read too far out (a mesh that collides as its box reaches past its visible
+		-- corners), so it never counts past the hexagon's side, and the path tucks 6 studs
+		-- under the raised floor.
+		local edge = math.min(plazaEdge[i] or PLAZA_APOTHEM, PLAZA_APOTHEM)
+		local from, to = edge - 6, PlotConfig.RingRadius
 		local length = to - from
 		local mid = direction * (from + length / 2)
 		local side = Vector3.new(-direction.Z, 0, direction.X)
