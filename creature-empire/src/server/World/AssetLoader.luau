@@ -106,6 +106,18 @@ function AssetLoader.Load()
 			end
 		end
 	end
+	-- Evolved forms ("Sproutling2", "Sproutling3", ...).
+	for speciesId, stages in AssetConfig.EvolutionModels do
+		for stage, assetId in stages do
+			if type(assetId) == "number" and assetId > 0 then
+				jobs += 1
+				task.spawn(function()
+					loadOne("Creatures", speciesId .. stage, assetId)
+					jobs -= 1
+				end)
+			end
+		end
+	end
 	-- Wait (briefly) so the world and first plots are built with the models in place.
 	local deadline = os.clock() + 15
 	while jobs > 0 and os.clock() < deadline do

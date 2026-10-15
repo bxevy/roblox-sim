@@ -373,3 +373,25 @@ describe("Plot layout", function()
 		end
 	end)
 end)
+
+describe("Evolutions", function()
+	local AssetConfig = shared("Config", "AssetConfig")
+	test("every creature has its own three stage names", function()
+		for id, species in CreatureConfig.Species do
+			local names = {}
+			for stage = 1, 3 do
+				local name = species.Evolution[stage].Name
+				truthy(name and name ~= "", `{id} stage {stage}`)
+				falsy(string.find(name, "^Mature ") or string.find(name, "^Ascended "), `{id}: {name}`)
+				falsy(names[name], `{id}: {name} repeats`)
+				names[name] = true
+			end
+		end
+	end)
+	test("every creature has a slot for its stage 2 and 3 models", function()
+		for id in CreatureConfig.Species do
+			local slots = AssetConfig.EvolutionModels[id]
+			truthy(slots and slots[2] ~= nil and slots[3] ~= nil, id)
+		end
+	end)
+end)

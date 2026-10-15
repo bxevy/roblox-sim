@@ -328,6 +328,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Mossmaw",
 		Name = "Mossmaw",
+		StageNames = { "Mossmaw", "Mossjaw", "Thornmaw" },
 		Family = "Verdant",
 		Rarity = "Uncommon",
 		Phase = 2,
@@ -364,6 +365,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Bloomhart",
 		Name = "Bloomhart",
+		StageNames = { "Bloomhart", "Blossomhart", "Elderhart" },
 		Family = "Verdant",
 		Rarity = "Rare",
 		Phase = 2,
@@ -400,6 +402,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Elderbark",
 		Name = "Elderbark",
+		StageNames = { "Elderbark", "Grovewarden", "Worldroot" },
 		Family = "Verdant",
 		Rarity = "Epic",
 		Phase = 5,
@@ -494,6 +497,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Ashwhisk",
 		Name = "Ashwhisk",
+		StageNames = { "Ashwhisk", "Cinderwhisk", "Blazewhisk" },
 		Family = "Emberkin",
 		Rarity = "Uncommon",
 		Phase = 2,
@@ -529,6 +533,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Magmaul",
 		Name = "Magmaul",
+		StageNames = { "Magmaul", "Magmauler", "Volcamaul" },
 		Family = "Emberkin",
 		Rarity = "Rare",
 		Phase = 2,
@@ -565,6 +570,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Pyrewing",
 		Name = "Pyrewing",
+		StageNames = { "Pyrewing", "Blazewing", "Sunpyre" },
 		Family = "Emberkin",
 		Rarity = "Epic",
 		Phase = 3,
@@ -604,6 +610,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Zappup",
 		Name = "Zappup",
+		StageNames = { "Zappup", "Sparkhound", "Thunderhound" },
 		Family = "Voltbeast",
 		Rarity = "Common",
 		Phase = 2,
@@ -639,6 +646,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Coilhorn",
 		Name = "Coilhorn",
+		StageNames = { "Coilhorn", "Voltcoil", "Stormhorn" },
 		Family = "Voltbeast",
 		Rarity = "Uncommon",
 		Phase = 3,
@@ -675,6 +683,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Stormstrider",
 		Name = "Stormstrider",
+		StageNames = { "Stormstrider", "Tempeststrider", "Skystrider" },
 		Family = "Voltbeast",
 		Rarity = "Rare",
 		Phase = 2,
@@ -711,6 +720,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Thundermaw",
 		Name = "Thundermaw",
+		StageNames = { "Thundermaw", "Thunderjaw", "Stormmaw" },
 		Family = "Voltbeast",
 		Rarity = "Epic",
 		Phase = 6,
@@ -800,6 +810,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Shardback",
 		Name = "Shardback",
+		StageNames = { "Shardback", "Crystalback", "Prismback" },
 		Family = "Crystalkin",
 		Rarity = "Uncommon",
 		Phase = 2,
@@ -835,6 +846,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Geodon",
 		Name = "Geodon",
+		StageNames = { "Geodon", "Geotitan", "Geomonarch" },
 		Family = "Crystalkin",
 		Rarity = "Rare",
 		Phase = 2,
@@ -871,6 +883,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Prismaw",
 		Name = "Prismaw",
+		StageNames = { "Prismaw", "Spectramaw", "Radiantmaw" },
 		Family = "Crystalkin",
 		Rarity = "Epic",
 		Phase = 2,
@@ -909,6 +922,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Wisplet",
 		Name = "Wisplet",
+		StageNames = { "Wisplet", "Wispling", "Wispwarden" },
 		Family = "Aetherial",
 		Rarity = "Common",
 		Phase = 2,
@@ -946,6 +960,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Runemoth",
 		Name = "Runemoth",
+		StageNames = { "Runemoth", "Runewing", "Runeseer" },
 		Family = "Aetherial",
 		Rarity = "Uncommon",
 		Phase = 4,
@@ -981,6 +996,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Starweaver",
 		Name = "Starweaver",
+		StageNames = { "Starweaver", "Starspinner", "Cosmoweaver" },
 		Family = "Aetherial",
 		Rarity = "Rare",
 		Phase = 4,
@@ -1017,6 +1033,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Voidlark",
 		Name = "Voidlark",
+		StageNames = { "Voidlark", "Voidsong", "Nullwing" },
 		Family = "Aetherial",
 		Rarity = "Epic",
 		Phase = 5,
@@ -1054,6 +1071,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Gloomkit",
 		Name = "Gloomkit",
+		StageNames = { "Gloomkit", "Gloomcat", "Gloomstalker" },
 		Family = "Umbral",
 		Rarity = "Common",
 		Phase = 2,
@@ -1088,6 +1106,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Shadeling",
 		Name = "Shadeling",
+		StageNames = { "Shadeling", "Shadowmane", "Shadelord" },
 		Family = "Umbral",
 		Rarity = "Uncommon",
 		Phase = 5,
@@ -1124,6 +1143,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Duskfang",
 		Name = "Duskfang",
+		StageNames = { "Duskfang", "Nightfang", "Eclipsefang" },
 		Family = "Umbral",
 		Rarity = "Rare",
 		Phase = 5,
@@ -1160,6 +1180,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Nocturnox",
 		Name = "Nocturnox",
+		StageNames = { "Nocturnox", "Nocturnus", "Midnight Monarch" },
 		Family = "Umbral",
 		Rarity = "Epic",
 		Phase = 6,
@@ -1239,6 +1260,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Puddlefin",
 		Name = "Puddlefin",
+		StageNames = { "Puddlefin", "Pondfin", "Tidefin" },
 		Family = "Tideborn",
 		Rarity = "Common",
 		Phase = 2,
@@ -1274,6 +1296,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Bubblot",
 		Name = "Bubblot",
+		StageNames = { "Bubblot", "Bubblon", "Bubblord" },
 		Family = "Tideborn",
 		Rarity = "Uncommon",
 		Phase = 4,
@@ -1309,6 +1332,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Coralisk",
 		Name = "Coralisk",
+		StageNames = { "Coralisk", "Reefisk", "Coralord" },
 		Family = "Tideborn",
 		Rarity = "Rare",
 		Phase = 4,
@@ -1344,6 +1368,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Abyssquid",
 		Name = "Abyssquid",
+		StageNames = { "Abyssquid", "Deepsquid", "Krakenoid" },
 		Family = "Tideborn",
 		Rarity = "Epic",
 		Phase = 6,
@@ -1382,6 +1407,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Cogling",
 		Name = "Cogling",
+		StageNames = { "Cogling", "Cogwright", "Cogmaster" },
 		Family = "Mechafauna",
 		Rarity = "Common",
 		Phase = 2,
@@ -1417,6 +1443,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Boltbug",
 		Name = "Boltbug",
+		StageNames = { "Boltbug", "Boltbeetle", "Arcbeetle" },
 		Family = "Mechafauna",
 		Rarity = "Uncommon",
 		Phase = 4,
@@ -1452,6 +1479,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Gearhound",
 		Name = "Gearhound",
+		StageNames = { "Gearhound", "Gearwolf", "Steelhound" },
 		Family = "Mechafauna",
 		Rarity = "Rare",
 		Phase = 4,
@@ -1486,6 +1514,7 @@ local list: { Types.SpeciesDef } = {
 	species({
 		Id = "Titanicore",
 		Name = "Titanicore",
+		StageNames = { "Titanicore", "Titancore", "Colossicore" },
 		Family = "Mechafauna",
 		Rarity = "Epic",
 		Phase = 4,

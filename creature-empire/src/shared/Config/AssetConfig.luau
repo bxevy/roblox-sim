@@ -137,6 +137,47 @@ AssetConfig.ModelAssets = {
 	},
 } :: { [string]: { [string]: number } }
 
+-- Evolved forms: a model for each creature's stage 2 and stage 3 (0 = none yet: that
+-- stage uses the stage 1 model, bigger and glowing). Upload a model the same way as the
+-- others and paste its id here. Loaded as Assets › Creatures › <Creature><stage>, e.g.
+-- "Sproutling2"; ModelSettings.Creatures["Sproutling2"] adjusts it (Scale, Facing, ...).
+AssetConfig.EvolutionModels = {
+	Sproutling = { [2] = 0, [3] = 0 },
+	MeadowSprout = { [2] = 0, [3] = 0 },
+	Mossmaw = { [2] = 0, [3] = 0 },
+	Bloomhart = { [2] = 0, [3] = 0 },
+	Elderbark = { [2] = 0, [3] = 0 },
+	Cindercub = { [2] = 0, [3] = 0 },
+	Ashwhisk = { [2] = 0, [3] = 0 },
+	Magmaul = { [2] = 0, [3] = 0 },
+	Pyrewing = { [2] = 0, [3] = 0 },
+	Zappup = { [2] = 0, [3] = 0 },
+	Coilhorn = { [2] = 0, [3] = 0 },
+	Stormstrider = { [2] = 0, [3] = 0 },
+	Thundermaw = { [2] = 0, [3] = 0 },
+	Pebblit = { [2] = 0, [3] = 0 },
+	Shardback = { [2] = 0, [3] = 0 },
+	Geodon = { [2] = 0, [3] = 0 },
+	Prismaw = { [2] = 0, [3] = 0 },
+	Wisplet = { [2] = 0, [3] = 0 },
+	Runemoth = { [2] = 0, [3] = 0 },
+	Starweaver = { [2] = 0, [3] = 0 },
+	Voidlark = { [2] = 0, [3] = 0 },
+	Gloomkit = { [2] = 0, [3] = 0 },
+	Shadeling = { [2] = 0, [3] = 0 },
+	Duskfang = { [2] = 0, [3] = 0 },
+	Nocturnox = { [2] = 0, [3] = 0 },
+	BlackDragon = { [2] = 0, [3] = 0 },
+	Puddlefin = { [2] = 0, [3] = 0 },
+	Bubblot = { [2] = 0, [3] = 0 },
+	Coralisk = { [2] = 0, [3] = 0 },
+	Abyssquid = { [2] = 0, [3] = 0 },
+	Cogling = { [2] = 0, [3] = 0 },
+	Boltbug = { [2] = 0, [3] = 0 },
+	Gearhound = { [2] = 0, [3] = 0 },
+	Titanicore = { [2] = 0, [3] = 0 },
+} :: { [string]: { [number]: number } }
+
 -- Adjustments applied to loaded models (same as setting attributes on the model in Studio,
 -- without re-uploading): Facing (degrees), HeightOffset (studs), KeepSize (boolean),
 -- Scale (size multiplier after fitting, e.g. 1.25 = 25% bigger).
