@@ -247,3 +247,40 @@ describe("Workshop income", function()
 		truthy(BuildingConfig.Workshop.Levels[1].Storage >= 150 * 9)
 	end)
 end)
+
+describe("Starter building income", function()
+	local Production = shared("Util", "Production")
+	local RecipeConfig = shared("Config", "RecipeConfig")
+	local function perMinute(typeId, speciesId)
+		local data = Schema.Default(0)
+		data.Buildings.b = { Id = "b", Type = typeId, Level = 1, X = 2, Z = 2, Rot = 0, Stored = {} }
+		local creature = {
+			Id = "x",
+			Species = speciesId,
+			Level = 1,
+			Stage = 1,
+			Xp = 0,
+			ObtainedAt = 0,
+			Tradable = false,
+			WorkCycles = 0,
+			AbilityReadyAt = 0,
+		}
+		local worker = Production.WorkerAt(data, creature, data.Buildings.b, nil)
+		local def = BuildingConfig[typeId]
+		local recipe = RecipeConfig[def.Recipe]
+		local output = Production.OutputOf(def)
+		local units = worker.PerSecond * 60
+		-- Gold from selling the output, minus what its inputs would have sold for.
+		local value = ResourceConfig[output].SellPrice
+		for resource, amount in recipe.Inputs do
+			value -= amount / (recipe.Outputs[output] or 1) * (ResourceConfig[resource].SellPrice or 0)
+		end
+		return units * value
+	end
+	test("each starter's building earns about 80-95 Gold a minute at level 1", function()
+		for typeId, speciesId in { MoonpetalFarm = "Sproutling", CrystalMine = "Pebblit", CrystalSmelter = "Cindercub" } do
+			local gold = perMinute(typeId, speciesId)
+			truthy(gold >= 80 and gold <= 95, `{typeId}: {math.floor(gold)} gold/min`)
+		end
+	end)
+end)

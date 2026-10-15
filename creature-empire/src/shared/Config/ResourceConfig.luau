@@ -3,6 +3,8 @@
 
 local Types = require(script.Parent.Parent.Types)
 
+-- Sell prices are set so each starter's own building earns about 80-95 Gold a minute at
+-- level 1 (the smelter: on top of the raw crystal it uses). See Economy3.spec.
 local ResourceConfig: { [string]: Types.ResourceDef } = {
 	-- Currencies
 	Gold = {
@@ -38,7 +40,7 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Description = "Glowing flowers grown at farms. Sell them at the Trading Post, or condense them into Essence.",
 		Icon = "✿",
 		Color = Color3.fromRGB(150, 200, 255),
-		SellPrice = 2,
+		SellPrice = 6,
 	},
 	RawCrystal = {
 		Id = "RawCrystal",
@@ -47,7 +49,7 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Description = "Rough crystal chipped from the ground at a Crystal Mine. Smelt it, or sell it cheaply.",
 		Icon = "◇",
 		Color = Color3.fromRGB(150, 200, 230),
-		SellPrice = 3,
+		SellPrice = 11,
 	},
 	Emberstone = {
 		Id = "Emberstone",
@@ -75,7 +77,7 @@ local ResourceConfig: { [string]: Types.ResourceDef } = {
 		Description = "Smelted crystal. Needed for high Empire Core tiers, expansions and Essence.",
 		Icon = "◆",
 		Color = Color3.fromRGB(120, 230, 255),
-		SellPrice = 14,
+		SellPrice = 46,
 	},
 }
 
