@@ -131,7 +131,7 @@ AssetConfig.ModelAssets = {
 		-- Supplied by the game's creator: their wishing well for the middle of the plaza.
 		FoundersCrystal = 115015422265124,
 		-- Supplied by the game's creator: their hexagon plaza floor.
-		PlazaFloor = 138874709465272,
+		PlazaFloor = 99057934689903,
 		-- Supplied by the game's creator: their tree.
 		Tree = 136607943988536,
 	},
