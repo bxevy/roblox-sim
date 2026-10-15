@@ -55,7 +55,7 @@ end
 
 describe("Save migration v1 -> v2", function()
 	test("work cycles become farming cycles; pity and expansions are added", function()
-		local v1 = Schema.Default(0)
+		local v1 = H.WithFarm(Schema.Default(0))
 		v1.Version = 1
 		v1.Pity = nil
 		v1.Expansions = nil
@@ -71,7 +71,7 @@ describe("Save migration v1 -> v2", function()
 		eq(#Schema.Sanitize(v1, 0), 0, "a migrated profile needs no repair")
 	end)
 	test("unknown expansion ids and bad pity values are repaired", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Expansions = { West = true, Atlantis = true, East = "yes" }
 		data.Pity = { MeadowEgg = -3, EmberEgg = 4.6 }
 		Schema.Sanitize(data, 0)
@@ -82,7 +82,7 @@ describe("Save migration v1 -> v2", function()
 		eq(data.Pity.EmberEgg, 4)
 	end)
 	test("buildings on expansion land keep their position", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.x = { Id = "x", Type = "CrystalMine", Level = 1, X = -4, Z = 2, Rot = 0, Stored = {} }
 		Schema.Sanitize(data, 0)
 		eq(data.Buildings.x.X, -4)
@@ -91,7 +91,7 @@ end)
 
 describe("Recipes with inputs", function()
 	local function smelterData()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.s = { Id = "s", Type = "CrystalSmelter", Level = 1, X = 0, Z = 0, Rot = 0, Stored = {} }
 		data.Creatures.c = creature("c", "Cindercub", { Assignment = "s" })
 		return data
@@ -103,7 +103,7 @@ describe("Recipes with inputs", function()
 		truthy(rate.PerSecond > 0)
 	end)
 	test("the condenser makes 3 essence per cycle and needs crystal and petals", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.e = { Id = "e", Type = "EssenceCondenser", Level = 1, X = 0, Z = 0, Rot = 0, Stored = {} }
 		data.Creatures.w = creature("w", "Wisplet", { Assignment = "e" })
 		local rate = Production.Rates(data).e
@@ -150,7 +150,7 @@ end)
 
 describe("Evolution", function()
 	test("stage 2 raises output and changes job skill", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = creature("a", "Sproutling", { Assignment = "farm1" })
 		local base = Production.Rates(data).farm1.PerSecond
 		data.Creatures.a.Stage = 2
@@ -166,7 +166,7 @@ describe("Evolution", function()
 		eq(CreatureConfig.Affinity(pebblit, 2, "Courier"), 0.6, "unchanged jobs keep the base value")
 	end)
 	test("requirements are checked from saved data", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		local c = creature("a", "Sproutling", { Level = 8, JobCycles = { Farmer = 149 } })
 		data.Currencies.Essence = 25
 		local check = Evolution.Check(data, c)
@@ -180,7 +180,7 @@ describe("Evolution", function()
 		eq(cost.Farmer, nil, "work cycles are not spent")
 	end)
 	test("fully evolved creatures have nothing next", function()
-		local check = Evolution.Check(Schema.Default(0), creature("a", "Sproutling", { Stage = 3 }))
+		local check = Evolution.Check(H.WithFarm(Schema.Default(0)), creature("a", "Sproutling", { Stage = 3 }))
 		eq(check.NextStage, nil)
 		falsy(check.Ready)
 	end)

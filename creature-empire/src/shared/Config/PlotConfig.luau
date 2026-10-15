@@ -19,9 +19,10 @@ PlotConfig.FixedLayout = {
 	{ Id = "research", Type = "ResearchStation", X = 18, Z = 18, Rot = 0 },
 }
 
+-- No farm: the tutorial has you build your starter's own building (a Moonpetal Farm,
+-- Crystal Mine or Crystal Smelter). Saves made before keep their farm1.
 PlotConfig.StarterBuildings = {
 	{ Id = "habitat", Type = "Habitat", X = 2, Z = 18, Rot = 0 },
-	{ Id = "farm1", Type = "MoonpetalFarm", X = 4, Z = 10, Rot = 0 },
 }
 
 -- Cells kept free for the entrance path from the plaza to the Empire Core.

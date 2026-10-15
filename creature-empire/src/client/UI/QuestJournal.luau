@@ -7,6 +7,8 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local QuestConfig = require(Shared.Config.QuestConfig)
 local CreatureConfig = require(Shared.Config.CreatureConfig)
 local Format = require(Shared.Util.Format)
+local Tutorial = require(Shared.Util.Tutorial)
+local RegionConfig = require(Shared.Config.RegionConfig)
 local Theme = require(script.Parent.Theme)
 local Window = require(script.Parent.Window)
 
@@ -39,7 +41,14 @@ function QuestJournal.new(ctx: any)
 		local q = State.Get("Quests")
 		local index = q and q.Index or 1
 		Theme.Text(win.Body, "<b>Founding the empire</b> · your first steps", 17, { LayoutOrder = 0 })
-		for i, step in QuestConfig.Tutorial do
+		local creatures = State.Get("Creatures")
+		local chosen = creatures and creatures.StarterChosen
+		for i, rawStep in QuestConfig.Tutorial do
+			if rawStep.Region and not RegionConfig.IsOpen(rawStep.Region) then
+				continue -- a region that's switched off: these steps are skipped
+			end
+			-- Starter steps name your starters and their buildings.
+			local step = Tutorial.Resolve(rawStep, chosen)
 			local done = i < index
 			local currentStep = i == index
 			local card = Window.Section(win.Body, nil, i)

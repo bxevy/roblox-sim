@@ -85,7 +85,7 @@ describe("Research", function()
 		end
 	end)
 	test("prerequisites are enforced", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		local ok, reason = Research.CanResearch(data, "SharpPicks", 4)
 		falsy(ok)
 		truthy(reason:find("Fertile Soil"))
@@ -95,7 +95,7 @@ describe("Research", function()
 		truthy(Research.CanResearch(data, "SharpPicks", 4))
 	end)
 	test("Fertile Soil raises farm output by 10%; silo and offline effects add up", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = creature("a", "Sproutling", { Assignment = farmId(data) })
 		local before = Production.Rates(data)[farmId(data)].PerSecond
 		data.Research.FertileSoil = 1
@@ -151,7 +151,7 @@ describe("Synergies", function()
 		eq(#Synergy.Active("Crafter", { "Sproutling" }), 0)
 	end)
 	test("a synergy raises the building's output and is reported", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		-- A Workshop: any creature works there, so mixed teams (and synergies) happen.
 		local farm = "ws"
 		data.Buildings.ws = { Id = "ws", Type = "Workshop", Level = 2, X = 2, Z = 2, Rot = 0, Stored = {} }
@@ -168,7 +168,7 @@ end)
 
 describe("Couriers", function()
 	test("a staffed Courier Post carries, an empty one doesn't", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.post = { Id = "post", Type = "CourierPost", Level = 1, X = 0, Z = 0, Rot = 0, Stored = {} }
 		eq(Production.Couriers(data).PerSecond, 0)
 		data.Creatures.c = creature("c", "Cogling", { Assignment = "post" })
@@ -235,7 +235,7 @@ end)
 
 describe("Ascension", function()
 	local function readyData()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.core.Level = 5
 		data.Currencies.Gold = 123456
 		data.Currencies.Essence = 500
@@ -251,7 +251,7 @@ describe("Ascension", function()
 		return data
 	end
 	test("needs Empire Core tier 5 and no expeditions away", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		falsy(Ascension.Check(data))
 		data = readyData()
 		truthy(Ascension.Check(data))
@@ -277,7 +277,8 @@ describe("Ascension", function()
 		eq(next(data.Research), nil)
 		eq(data.Buildings.extra, nil)
 		eq(data.Buildings.core.Level, 1)
-		truthy(farmId(data), "the free farm is back")
+		eq(farmId(data), nil, "back to the starting plot: build your starters' buildings again")
+		truthy(data.Buildings.habitat, "the starting habitat is back")
 		-- Stays
 		eq(data.Resources.EmberLure, 3)
 		eq(data.Creatures.a.Level, 20)
@@ -294,7 +295,7 @@ describe("Ascension", function()
 		eq(#Schema.Sanitize(data, 0), 0)
 	end)
 	test("each Ascension and perk adds capped production bonuses", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = creature("a", "Sproutling", { Assignment = farmId(data) })
 		local before = Production.Rates(data)[farmId(data)].PerSecond
 		data.Ascension.Count = 2
@@ -304,7 +305,7 @@ describe("Ascension", function()
 		truthy(Research.PerkTotal(data, "Modifier", "WorkSpeed") <= 0.25 + 1e-9)
 	end)
 	test("perk prices rise per rank and stop at max", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		eq(Ascension.PerkCost(data, "SwiftPaws"), 8)
 		data.Ascension.Perks.SwiftPaws = 2
 		eq(Ascension.PerkCost(data, "SwiftPaws"), 24)
@@ -370,7 +371,7 @@ end)
 
 describe("Save migration v3 -> v4", function()
 	test("adds research and Ascension fields; run gold starts from lifetime gold", function()
-		local v3 = Schema.Default(0)
+		local v3 = H.WithFarm(Schema.Default(0))
 		v3.Version = 3
 		v3.Research = nil
 		v3.Ascension = { Count = 0, Shards = 0 }
@@ -382,7 +383,7 @@ describe("Save migration v3 -> v4", function()
 		eq(#Schema.Sanitize(v3, 0), 0)
 	end)
 	test("sanitize drops broken research, perks and mutations", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Research = { SharpPicks = 1, Nonsense = 2 } -- SharpPicks without Fertile Soil
 		data.Ascension.Perks = { SwiftPaws = 9, Fake = 1 }
 		data.Creatures.a = creature("a", "Sproutling", { Mutation = "Glitter" })

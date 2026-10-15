@@ -31,7 +31,7 @@ local function creature(id, level)
 end
 
 local function withCreatures(n)
-	local data = Schema.Default(0)
+	local data = H.WithFarm(Schema.Default(0))
 	for i = 1, n do
 		local id = string.format("c%02d", i)
 		data.Creatures[id] = creature(id, i)
@@ -41,7 +41,7 @@ end
 
 describe("Habitats and backpack", function()
 	test("a new plot has one habitat for 5 creatures and a 40-creature backpack", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		eq(Housing.Habitats(data.Buildings), 1)
 		eq(Housing.PlotCapacity(data.Buildings), 5)
 		eq(Housing.TotalCapacity(data.Buildings), 45)

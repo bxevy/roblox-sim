@@ -60,24 +60,25 @@ end
 
 describe("Schema", function()
 	test("defaults are valid and need no repair", function()
-		local data = Schema.Default(1000)
+		local data = H.WithFarm(Schema.Default(1000))
 		local fixes = Schema.Sanitize(data, 1000)
 		eq(#fixes, 0, "fixes on a fresh profile: " .. table.concat(fixes, ", "))
 		eq(data.Currencies.Gold, EconomyConfig.StartingCurrencies.Gold)
 		eq(data.Version, Schema.CURRENT_VERSION)
 	end)
 	test("defaults survive a JSON round trip", function()
-		local data = Schema.Default(1000)
+		local data = H.WithFarm(Schema.Default(1000))
 		local copy = serde.decode("json", serde.encode("json", data))
 		eq(#Schema.Sanitize(copy, 1000), 0)
 		eq(copy.Buildings.core.Type, "EmpireCore")
 	end)
-	test("every fixed building and the starter farm exist", function()
+	test("every fixed building and the starting habitat exist; no farm until you build one", function()
 		local data = Schema.Default(0)
 		for _, entry in PlotConfig.FixedLayout do
 			truthy(data.Buildings[entry.Id], entry.Id)
 		end
-		truthy(data.Buildings.farm1)
+		truthy(data.Buildings.habitat)
+		eq(data.Buildings.farm1, nil)
 	end)
 	test("v0 profiles migrate (Coins -> Gold)", function()
 		local legacy = { Coins = 300, Currencies = { Gold = 5 } }
@@ -96,7 +97,7 @@ describe("Schema", function()
 		truthy(reason)
 	end)
 	test("malformed numbers are repaired", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Currencies.Gold = 0 / 0
 		data.Currencies.Essence = -50
 		data.Currencies.EmpireShards = math.huge
@@ -116,7 +117,7 @@ describe("Schema", function()
 		eq(data.Buildings.farm1.Stored.Moonpetal, 0)
 	end)
 	test("invalid assignments are cleared; slot overflow is trimmed", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		local function c(id, species, assignment)
 			data.Creatures[id] = {
 				Id = id,
@@ -152,7 +153,7 @@ describe("Schema", function()
 		eq(data.Creatures.f.Assignment, "research")
 	end)
 	test("missing or moved fixed buildings are restored to the layout", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Buildings.core = nil
 		data.Buildings.silo.X = 0
 		Schema.Sanitize(data, 0)
@@ -160,7 +161,7 @@ describe("Schema", function()
 		eq(data.Buildings.silo.X, 15)
 	end)
 	test("ability cooldowns far in the future are clamped", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = {
 			Id = "a",
 			Species = "Pebblit",
@@ -307,7 +308,7 @@ describe("ProfileCore (session locking)", function()
 		eq(store:Peek("Player_1").Meta.Lock.JobId, "server-A")
 	end)
 	test("a full profile is well under the 4 MB DataStore limit", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		for i = 1, 300 do
 			data.Creatures["creature-" .. i] = {
 				Id = "creature-" .. i,

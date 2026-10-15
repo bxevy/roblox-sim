@@ -20,6 +20,10 @@ local GameConfig = shared("GameConfig")
 
 local QUEST_KINDS = {
 	"ChooseStarter",
+	"StarterBuild",
+	"StarterAssign",
+	"StarterCollect",
+	"StarterSell",
 	"Assign",
 	"Collect",
 	"Sell",
@@ -171,12 +175,14 @@ describe("Quests", function()
 		for i, step in QuestConfig.Tutorial do
 			truthy(table.find(QUEST_KINDS, step.Kind), `step {i} kind {step.Kind}`)
 			truthy(step.Amount > 0, `step {i} amount`)
-			if step.Kind == "BuildingLevel" or step.Kind == "BuildingCount" then
+			if step.Kind ~= "ChooseStarter" and string.sub(step.Kind, 1, 7) == "Starter" then
+				truthy(table.find({ "1", "2", "3" }, step.Target), `step {i} starter number {step.Target}`)
+			elseif step.Kind == "BuildingLevel" or step.Kind == "BuildingCount" then
 				truthy(BuildingConfig[step.Target], `step {i} target {step.Target}`)
 			elseif step.Kind == "Collect" or step.Kind == "Sell" then
 				truthy(ResourceConfig[step.Target], `step {i} target {step.Target}`)
 			end
-			if step.Pointer then
+			if step.Pointer and step.Pointer ~= "{Building}" then
 				truthy(BuildingConfig[step.Pointer], `step {i} pointer {step.Pointer}`)
 			end
 		end

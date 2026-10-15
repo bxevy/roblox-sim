@@ -208,6 +208,21 @@ function Harness.falsy(value: any, message: string?)
 	end
 end
 
+-- New plots no longer come with a Moonpetal Farm (the tutorial has you build your
+-- starter's own building). Tests about farming add the old starting farm back.
+function Harness.WithFarm(data: any): any
+	data.Buildings.farm1 = {
+		Id = "farm1",
+		Type = "MoonpetalFarm",
+		Level = 1,
+		X = 4,
+		Z = 10,
+		Rot = 0,
+		Stored = {},
+	}
+	return data
+end
+
 function Harness.deepCopy(value: any): any
 	if type(value) ~= "table" then
 		return value

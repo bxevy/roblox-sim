@@ -174,6 +174,10 @@ export type QuestStep = {
 	Reward: QuestReward,
 	Pointer: string?, -- building id/type the tutorial arrow points at
 	Region: string?, -- needs this region: skipped while it's switched off
+	Kit: boolean?, -- starter steps: grant the building's first inputs when claimed (Util/Tutorial)
+	-- Filled in by Util/Tutorial.Resolve for one player:
+	Species: string?,
+	KitFor: string?,
 }
 
 -- Saved data ---------------------------------------------------------------------------

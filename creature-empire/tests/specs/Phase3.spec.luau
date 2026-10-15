@@ -279,7 +279,7 @@ end)
 
 describe("Save migration v2 -> v3", function()
 	test("adds expedition, discovery and guardian records", function()
-		local v2 = Schema.Default(0)
+		local v2 = H.WithFarm(Schema.Default(0))
 		v2.Version = 2
 		v2.Expeditions, v2.Discoveries, v2.Guardians = nil, nil, nil
 		v2.Creatures.a = {
@@ -301,7 +301,7 @@ describe("Save migration v2 -> v3", function()
 		eq(#Schema.Sanitize(v2, 0), 0)
 	end)
 	test("broken expeditions free their creatures; companions must be free", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = {
 			Id = "a",
 			Species = "Sproutling",
@@ -328,7 +328,7 @@ describe("Save migration v2 -> v3", function()
 		eq(data.Companion, nil, "a working creature can't also follow you")
 	end)
 	test("a valid expedition survives and keeps its creature off work", function()
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.a = {
 			Id = "a",
 			Species = "Cindercub",

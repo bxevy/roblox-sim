@@ -235,6 +235,70 @@ Schema.Migrations = {
 			end
 			currencies.Insight = nil
 		end
+		-- The tutorial's opening is now the three starters' buildings. Progress is saved as
+		-- a position in the list, so map the old positions by step id: anyone still in the
+		-- old opening (choosing up to the second farm) starts the new starter steps; the
+		-- old Mine and Smelter steps became part of them.
+		local OLD = {
+			"Starter",
+			"FirstJob",
+			"FirstHarvest",
+			"FirstSale",
+			"TwoWorkers",
+			"Ability",
+			"SecondFarm",
+			"Silo",
+			"Earn",
+			"CoreTier2",
+			"Hatchery",
+			"FirstHatch",
+			"Mine",
+			"Smelter",
+			"Chamber",
+			"Evolve",
+			"CoreTier3",
+			"Basin",
+			"Gather",
+			"Landmarks",
+			"Lure",
+			"Befriend",
+			"Expedition",
+			"Guardian",
+			"Study",
+			"Breakthrough",
+			"Together",
+			"Couriers",
+			"Arcane",
+			"Researcher",
+			"Ascend",
+			"WorldEvent",
+		}
+		local quests = data.Quests
+		if type(quests) == "table" and type(quests.Tutorial) == "number" then
+			local old = math.floor(quests.Tutorial)
+			local function indexOf(id: string): number?
+				for i, step in QuestConfig.Tutorial do
+					if step.Id == id then
+						return i
+					end
+				end
+				return nil
+			end
+			local new: number?
+			if old > #OLD then
+				new = #QuestConfig.Tutorial + 1 -- finished
+			elseif old <= 1 then
+				new = 1
+			elseif old <= 7 then
+				new = indexOf("Build1")
+			else
+				local id = OLD[old]
+				new = indexOf(if id == "Mine" or id == "Smelter" then "Chamber" else id)
+			end
+			quests.Tutorial = new or 1
+			quests.Progress = 0
+			quests.Claimable = false
+		end
 	end,
 } :: { [number]: (data: { [string]: any }) -> () }
 

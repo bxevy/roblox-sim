@@ -107,7 +107,7 @@ describe("Grid", function()
 	for id, def in BuildingConfig do
 		footprints[id] = def.Footprint
 	end
-	local defaults = Schema.Default(0)
+	local defaults = H.WithFarm(Schema.Default(0))
 
 	test("rotation swaps the footprint sides", function()
 		local x, z = Grid.Rotated({ X = 5, Z = 4 }, 1)
@@ -172,7 +172,7 @@ end)
 
 describe("Production", function()
 	local function profileWith(speciesId: string, level: number?)
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		data.Creatures.c1 = {
 			Id = "c1",
 			Species = speciesId,
@@ -281,7 +281,7 @@ describe("Pacing (informational)", function()
 	test("first hour of play reaches Empire Core tier 2", function()
 		-- Simulates an attentive player: collects and sells whenever storage fills, buys
 		-- farm/silo upgrades and second/third farms when affordable, uses no abilities.
-		local data = Schema.Default(0)
+		local data = H.WithFarm(Schema.Default(0))
 		local function creature(id, species)
 			data.Creatures[id] = {
 				Id = id,

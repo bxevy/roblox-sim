@@ -29,7 +29,7 @@ local function creature(id, species, level)
 end
 
 local function data(list)
-	local d = Schema.Default(0)
+	local d = H.WithFarm(Schema.Default(0))
 	for _, c in list do
 		d.Creatures[c.Id] = c
 	end

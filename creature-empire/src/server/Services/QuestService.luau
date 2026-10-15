@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage.Shared
 local Types = require(Shared.Types)
 local Production = require(Shared.Util.Production)
 local QuestConfig = require(Shared.Config.QuestConfig)
+local Tutorial = require(Shared.Util.Tutorial)
 local RegionConfig = require(Shared.Config.RegionConfig)
 local Remotes = require(Shared.Remotes)
 
@@ -40,6 +41,20 @@ local Evaluators: { [string]: Evaluator } = {
 			end
 		end
 		return count
+	end,
+	-- A starter step before a starter is chosen (Util/Tutorial).
+	Waiting = function()
+		return 0
+	end,
+	-- That species working in a building of that type.
+	AssignSpecies = function(data, step)
+		for _, creature in data.Creatures do
+			local building = creature.Assignment and data.Buildings[creature.Assignment]
+			if building and building.Type == step.Target and creature.Species == step.Species then
+				return 1
+			end
+		end
+		return 0
 	end,
 	BuildingLevel = function(data, step)
 		local best = 0
@@ -133,8 +148,10 @@ local Evaluators: { [string]: Evaluator } = {
 }
 QuestService.Evaluators = Evaluators
 
+-- The current step, filled in for this player (the starter steps name their starters).
 local function currentStep(data: Types.PlayerData): Types.QuestStep?
-	return QuestConfig.Tutorial[data.Quests.Tutorial]
+	local step = QuestConfig.Tutorial[data.Quests.Tutorial]
+	return if step then Tutorial.Resolve(step, data.StarterChosen) else nil
 end
 
 local function progressOf(data: Types.PlayerData, step: Types.QuestStep): number
@@ -229,6 +246,12 @@ local function claim(player: Player): (boolean, any)
 	data.Quests.Claimable = false
 	PlayerDataService.MarkDirty(player)
 	grantReward(player, data, step.Reward)
+	if step.KitFor then
+		-- The building's first inputs (Cindercub's smelter needs raw crystal to start).
+		for resource, amount in Tutorial.Kit(step.KitFor) do
+			EconomyService.Add(player, resource, amount, "Quest")
+		end
+	end
 	Log.Info("Quest", "Claimed", { user = player.UserId, step = step.Id })
 	Remotes.Events.GameEvent:FireClient(player, "QuestClaimed", { Id = step.Id, Reward = step.Reward })
 	refresh(player)
