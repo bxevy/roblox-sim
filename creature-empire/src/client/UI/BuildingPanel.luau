@@ -387,7 +387,14 @@ function BuildingPanel.new(ctx: any)
 
 	-- One creature on the wooden slot row: its portrait in the square, a line of text, and
 	-- the Details button (opens it in the Creatures window). Returns the row.
-	local function creatureRow(parent: Instance, id: string, species: string, line: string, order: number): ImageLabel
+	local function creatureRow(
+		parent: Instance,
+		id: string,
+		species: string,
+		title: string,
+		detail: string,
+		order: number
+	): ImageLabel
 		local row = Theme.Make("ImageLabel", {
 			Name = id,
 			BackgroundTransparency = 1,
@@ -403,13 +410,26 @@ function BuildingPanel.new(ctx: any)
 			Size = UDim2.fromScale(66 / 429, 64 / 89),
 		}, row)
 		Viewport.Creature(face, species)
-		Theme.Text(row, line, 14, {
-			Position = UDim2.fromScale(96 / 429, 0),
-			Size = UDim2.fromScale(186 / 429, 1),
+		-- Two plain lines (no text outline: it smears small letters when the window is
+		-- scaled down to fit the screen).
+		Theme.Text(row, title, 18, {
+			FontFace = Theme.Heavy,
+			Position = UDim2.fromScale(96 / 429, 0.14),
+			Size = UDim2.fromScale(186 / 429, 0.38),
 			AutomaticSize = Enum.AutomaticSize.None,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			TextStrokeColor3 = Theme.Colors.TextShadow,
-			TextStrokeTransparency = 0.4,
+			TextYAlignment = Enum.TextYAlignment.Bottom,
+			TextWrapped = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
+		})
+		Theme.Text(row, detail, 14, {
+			FontFace = Theme.Bold,
+			TextColor3 = Theme.Colors.Muted,
+			Position = UDim2.fromScale(96 / 429, 0.54),
+			Size = UDim2.fromScale(186 / 429, 0.34),
+			AutomaticSize = Enum.AutomaticSize.None,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = false,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 		})
 		local details = Theme.Make("ImageButton", {
 			Name = "Details",
@@ -575,7 +595,8 @@ function BuildingPanel.new(ctx: any)
 					workers,
 					creatureId,
 					c.Species,
-					`<b>{c.Name}</b> Lv {c.Level}\n{Format.Rate((perWorker[creatureId] or 0) * 60)}/min`,
+					`{c.Name} Lv {c.Level}`,
+					`{Format.Rate((perWorker[creatureId] or 0) * 60)} per minute`,
 					index
 				)
 				-- Unassign: a small X in the slot's corner.
@@ -1625,16 +1646,16 @@ function BuildingPanel.new(ctx: any)
 		end)
 		for index, resident in residents do
 			local id, c = resident.Id, resident.Creature
-			local doing = "Relaxing at home"
+			local doing = "At home"
 			if c.Expedition then
 				doing = "Out exploring"
 			elseif c.Assignment then
 				local where = buildings and buildings.List[c.Assignment]
 				local def = where and BuildingConfig[where.Type]
-				doing = `Working at the {def and def.Name or "plot"}`
+				doing = `Working · {def and def.Name or "plot"}`
 			end
 			if art then
-				creatureRow(card, id, c.Species, `<b>{c.Name}</b> Lv {c.Level}\n<font size="12">{doing}</font>`, index)
+				creatureRow(card, id, c.Species, `{c.Name} Lv {c.Level}`, doing, index)
 				continue
 			end
 			local row = Window.Row(card, 40, index)
