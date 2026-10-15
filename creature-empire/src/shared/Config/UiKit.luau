@@ -87,6 +87,18 @@ local IDS: { [string]: number } = {
 	TabLeaf = 93178907368636,
 	TabPaw = 135643665098380,
 	TabMove = 102435690354797,
+	-- Trading Post sheet (art/ui-trade)
+	TradeFrame = 128878353695792,
+	TradeHeader = 134867217526241,
+	TradeClose = 128324554225445,
+	TradeBar = 106416571900836,
+	SellBox = 126011701937216,
+	ItemRow = 102192562211392,
+	NoneYetButton = 138288397323866,
+	SellButton = 81245096775110,
+	ItemMoonpetal = 81701981346899,
+	ItemRawCrystal = 106920649433972,
+	ItemRefinedCrystal = 106251455036634,
 }
 
 local function piece(size: Vector2, slice: { number }?, inner: { number }?): Piece
@@ -177,6 +189,18 @@ local UiKit = {
 	TabLeaf = piece(Vector2.new(81, 80)),
 	TabPaw = piece(Vector2.new(81, 80)),
 	TabMove = piece(Vector2.new(82, 79)),
+	-- Trading Post sheet. The frame stretches between its flowered corners.
+	TradeFrame = piece(Vector2.new(400, 294), { 120, 100, 280, 150 }),
+	TradeHeader = piece(Vector2.new(307, 99)),
+	TradeClose = piece(Vector2.new(108, 103)),
+	TradeBar = piece(Vector2.new(301, 88)),
+	SellBox = piece(Vector2.new(218, 87)),
+	ItemRow = piece(Vector2.new(472, 84)),
+	NoneYetButton = piece(Vector2.new(161, 61)),
+	SellButton = piece(Vector2.new(219, 90)),
+	ItemMoonpetal = piece(Vector2.new(142, 141)),
+	ItemRawCrystal = piece(Vector2.new(141, 138)),
+	ItemRefinedCrystal = piece(Vector2.new(141, 138)),
 } :: { [string]: Piece }
 
 for name, entry in UiKit do

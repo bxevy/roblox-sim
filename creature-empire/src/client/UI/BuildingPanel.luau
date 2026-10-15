@@ -317,6 +317,97 @@ local function buildArt(ctx: any): Look
 	return look
 end
 
+-- The Trading Post's own look (art/ui-trade): the vine frame with the "Trading Post"
+-- banner, a green bar with what your goods are worth, and one row per material.
+local TRADE_STAGE = Vector2.new(800, 640)
+local TRADE_FRAME = { At = Vector2.new(20, 70), Size = Vector2.new(760, 559) }
+local TRADE_PIECES = { "TradeFrame", "TradeHeader", "TradeClose", "ItemRow", "SellButton", "SellBox", "TradeBar" }
+-- Item pictures by material (anything else shows its glyph).
+local ITEM_ART: { [string]: string } = {
+	Moonpetal = "ItemMoonpetal",
+	RawCrystal = "ItemRawCrystal",
+	RefinedCrystal = "ItemRefinedCrystal",
+}
+
+type TradeLook = { Root: Frame, Top: Frame, List: ScrollingFrame }
+
+local function canUseTradeArt(): boolean
+	for _, name in TRADE_PIECES do
+		if not Theme.KitImage(name) then
+			return false
+		end
+	end
+	return true
+end
+
+local function buildTrade(ctx: any, parent: Instance): TradeLook
+	local root = Theme.Make("Frame", {
+		Name = "TradingPostWindow",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+	}, parent)
+	local stage = Theme.Make("Frame", {
+		Name = "Stage",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(TRADE_STAGE.X, TRADE_STAGE.Y),
+		BackgroundTransparency = 1,
+		Active = true,
+		ZIndex = 10,
+	}, root)
+	local fit = Theme.Make("UIScale", { Name = "Fit" }, stage)
+	local function refit()
+		local screen = ctx.Gui.AbsoluteSize
+		local guiScale = ctx.Gui:FindFirstChildOfClass("UIScale")
+		local g = if guiScale then guiScale.Scale else 1
+		if screen.X > 0 and screen.Y > 0 then
+			fit.Scale = math.min(1, screen.X * 0.96 / (TRADE_STAGE.X * g), screen.Y * 0.9 / (TRADE_STAGE.Y * g))
+		end
+	end
+	ctx.Gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+	task.defer(refit)
+
+	-- The frame stretches between its flowered corners (drawn at full size, so they stay
+	-- sharp); the wood in the middle is 48 px in from the sides.
+	local frame = Theme.Make("ImageLabel", {
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(TRADE_FRAME.At.X, TRADE_FRAME.At.Y),
+		Size = UDim2.fromOffset(TRADE_FRAME.Size.X, TRADE_FRAME.Size.Y),
+		ZIndex = 11,
+	}, stage)
+	Theme.KitApply(frame, "TradeFrame")
+	local f = frame:GetAttribute("KitFactor")
+	frame.SliceScale = 1 / (if type(f) == "number" and f > 0 then f else 1)
+
+	artPiece(stage, "TradeHeader", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 0),
+		Size = UDim2.fromOffset(368, 119),
+		ZIndex = 15,
+	})
+	local close = artButton(stage, "TradeClose", {
+		Name = "Close",
+		Position = UDim2.fromOffset(TRADE_STAGE.X - 104, 44),
+		Size = UDim2.fromOffset(92, 88),
+		ZIndex = 16,
+	})
+	close.Activated:Connect(ctx.Close)
+
+	local inner = Vector2.new(TRADE_FRAME.At.X + 56, TRADE_FRAME.At.Y + 58)
+	local width = TRADE_FRAME.Size.X - 112
+	local top = Theme.Make("Frame", {
+		Name = "Top",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(inner.X, inner.Y),
+		Size = UDim2.fromOffset(width, 88),
+		ZIndex = 12,
+	}, stage)
+	local list = artScroll(stage, Vector2.new(inner.X - 6, inner.Y + 96), Vector2.new(width + 16, 340))
+	return { Root = root, Top = top, List = list }
+end
+
 function BuildingPanel.new(ctx: any)
 	local State = ctx.Controllers.State
 	local Buildings = ctx.Controllers.Building
@@ -325,6 +416,18 @@ function BuildingPanel.new(ctx: any)
 	-- `body` holds the sections; `side` the description and upgrade (the left panel in the
 	-- art look, the same scrolling list in the drawn one).
 	local body, side = look.Body, look.Side
+	-- Both looks live in one root (what the window controller shows and hides); the
+	-- Trading Post swaps to its own art when that has loaded.
+	local root = Theme.Make("Frame", {
+		Name = "BuildingWindows",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 10,
+	}, ctx.Gui)
+	look.Root.Parent = root
+	look.Root.Visible = true
+	local trade: TradeLook? = if canUseTradeArt() then buildTrade(ctx, root) else nil
 	-- Buildings with workers split into two pages in the art look (the leaf and paw tabs).
 	local page: "Main" | "Workers" = "Main"
 
@@ -333,6 +436,7 @@ function BuildingPanel.new(ctx: any)
 	local picking = false
 
 	local render: () -> ()
+	local renderTrade: () -> ()
 	look.OnPage = function(which: string)
 		page = if which == "Workers" then "Workers" else "Main"
 		picking = false
@@ -917,6 +1021,37 @@ function BuildingPanel.new(ctx: any)
 
 	-- The Trading Post: just selling. One row per material you can sell, with how many
 	-- you have, the price and a single "Sell all" button; "Sell everything" on top.
+	local function sellable(): { string }
+		local ids = {}
+		for id, def in ResourceConfig do
+			if def.Kind == "Material" and def.SellPrice and def.Enabled ~= false then
+				table.insert(ids, id)
+			end
+		end
+		-- Cheapest first (Moonpetals, Raw Crystal, ...).
+		table.sort(ids, function(a, b)
+			return (ResourceConfig[a].SellPrice or 0) < (ResourceConfig[b].SellPrice or 0)
+		end)
+		return ids
+	end
+
+	local function sellEverything()
+		local wallet = State.Get("Wallet")
+		local earned = 0
+		for _, id in sellable() do
+			local have = wallet and wallet.Resources[id] or 0
+			if have >= 1 then
+				local ok, gold = request("Sell", id, "All")
+				if ok and type(gold) == "number" then
+					earned += gold
+				end
+			end
+		end
+		if earned > 0 then
+			ctx.Notify(`Sold everything for {Format.Number(earned)} gold.`, "Success")
+		end
+	end
+
 	local function tradingSection()
 		local card = section(body, "SELL", 2)
 		local wallet = State.Get("Wallet")
@@ -930,17 +1065,7 @@ function BuildingPanel.new(ctx: any)
 				{ TextColor3 = Theme.Colors.Gold }
 			)
 		end
-		local ids = {}
-		for id, def in ResourceConfig do
-			if def.Kind == "Material" and def.SellPrice and def.Enabled ~= false then
-				table.insert(ids, id)
-			end
-		end
-		-- Cheapest first (Moonpetals, Raw Crystal, ...).
-		table.sort(ids, function(a, b)
-			return (ResourceConfig[a].SellPrice or 0) < (ResourceConfig[b].SellPrice or 0)
-		end)
-
+		local ids = sellable()
 		local total = 0
 		local rows = 0
 		for _, id in ids do
@@ -989,20 +1114,142 @@ function BuildingPanel.new(ctx: any)
 			if everything:GetAttribute("Disabled") then
 				return
 			end
-			local earned = 0
-			for _, id in ids do
-				local have = wallet and wallet.Resources[id] or 0
-				if have >= 1 then
-					local ok, gold = request("Sell", id, "All")
-					if ok and type(gold) == "number" then
-						earned += gold
-					end
-				end
-			end
-			if earned > 0 then
-				ctx.Notify(`Sold everything for {Format.Number(earned)} gold.`, "Success")
-			end
+			sellEverything()
 		end)
+	end
+
+	-- The Trading Post in its art: what you could sell, one wooden row per material.
+	renderTrade = function()
+		local t = trade :: TradeLook
+		for _, child in t.Top:GetChildren() do
+			child:Destroy()
+		end
+		Window.Clear(t.List)
+		local wallet = State.Get("Wallet")
+		local coinsLeft = boostLeft("Coins")
+		local multiplier = if coinsLeft > 0 then SpinConfig.BoostMultiplier else 1
+		local ids = sellable()
+		local total = 0
+		for index, id in ids do
+			local def = ResourceConfig[id]
+			local have = math.floor(wallet and wallet.Resources[id] or 0)
+			local price = (def.SellPrice or 0) * multiplier
+			total += have * price
+			local row = Theme.Make("ImageLabel", {
+				Name = id,
+				BackgroundTransparency = 1,
+				LayoutOrder = index,
+				ZIndex = 12,
+			}, t.List)
+			Theme.KitApply(row, "ItemRow")
+			row.ScaleType = Enum.ScaleType.Stretch
+			keepRatio(row, 84 / 472)
+			-- The item in the square slot.
+			local slot = UDim2.fromScale(15 / 472, 11 / 84)
+			local slotSize = UDim2.fromScale(73 / 472, 62 / 84)
+			local artName = ITEM_ART[id]
+			if artName and Theme.KitImage(artName) then
+				artPiece(row, artName, { Position = slot, Size = slotSize, ZIndex = 13 })
+			else
+				Theme.Text(row, `<font color="#{def.Color:ToHex()}">{def.Icon}</font>`, 30, {
+					Position = slot,
+					Size = slotSize,
+					AutomaticSize = Enum.AutomaticSize.None,
+					TextXAlignment = Enum.TextXAlignment.Center,
+					TextYAlignment = Enum.TextYAlignment.Center,
+					ZIndex = 13,
+				})
+			end
+			-- Name and count on the top bar, the price on the lower one.
+			Theme.Text(row, `<b>{def.Name}</b>  x{Format.Number(have)}`, 16, {
+				Position = UDim2.fromScale(106 / 472, 20 / 84),
+				Size = UDim2.fromScale(190 / 472, 22 / 84),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				TextWrapped = false,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+				ZIndex = 13,
+			})
+			Theme.Text(
+				row,
+				if have > 0 then `{price} gold each · {Format.Number(have * price)} gold` else `{price} gold each`,
+				13,
+				{
+					FontFace = Theme.Bold,
+					TextColor3 = Theme.Colors.Muted,
+					Position = UDim2.fromScale(106 / 472, 45 / 84),
+					Size = UDim2.fromScale(190 / 472, 20 / 84),
+					AutomaticSize = Enum.AutomaticSize.None,
+					TextYAlignment = Enum.TextYAlignment.Center,
+					TextWrapped = false,
+					TextTruncate = Enum.TextTruncate.AtEnd,
+					ZIndex = 13,
+				}
+			)
+			-- The row's painted "None yet" stays until you have some; then the Sell button
+			-- covers it.
+			if have > 0 then
+				local sell = artButton(row, "SellButton", {
+					Position = UDim2.fromScale(316 / 472, 8 / 84),
+					Size = UDim2.fromScale(154 / 472, 68 / 84),
+					ZIndex = 14,
+				})
+				sell.Activated:Connect(function()
+					local ok, gold = request("Sell", id, "All")
+					if ok then
+						ctx.Notify(`Sold {def.Name} for {Format.Number(gold)} gold.`, "Success")
+					end
+				end)
+			end
+		end
+
+		-- Top: what it's all worth on the green bar, and sell everything (or the painted
+		-- "Nothing to sell yet").
+		local bar = artPiece(t.Top, "TradeBar", { Size = UDim2.fromOffset(301, 88), ZIndex = 12 })
+		Theme.Text(
+			bar,
+			if coinsLeft > 0
+				then `<b>2x Coins!</b> {Format.Duration(coinsLeft)} left`
+				else (if total > 0 then `Your goods: <b>{Format.Number(total)}</b> gold` else "Bring goods to sell"),
+			15,
+			{
+				TextColor3 = if coinsLeft > 0 then Theme.Colors.Gold else Theme.Colors.Text,
+				Position = UDim2.fromScale(36 / 301, 30 / 88),
+				Size = UDim2.fromScale(230 / 301, 32 / 88),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextYAlignment = Enum.TextYAlignment.Center,
+				TextWrapped = false,
+				ZIndex = 13,
+			}
+		)
+		if total > 0 then
+			local everything = artButton(t.Top, "SellButton", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, 0, 0, -6),
+				Size = UDim2.fromOffset(200, 82),
+				ZIndex = 14,
+			})
+			Theme.Text(t.Top, "Sell everything", 13, {
+				FontFace = Theme.Bold,
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.new(1, -20, 0, 74),
+				Size = UDim2.fromOffset(160, 16),
+				AutomaticSize = Enum.AutomaticSize.None,
+				TextXAlignment = Enum.TextXAlignment.Center,
+				TextStrokeColor3 = Theme.Colors.TextShadow,
+				TextStrokeTransparency = 0.2,
+				ZIndex = 15,
+			})
+			everything.Activated:Connect(sellEverything)
+		else
+			artPiece(t.Top, "SellBox", {
+				AnchorPoint = Vector2.new(1, 0),
+				Position = UDim2.fromScale(1, 0),
+				Size = UDim2.fromOffset(218, 87),
+				ZIndex = 12,
+			})
+		end
 	end
 
 	-- Expedition Portal: plan a trip (destination, team, approach, supplies) with the exact
@@ -1677,6 +1924,21 @@ function BuildingPanel.new(ctx: any)
 	end
 
 	render = function()
+		-- The Trading Post in its own art.
+		local plazaKind = if buildingId then string.match(buildingId, "^plaza:(.+)$") else nil
+		local buildingsNow = State.Get("Buildings")
+		local infoNow = buildingId and buildingsNow and buildingsNow.List[buildingId]
+		local isTrade = trade ~= nil
+			and (plazaKind == "TradingPost" or (infoNow ~= nil and infoNow.Type == "TradingPost"))
+		look.Root.Visible = not isTrade
+		if trade then
+			trade.Root.Visible = isTrade
+		end
+		if isTrade then
+			liveStorage = nil
+			renderTrade()
+			return
+		end
 		Window.Clear(body)
 		if side ~= body then
 			Window.Clear(side)
@@ -1832,7 +2094,7 @@ function BuildingPanel.new(ctx: any)
 	end)
 
 	return {
-		Root = look.Root,
+		Root = root,
 		Open = function(id: any)
 			if id ~= buildingId then
 				page = "Main"
